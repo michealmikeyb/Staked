@@ -1,11 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { fetchPosts, upvotePost, downvotePost, savePost, type PostView } from '../lib/lemmy';
+import { fetchPosts, upvotePost, downvotePost, type PostView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import PostCard from './PostCard';
-import CommentsPanel from './CommentsPanel';
 import SwipeHint from './SwipeHint';
-import Toast from './Toast';
 
 interface Props {
   auth: AuthState;
@@ -19,8 +16,6 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [commentPost, setCommentPost] = useState<PostView | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const loadMore = useCallback(async (nextPage: number) => {
     try {
@@ -71,7 +66,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const visible = posts.slice(0, STACK_VISIBLE);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', position: 'relative' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       {visible.map((post, i) => {
         const isTop = i === 0;
         const scale = 1 - i * 0.04;
@@ -80,6 +75,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
           <PostCard
             key={post.post.id}
             post={post}
+            auth={auth}
             zIndex={zIndex}
             scale={isTop ? 1 : scale}
             onSwipeRight={isTop ? async () => {
@@ -90,27 +86,10 @@ export default function FeedStack({ auth, onLogout }: Props) {
               await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
               dismissTop();
             } : () => {}}
-            onOpenComments={() => setCommentPost(post)}
           />
         );
       })}
-      <AnimatePresence>
-        {commentPost && (
-          <CommentsPanel
-            post={commentPost}
-            auth={auth}
-            onClose={() => setCommentPost(null)}
-            onSave={async () => {
-              await savePost(auth.instance, auth.token, commentPost.post.id).catch(() => {});
-              setCommentPost(null);
-              dismissTop();
-              setToast('Post saved!');
-            }}
-          />
-        )}
-      </AnimatePresence>
       <SwipeHint />
-      <Toast message={toast ?? ''} visible={toast !== null} onHide={() => setToast(null)} />
     </div>
   );
 }
