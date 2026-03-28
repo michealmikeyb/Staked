@@ -31,7 +31,9 @@ export default function FeedStack({ auth, onLogout }: Props) {
       }
     } catch (err) {
       setCanLoadMore(false);
-      setError(err instanceof Error ? err.message : 'Failed to load posts');
+      if (nextPage === 1) {
+        setError(err instanceof Error ? err.message : 'Failed to load posts');
+      }
     } finally {
       setLoading(false);
     }
