@@ -5,6 +5,7 @@ import styles from './LoginPage.module.css';
 
 const POPULAR_INSTANCES = [
   'lemmy.world',
+  'lemmy.dbzer0.com',
   'beehaw.org',
   'programming.dev',
   'lemmy.ml',

@@ -5,6 +5,7 @@ import { fireEvent } from '@testing-library/react';
 // ── Lemmy mock ────────────────────────────────────────────────────────────────
 vi.mock('../lib/lemmy', () => ({
   fetchComments: vi.fn().mockResolvedValue([]),
+  resolvePostId: vi.fn().mockResolvedValue(null),
 }));
 
 // ── Gesture mock ──────────────────────────────────────────────────────────────

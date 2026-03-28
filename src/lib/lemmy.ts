@@ -68,3 +68,8 @@ export async function fetchComments(
   });
   return res.comments;
 }
+
+export async function resolvePostId(instance: string, apId: string): Promise<number | null> {
+  const res = await client(instance).resolveObject({ q: apId });
+  return res.post?.post.id ?? null;
+}

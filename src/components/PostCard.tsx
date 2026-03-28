@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
-import { fetchComments, type PostView, type CommentView } from '../lib/lemmy';
+import { fetchComments, resolvePostId, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import styles from './PostCard.module.css';
 
@@ -43,13 +43,30 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     const source = sourceFromApId(p.ap_id);
     if (!source) return;
     let cancelled = false;
-    // Use auth only when fetching from the user's own instance; public instances need none.
-    const token = source.instance === auth.instance ? auth.token : '';
-    fetchComments(source.instance, token, source.postId)
-      .then((c) => { if (!cancelled) setComments(c); })
-      .catch(() => {});
+
+    const load = async () => {
+      const sourceToken = source.instance === auth.instance ? auth.token : '';
+      let comments = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
+
+      // Cross-posts and some federated posts have 0 comments on the source instance.
+      // Fall back to the community's home instance via resolve_object.
+      if (comments.length === 0) {
+        const communityInstance = instanceFromActorId(community.actor_id);
+        if (communityInstance && communityInstance !== source.instance) {
+          const localId = await resolvePostId(communityInstance, p.ap_id).catch(() => null);
+          if (localId != null) {
+            const communityToken = communityInstance === auth.instance ? auth.token : '';
+            comments = await fetchComments(communityInstance, communityToken, localId).catch(() => []);
+          }
+        }
+      }
+
+      if (!cancelled) setComments(comments);
+    };
+
+    load();
     return () => { cancelled = true; };
-  }, [auth, p.ap_id]);
+  }, [auth, p.ap_id, community.actor_id]);
 
   const x = useMotionValue(0);
 
