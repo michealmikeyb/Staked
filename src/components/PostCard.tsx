@@ -1,11 +1,11 @@
-import { useRef } from 'react';
+import { useMemo } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import { type PostView } from '../lib/lemmy';
 import styles from './PostCard.module.css';
 
-const SWIPE_THRESHOLD = 120; // px
-const VELOCITY_THRESHOLD = 0.5; // px/ms
+const SWIPE_THRESHOLD = 120;
+const VELOCITY_THRESHOLD = 0.5;
 
 interface Props {
   post: PostView;
@@ -26,21 +26,17 @@ function instanceFromActorId(actorId: string): string {
 
 export default function PostCard({ post, zIndex, scale, onSwipeRight, onSwipeLeft, onOpenComments }: Props) {
   const { post: p, community, creator, counts } = post;
-  const instance = instanceFromActorId(community.actor_id);
+  const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
 
   const x = useMotionValue(0);
-  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Right swipe → CCW (negative rotation, "lifting"). Left swipe → CW (positive, "sinking").
-  // This is the OPPOSITE of standard Tinder — deliberate design choice.
+  // Right swipe rotates CCW ("lifting"), left swipe CW ("sinking") — opposite of standard Tinder.
   const rotate = useTransform(x, [-150, 0, 150], [12, 0, -12]);
 
-  // Colour overlay: orange for right, dark grey for left
-  const overlayColor = useTransform(x, (v) =>
-    v > 0
-      ? `rgba(255,107,53,${Math.min(Math.abs(v) / 120, 1) * 0.45})`
-      : `rgba(80,80,80,${Math.min(Math.abs(v) / 120, 1) * 0.45})`
-  );
+  const overlayColor = useTransform(x, (v) => {
+    const opacity = Math.min(Math.abs(v) / 120, 1) * 0.45;
+    return v > 0 ? `rgba(255,107,53,${opacity})` : `rgba(80,80,80,${opacity})`;
+  });
 
   const bind = useDrag(({ movement: [mx], velocity: [vx], last }) => {
     x.set(mx);
@@ -66,12 +62,10 @@ export default function PostCard({ post, zIndex, scale, onSwipeRight, onSwipeLef
 
   return (
     <motion.div
-      ref={cardRef}
       className={styles.card}
       style={{ zIndex, x, rotate, scale }}
       {...(bind() as object)}
     >
-      {/* Directional colour overlay */}
       <motion.div
         className={styles.overlay}
         style={{ backgroundColor: overlayColor }}

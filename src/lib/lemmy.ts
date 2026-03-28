@@ -32,22 +32,17 @@ export async function fetchPosts(
   return res.posts;
 }
 
-export async function upvotePost(
-  instance: string,
-  token: string,
-  postId: number,
-): Promise<void> {
+async function votePost(instance: string, token: string, postId: number, score: 1 | -1): Promise<void> {
   // @ts-expect-error legacy auth
-  await client(instance).likePost({ post_id: postId, score: 1, auth: token });
+  await client(instance).likePost({ post_id: postId, score, auth: token });
 }
 
-export async function downvotePost(
-  instance: string,
-  token: string,
-  postId: number,
-): Promise<void> {
-  // @ts-expect-error legacy auth
-  await client(instance).likePost({ post_id: postId, score: -1, auth: token });
+export async function upvotePost(instance: string, token: string, postId: number): Promise<void> {
+  return votePost(instance, token, postId, 1);
+}
+
+export async function downvotePost(instance: string, token: string, postId: number): Promise<void> {
+  return votePost(instance, token, postId, -1);
 }
 
 export async function savePost(

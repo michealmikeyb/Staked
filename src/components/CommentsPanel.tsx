@@ -12,7 +12,7 @@ interface Props {
 }
 
 function depthFromPath(path: string): number {
-  // Path format: "0.parentId.childId" — depth = number of segments - 1
+  // Path format: "0.parentId.childId"
   return path.split('.').length - 1;
 }
 
@@ -24,9 +24,11 @@ export default function CommentsPanel({ post, auth, onClose, onSave }: Props) {
   const touchStartY = useRef(0);
 
   useEffect(() => {
+    let cancelled = false;
     fetchComments(auth.instance, auth.token, p.id)
-      .then(setComments)
-      .finally(() => setLoading(false));
+      .then((c) => { if (!cancelled) setComments(c); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [auth, p.id]);
 
   function handleTouchStart(e: React.TouchEvent) {
