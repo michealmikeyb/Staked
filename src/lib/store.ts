@@ -43,20 +43,9 @@ export function loadSeen(): Set<number> {
 }
 
 export function addSeen(id: number): void {
-  let arr: number[] = [];
-  try {
-    const raw = localStorage.getItem(SEEN_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) arr = parsed;
-    }
-  } catch {
-    // start fresh if corrupted
-  }
-  if (!arr.includes(id)) {
-    arr.push(id);
-  }
-  localStorage.setItem(SEEN_KEY, JSON.stringify(arr.slice(-MAX_SEEN)));
+  const seen = loadSeen();
+  if (seen.has(id)) return;
+  localStorage.setItem(SEEN_KEY, JSON.stringify([...seen, id].slice(-MAX_SEEN)));
 }
 
 export function clearSeen(): void {

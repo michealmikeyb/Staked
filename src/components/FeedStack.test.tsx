@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import FeedStack from './FeedStack';
+import { addSeen } from '../lib/store';
 
 vi.mock('../lib/lemmy', () => ({
   fetchPosts: vi.fn().mockResolvedValue([
@@ -38,7 +39,7 @@ describe('FeedStack', () => {
   });
 
   it('does not render a post whose id is in the seen list', async () => {
-    localStorage.setItem('stakswipe_seen', JSON.stringify([1]));
+    addSeen(1);
     render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
     await waitFor(() => {
       expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
@@ -69,7 +70,7 @@ describe('FeedStack empty state', () => {
 
     const reloadMock = vi.fn();
     vi.stubGlobal('location', { reload: reloadMock });
-    localStorage.setItem('stakswipe_seen', JSON.stringify([99]));
+    addSeen(99);
 
     render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
     const btn = await screen.findByRole('button', { name: /reset seen history/i });

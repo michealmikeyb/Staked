@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchPosts, upvotePost, downvotePost, type PostView } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
@@ -10,6 +10,7 @@ interface Props {
 }
 
 const STACK_VISIBLE = 3;
+const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16 };
 
 export default function FeedStack({ auth, onLogout }: Props) {
   const [posts, setPosts] = useState<PostView[]>([]);
@@ -82,7 +83,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
 
   if (error) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16 }}>
+      <div style={screenStyle}>
         <div style={{ color: '#ff4444' }}>{error}</div>
         <button onClick={onLogout} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
           Log out
@@ -93,7 +94,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
 
   if (posts.length === 0 && !loading && !canLoadMore) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16 }}>
+      <div style={screenStyle}>
         <div style={{ color: 'var(--text-secondary)' }}>You've seen everything!</div>
         <button
           onClick={() => { clearSeen(); window.location.reload(); }}
