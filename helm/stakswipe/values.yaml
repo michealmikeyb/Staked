@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: stakswipe
+  repository: localhost:32000/stakswipe
   tag: latest
   pullPolicy: IfNotPresent
 
