@@ -4,6 +4,8 @@ import { fetchPosts, upvotePost, downvotePost, savePost, type PostView } from '.
 import { type AuthState } from '../lib/store';
 import PostCard from './PostCard';
 import CommentsPanel from './CommentsPanel';
+import SwipeHint from './SwipeHint';
+import Toast from './Toast';
 
 interface Props {
   auth: AuthState;
@@ -18,6 +20,13 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [commentPost, setCommentPost] = useState<PostView | null>(null);
+  const [toast, setToast] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setToastVisible(true);
+  }
 
   const loadMore = useCallback(async (nextPage: number) => {
     try {
@@ -101,10 +110,13 @@ export default function FeedStack({ auth, onLogout }: Props) {
               await savePost(auth.instance, auth.token, commentPost.post.id).catch(() => {});
               setCommentPost(null);
               dismissTop();
+              showToast('Post saved!');
             }}
           />
         )}
       </AnimatePresence>
+      <SwipeHint />
+      <Toast message={toast} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </div>
   );
 }
