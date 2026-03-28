@@ -40,19 +40,22 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [comments, setComments] = useState<CommentView[]>([]);
 
   useEffect(() => {
-    const source = sourceFromApId(p.ap_id);
-    if (!source) return;
     let cancelled = false;
 
     const load = async () => {
-      const sourceToken = source.instance === auth.instance ? auth.token : '';
-      let comments = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
+      let comments: CommentView[] = [];
+      const source = sourceFromApId(p.ap_id);
 
-      // Cross-posts and some federated posts have 0 comments on the source instance.
-      // Fall back to the community's home instance via resolve_object.
+      if (source) {
+        const sourceToken = source.instance === auth.instance ? auth.token : '';
+        comments = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
+      }
+
+      // Cross-posts, non-Lemmy sources (Kbin/Mbin ap_ids etc.), or empty source fetch:
+      // resolve via the community's home instance.
       if (comments.length === 0) {
         const communityInstance = instanceFromActorId(community.actor_id);
-        if (communityInstance && communityInstance !== source.instance) {
+        if (communityInstance && communityInstance !== source?.instance) {
           const localId = await resolvePostId(communityInstance, p.ap_id).catch(() => null);
           if (localId != null) {
             const communityToken = communityInstance === auth.instance ? auth.token : '';
@@ -61,9 +64,8 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         }
       }
 
-      // Last resort: fetch via user's home instance (authenticated, local post ID already known).
-      // Covers cases where the source fetch fails (CORS, auth, network) and community == source.
-      if (comments.length === 0 && source.instance !== auth.instance) {
+      // Last resort: user's home instance with the already-known local post ID.
+      if (comments.length === 0 && source?.instance !== auth.instance) {
         comments = await fetchComments(auth.instance, auth.token, p.id).catch(() => []);
       }
 
@@ -72,7 +74,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
     load();
     return () => { cancelled = true; };
-  }, [auth, p.ap_id, community.actor_id]);
+  }, [auth, p.ap_id, p.id, community.actor_id]);
 
   const x = useMotionValue(0);
 

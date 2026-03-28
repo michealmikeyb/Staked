@@ -12,6 +12,7 @@ vi.mock('../lib/lemmy', () => ({
     },
   ]),
   fetchComments: vi.fn().mockResolvedValue([]),
+  resolvePostId: vi.fn().mockResolvedValue(null),
   upvotePost: vi.fn().mockResolvedValue(undefined),
   downvotePost: vi.fn().mockResolvedValue(undefined),
 }));
