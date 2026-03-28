@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchPosts, upvotePost, downvotePost, type PostView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 
@@ -14,6 +14,7 @@ const STACK_VISIBLE = 3;
 export default function FeedStack({ auth, onLogout }: Props) {
   const [posts, setPosts] = useState<PostView[]>([]);
   const [page, setPage] = useState(1);
+  const seenRef = useRef<Set<number>>(loadSeen());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
@@ -24,7 +25,8 @@ export default function FeedStack({ auth, onLogout }: Props) {
       if (newPosts.length === 0) {
         setCanLoadMore(false);
       } else {
-        setPosts((prev) => [...prev, ...newPosts]);
+        const unseen = newPosts.filter((p) => !seenRef.current.has(p.post.id));
+        setPosts((prev) => [...prev, ...unseen]);
       }
     } catch (err) {
       setCanLoadMore(false);
@@ -46,7 +48,9 @@ export default function FeedStack({ auth, onLogout }: Props) {
     }
   }, [posts.length, loading, page, loadMore, canLoadMore]);
 
-  function dismissTop() {
+  function dismissTop(postId: number) {
+    addSeen(postId);
+    seenRef.current.add(postId);
     setPosts((prev) => prev.slice(1));
   }
 
@@ -57,10 +61,10 @@ export default function FeedStack({ auth, onLogout }: Props) {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') {
         upvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
-        dismissTop();
+        dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowLeft') {
         downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
-        dismissTop();
+        dismissTop(topPost.post.id);
       }
     }
 
@@ -104,11 +108,11 @@ export default function FeedStack({ auth, onLogout }: Props) {
             scale={isTop ? 1 : scale}
             onSwipeRight={isTop ? async () => {
               await upvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
-              dismissTop();
+              dismissTop(post.post.id);
             } : () => {}}
             onSwipeLeft={isTop ? async () => {
               await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
-              dismissTop();
+              dismissTop(post.post.id);
             } : () => {}}
           />
         );

@@ -20,7 +20,10 @@ vi.mock('../lib/lemmy', () => ({
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 
 describe('FeedStack', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
 
   it('shows a loading state initially', () => {
     render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
@@ -31,6 +34,14 @@ describe('FeedStack', () => {
     render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
     await waitFor(() => {
       expect(screen.getByText('Test Post Title')).toBeInTheDocument();
+    });
+  });
+
+  it('does not render a post whose id is in the seen list', async () => {
+    localStorage.setItem('stakswipe_seen', JSON.stringify([1]));
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
     });
   });
 });
