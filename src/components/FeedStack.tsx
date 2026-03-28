@@ -16,12 +16,18 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [canLoadMore, setCanLoadMore] = useState(true);
 
   const loadMore = useCallback(async (nextPage: number) => {
     try {
       const newPosts = await fetchPosts(auth.instance, auth.token, nextPage);
-      setPosts((prev) => [...prev, ...newPosts]);
+      if (newPosts.length === 0) {
+        setCanLoadMore(false);
+      } else {
+        setPosts((prev) => [...prev, ...newPosts]);
+      }
     } catch (err) {
+      setCanLoadMore(false);
       setError(err instanceof Error ? err.message : 'Failed to load posts');
     } finally {
       setLoading(false);
@@ -33,12 +39,12 @@ export default function FeedStack({ auth, onLogout }: Props) {
   }, [loadMore]);
 
   useEffect(() => {
-    if (posts.length <= 3 && !loading) {
+    if (posts.length <= 3 && !loading && canLoadMore) {
       const nextPage = page + 1;
       setPage(nextPage);
       loadMore(nextPage);
     }
-  }, [posts.length, loading, page, loadMore]);
+  }, [posts.length, loading, page, loadMore, canLoadMore]);
 
   function dismissTop() {
     setPosts((prev) => prev.slice(1));
