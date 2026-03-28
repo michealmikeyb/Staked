@@ -8,7 +8,7 @@ vi.mock('./lib/store', () => ({
 }));
 
 vi.mock('./components/LoginPage', () => ({
-  default: ({ onLogin }: { onLogin: unknown }) => <div>LoginPage</div>,
+  default: (_props: { onLogin: unknown }) => <div>LoginPage</div>,
 }));
 
 vi.mock('./components/FeedStack', () => ({

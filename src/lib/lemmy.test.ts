@@ -13,7 +13,7 @@ vi.mock('lemmy-js-client', () => {
   return { LemmyHttp: MockLemmyHttp };
 });
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('login', () => {
   it('returns the JWT on success', async () => {

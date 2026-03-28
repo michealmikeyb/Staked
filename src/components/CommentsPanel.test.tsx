@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import CommentsPanel from './CommentsPanel';
-import { type PostView, type CommentView } from '../lib/lemmy';
+import { type PostView } from '../lib/lemmy';
 
 const MOCK_POST = {
   post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null },
@@ -9,19 +9,6 @@ const MOCK_POST = {
   creator: { name: 'alice' },
   counts: { score: 847, comments: 2 },
 } as unknown as PostView;
-
-const MOCK_COMMENTS: CommentView[] = [
-  {
-    comment: { id: 10, content: 'Great article!', path: '0.10', published: '' },
-    creator: { name: 'bob' },
-    counts: { score: 42 },
-  } as unknown as CommentView,
-  {
-    comment: { id: 11, content: 'I disagree.', path: '0.10.11', published: '' },
-    creator: { name: 'carol' },
-    counts: { score: 5 },
-  } as unknown as CommentView,
-];
 
 vi.mock('../lib/lemmy', () => ({
   fetchComments: vi.fn().mockResolvedValue([

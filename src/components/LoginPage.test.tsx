@@ -13,7 +13,7 @@ vi.mock('../lib/store', () => ({
 
 const mockOnLogin = vi.fn();
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('LoginPage', () => {
   it('renders the Stakswipe title', () => {
