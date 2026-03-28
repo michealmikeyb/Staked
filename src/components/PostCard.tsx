@@ -61,6 +61,12 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         }
       }
 
+      // Last resort: fetch via user's home instance (authenticated, local post ID already known).
+      // Covers cases where the source fetch fails (CORS, auth, network) and community == source.
+      if (comments.length === 0 && source.instance !== auth.instance) {
+        comments = await fetchComments(auth.instance, auth.token, p.id).catch(() => []);
+      }
+
       if (!cancelled) setComments(comments);
     };
 
