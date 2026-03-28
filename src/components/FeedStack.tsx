@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchPosts, upvotePost, downvotePost, type PostView } from '../lib/lemmy';
+import { AnimatePresence } from 'framer-motion';
+import { fetchPosts, upvotePost, downvotePost, savePost, type PostView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import PostCard from './PostCard';
+import CommentsPanel from './CommentsPanel';
 
 interface Props {
   auth: AuthState;
@@ -15,6 +17,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [commentPost, setCommentPost] = useState<PostView | null>(null);
 
   const loadMore = useCallback(async (nextPage: number) => {
     try {
@@ -84,10 +87,24 @@ export default function FeedStack({ auth, onLogout }: Props) {
               await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
               dismissTop();
             } : () => {}}
-            onOpenComments={() => {}}
+            onOpenComments={() => setCommentPost(post)}
           />
         );
       })}
+      <AnimatePresence>
+        {commentPost && (
+          <CommentsPanel
+            post={commentPost}
+            auth={auth}
+            onClose={() => setCommentPost(null)}
+            onSave={async () => {
+              await savePost(auth.instance, auth.token, commentPost.post.id).catch(() => {});
+              setCommentPost(null);
+              dismissTop();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

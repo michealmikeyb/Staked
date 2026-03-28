@@ -21,6 +21,7 @@ vi.mock('../lib/lemmy', () => ({
   ]),
   upvotePost: vi.fn().mockResolvedValue(undefined),
   downvotePost: vi.fn().mockResolvedValue(undefined),
+  savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
