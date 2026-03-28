@@ -85,6 +85,12 @@ describe('addSeen', () => {
     expect(arr[0]).toBe(1);   // ID 0 was dropped
     expect(arr[199]).toBe(200);
   });
+
+  it('recovers gracefully when stored value is corrupted', () => {
+    localStorage.setItem('stakswipe_seen', 'bad-json');
+    addSeen(7);
+    expect(loadSeen()).toEqual(new Set([7]));
+  });
 });
 
 describe('clearSeen', () => {

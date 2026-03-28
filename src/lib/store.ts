@@ -35,7 +35,8 @@ export function loadSeen(): Set<number> {
   try {
     const raw = localStorage.getItem(SEEN_KEY);
     if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as number[]);
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
   } catch {
     return new Set();
   }
@@ -45,7 +46,10 @@ export function addSeen(id: number): void {
   let arr: number[] = [];
   try {
     const raw = localStorage.getItem(SEEN_KEY);
-    if (raw) arr = JSON.parse(raw) as number[];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) arr = parsed;
+    }
   } catch {
     // start fresh if corrupted
   }
