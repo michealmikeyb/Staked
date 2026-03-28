@@ -50,6 +50,24 @@ export default function FeedStack({ auth, onLogout }: Props) {
     setPosts((prev) => prev.slice(1));
   }
 
+  useEffect(() => {
+    const topPost = posts[0];
+    if (!topPost) return;
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight') {
+        upvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        dismissTop();
+      } else if (e.key === 'ArrowLeft') {
+        downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        dismissTop();
+      }
+    }
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [posts, auth]);
+
   if (loading && posts.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>
