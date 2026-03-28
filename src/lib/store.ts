@@ -27,3 +27,34 @@ export function loadAuth(): AuthState | null {
 export function clearAuth(): void {
   Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
 }
+
+const SEEN_KEY = 'stakswipe_seen';
+const MAX_SEEN = 200;
+
+export function loadSeen(): Set<number> {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as number[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function addSeen(id: number): void {
+  let arr: number[] = [];
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    if (raw) arr = JSON.parse(raw) as number[];
+  } catch {
+    // start fresh if corrupted
+  }
+  if (!arr.includes(id)) {
+    arr.push(id);
+  }
+  localStorage.setItem(SEEN_KEY, JSON.stringify(arr.slice(-MAX_SEEN)));
+}
+
+export function clearSeen(): void {
+  localStorage.removeItem(SEEN_KEY);
+}
