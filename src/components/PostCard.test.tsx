@@ -1,5 +1,36 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { fireEvent } from '@testing-library/react';
+
+// ── Gesture mock ──────────────────────────────────────────────────────────────
+// @use-gesture/react's useDrag doesn't work in jsdom (no real pointer capture).
+// We capture the handler so tests can invoke it directly.
+let capturedDragHandler: ((state: object) => void) | null = null;
+
+vi.mock('@use-gesture/react', () => ({
+  useDrag: (handler: (state: object) => void) => {
+    capturedDragHandler = handler;
+    // Return a bind function that attaches pointer listeners to the element
+    return () => ({
+      onPointerDown: (e: PointerEvent) => void e,
+    });
+  },
+}));
+
+// ── Framer Motion mock ────────────────────────────────────────────────────────
+// animate() is async in the real library; we call onComplete immediately so
+// onSwipeRight/Left fires synchronously in tests.
+vi.mock('framer-motion', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('framer-motion')>();
+  return {
+    ...actual,
+    animate: (_target: unknown, _value: unknown, opts: { onComplete?: () => void } = {}) => {
+      opts.onComplete?.();
+      return { stop: () => {} };
+    },
+  };
+});
+
 import PostCard from './PostCard';
 import { type PostView } from '../lib/lemmy';
 
@@ -37,5 +68,57 @@ describe('PostCard', () => {
       />
     );
     expect(screen.getByText(/programming/i)).toBeInTheDocument();
+  });
+});
+
+describe('PostCard gestures', () => {
+  beforeEach(() => {
+    capturedDragHandler = null;
+  });
+
+  it('calls onSwipeRight when dragged far right', () => {
+    const onSwipeRight = vi.fn();
+    const { container } = render(
+      <PostCard
+        post={MOCK_POST}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={onSwipeRight}
+        onSwipeLeft={vi.fn()}
+        onOpenComments={vi.fn()}
+      />
+    );
+    const card = container.firstChild as HTMLElement;
+    fireEvent.pointerDown(card, { clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(card, { clientX: 200, clientY: 0 });
+    fireEvent.pointerUp(card, { clientX: 200, clientY: 0 });
+
+    // Invoke the captured drag handler directly — simulates a completed right swipe
+    capturedDragHandler!({ movement: [200, 0], velocity: [0, 0], last: true });
+
+    expect(onSwipeRight).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onSwipeLeft when dragged far left', () => {
+    const onSwipeLeft = vi.fn();
+    const { container } = render(
+      <PostCard
+        post={MOCK_POST}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={onSwipeLeft}
+        onOpenComments={vi.fn()}
+      />
+    );
+    const card = container.firstChild as HTMLElement;
+    fireEvent.pointerDown(card, { clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(card, { clientX: -200, clientY: 0 });
+    fireEvent.pointerUp(card, { clientX: -200, clientY: 0 });
+
+    // Invoke the captured drag handler directly — simulates a completed left swipe
+    capturedDragHandler!({ movement: [-200, 0], velocity: [0, 0], last: true });
+
+    expect(onSwipeLeft).toHaveBeenCalledTimes(1);
   });
 });
