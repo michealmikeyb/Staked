@@ -38,6 +38,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const [comments, setComments] = useState<CommentView[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +73,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         );
       }
 
-      if (!cancelled) setComments(comments);
+      if (!cancelled) { setComments(comments); setCommentsLoaded(true); }
     };
 
     load();
@@ -134,6 +135,16 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         </div>
 
         <div className={styles.commentsSection}>
+          {commentsLoaded && comments.length === 0 && counts.comments > 0 && (
+            <a
+              className={styles.commentsFallback}
+              href={p.ap_id}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {counts.comments} comments — view on {new URL(p.ap_id).hostname}
+            </a>
+          )}
           {comments.map((cv) => {
             const depth = cv.comment.path.split('.').length - 1;
             return (
