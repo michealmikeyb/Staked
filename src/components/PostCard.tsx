@@ -65,8 +65,11 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
       }
 
       // Last resort: user's home instance with the already-known local post ID.
+      // Try authenticated first; fall back to anonymous if token is expired (401).
       if (comments.length === 0 && source?.instance !== auth.instance) {
-        comments = await fetchComments(auth.instance, auth.token, p.id).catch(() => []);
+        comments = await fetchComments(auth.instance, auth.token, p.id).catch(() =>
+          fetchComments(auth.instance, '', p.id).catch(() => [])
+        );
       }
 
       if (!cancelled) setComments(comments);
