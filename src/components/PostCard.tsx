@@ -166,8 +166,8 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
             comments={comments}
             auth={auth}
             postId={p.id}
-            instance={resolvedInstanceRef.current}
-            token={resolvedTokenRef.current}
+            instance={auth.instance}
+            token={auth.token}
           />
         </div>
       </div>
