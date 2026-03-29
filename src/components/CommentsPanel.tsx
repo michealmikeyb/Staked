@@ -78,7 +78,7 @@ export default function CommentsPanel({ post, auth, onClose, onSave }: Props) {
               data-depth={depth}
               style={{ paddingLeft: `${16 + (depth - 1) * 14}px` }}
             >
-              <div className={styles.commentAuthor}>@{cv.creator.name} · ▲ {cv.counts.score}</div>
+              <div className={styles.commentAuthor}>@{cv.creator.display_name ?? cv.creator.name} · ▲ {cv.counts.score}</div>
               <div className={styles.commentBody}>{cv.comment.content}</div>
             </div>
           );

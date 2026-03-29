@@ -26,6 +26,11 @@ function instanceFromActorId(actorId: string): string {
   try { return new URL(actorId).hostname; } catch { return ''; }
 }
 
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
+function isImageUrl(url: string): boolean {
+  try { return IMAGE_EXT.test(new URL(url).pathname); } catch { return false; }
+}
+
 // Posts federate across instances — ap_id gives the canonical source instance + local post ID.
 function sourceFromApId(apId: string): { instance: string; postId: number } | null {
   try {
@@ -90,6 +95,44 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         }
       }
 
+      // Merge in home-instance comments so replies posted there appear immediately,
+      // even before they federate back to the source instance.
+      if (auth.token && source?.instance !== auth.instance) {
+        const homeComments = await fetchComments(auth.instance, auth.token, p.id).catch(() => []);
+        if (homeComments.length > 0) {
+          const seenApIds = new Set(comments.map(c => c.comment.ap_id));
+          const novel = homeComments.filter(c => !seenApIds.has(c.comment.ap_id));
+          if (novel.length > 0) {
+            // Remap each novel comment's path to use source-instance IDs so threading is correct.
+            const homeIdToApId = new Map(homeComments.map(c => [c.comment.id, c.comment.ap_id]));
+            const sourceApIdToComment = new Map(comments.map(c => [c.comment.ap_id, c]));
+
+            const result = [...comments];
+            for (const nc of novel) {
+              const pathParts = nc.comment.path.split('.');
+              const parentLocalId = pathParts.length > 2 ? parseInt(pathParts[pathParts.length - 2]) : null;
+              const parentApId = parentLocalId != null ? homeIdToApId.get(parentLocalId) : null;
+              const parentInSource = parentApId ? sourceApIdToComment.get(parentApId) : null;
+
+              if (parentInSource) {
+                const sourcePath = parentInSource.comment.path + '.' + nc.comment.id;
+                const remapped = { ...nc, comment: { ...nc.comment, path: sourcePath } };
+                const parentPath = parentInSource.comment.path;
+                const parentFoundIdx = result.findIndex(c => c.comment.ap_id === parentApId);
+                let insertIdx = parentFoundIdx + 1;
+                while (insertIdx < result.length && result[insertIdx].comment.path.startsWith(parentPath + '.')) {
+                  insertIdx++;
+                }
+                result.splice(insertIdx, 0, remapped);
+              } else {
+                result.push(nc);
+              }
+            }
+            comments = result;
+          }
+        }
+      }
+
       if (!cancelled) { setComments(comments); setCommentsLoaded(true); }
     };
 
@@ -121,6 +164,8 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     }
   }, { axis: 'x', filterTaps: true, pointer: { touch: true } });
 
+  const imageSrc = (p.url && isImageUrl(p.url)) ? p.url : p.thumbnail_url;
+
   return (
     <motion.div
       className={styles.card}
@@ -134,15 +179,13 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           <div className={styles.communityIcon}>{communityInitial(community.name)}</div>
           <div>
             <div className={styles.communityName}>c/{community.name}</div>
-            <div className={styles.instanceName}>{instance} • {creator.name}</div>
+            <div className={styles.instanceName}>{instance} • {creator.display_name ?? creator.name}</div>
           </div>
         </div>
 
         <div className={styles.title}>{p.name}</div>
 
-        {p.thumbnail_url && (
-          <img className={styles.image} src={p.thumbnail_url} alt="" loading="lazy" />
-        )}
+        {imageSrc && <img className={styles.image} src={imageSrc} alt="" loading="lazy" />}
 
         {p.body && <div className={styles.excerpt}>{p.body}</div>}
 

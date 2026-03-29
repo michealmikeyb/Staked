@@ -32,7 +32,7 @@ export default function ReplySheet({ target, onSubmit, onClose }: Props) {
 
   return (
     <div className={`${styles.sheet} ${styles.open}`}>
-      <div className={styles.header}>↩ Replying to @{target.creator.name}</div>
+      <div className={styles.header}>↩ Replying to @{target.creator.display_name ?? target.creator.name}</div>
       <textarea
         className={styles.textarea}
         value={content}

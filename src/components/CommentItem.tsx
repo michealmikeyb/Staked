@@ -44,7 +44,7 @@ export default function CommentItem({ cv, auth, depth, onReply }: Props) {
       onClick={handleClick}
     >
       <div className={styles.authorRow}>
-        <span>@{cv.creator.name}</span>
+        <span>@{cv.creator.display_name ?? cv.creator.name}</span>
         <span className={liked ? styles.scoreLiked : styles.score}>▲ {score}</span>
         {flash.key > 0 && (
           <span key={flash.key} className={styles.scoreFlash}>
