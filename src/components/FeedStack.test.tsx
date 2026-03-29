@@ -169,3 +169,47 @@ describe('FeedStack keyboard shortcuts', () => {
     });
   });
 });
+
+describe('FeedStack menu drawer', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 847, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+  });
+
+  it('opens the drawer when menu button is clicked', async () => {
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /inbox/i })).toBeInTheDocument();
+  });
+
+  it('closes the drawer when a tile is clicked', async () => {
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /saved/i }));
+    expect(screen.queryByRole('button', { name: /saved/i })).not.toBeInTheDocument();
+  });
+
+  it('closes the drawer when the hamburger is clicked again', async () => {
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.queryByRole('button', { name: /saved/i })).not.toBeInTheDocument();
+  });
+});

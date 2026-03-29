@@ -21,6 +21,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [sortType, setSortType] = useState<SortType>('TopTwelveHour');
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType) => {
     try {
@@ -132,7 +133,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
-      <HeaderBar sortType={sortType} onSortChange={handleSortChange} onMenuOpen={() => {}} />
+      <HeaderBar sortType={sortType} onSortChange={handleSortChange} onMenuOpen={() => setShowDrawer((v) => !v)} />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         {visible.map((post, i) => {
           const isTop = i === 0;
@@ -162,6 +163,41 @@ export default function FeedStack({ auth, onLogout }: Props) {
         })}
         <SwipeHint />
       </div>
+      {showDrawer && (
+        <>
+          <div
+            onClick={() => setShowDrawer(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 39 }}
+          />
+          <div style={{
+            position: 'fixed', top: 48, left: 0, right: 0,
+            background: '#1a1d24', borderBottom: '1px solid #2a2d35',
+            zIndex: 40, padding: 16,
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              {[
+                { icon: '🔖', label: 'Saved' },
+                { icon: '👤', label: 'Profile' },
+                { icon: '📬', label: 'Inbox' },
+              ].map(({ icon, label }) => (
+                <button
+                  key={label}
+                  onClick={() => setShowDrawer(false)}
+                  style={{
+                    background: '#2a2d35', border: 'none', borderRadius: 12,
+                    cursor: 'pointer', padding: '14px 8px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    color: '#f5f5f5', fontSize: 12, fontWeight: 500,
+                  }}
+                >
+                  <span style={{ fontSize: 22 }}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
