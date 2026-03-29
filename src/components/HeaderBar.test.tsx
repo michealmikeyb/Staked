@@ -55,3 +55,37 @@ describe('HeaderBar', () => {
     expect(screen.getByRole('button', { name: /^hot$/i })).toHaveTextContent('✓');
   });
 });
+
+describe('centerContent prop', () => {
+  it('renders centerContent in place of the sort dropdown', () => {
+    render(
+      <HeaderBar onMenuOpen={() => {}} centerContent={<span>Custom Center</span>} />,
+    );
+    expect(screen.getByText('Custom Center')).toBeInTheDocument();
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+  });
+
+  it('renders sort dropdown when centerContent is not provided and sortType is given', () => {
+    render(
+      <HeaderBar
+        sortType="Hot"
+        onSortChange={() => {}}
+        onMenuOpen={() => {}}
+      />,
+    );
+    expect(screen.getByText('Hot')).toBeInTheDocument();
+  });
+
+  it('renders empty center when neither centerContent nor sortType is provided', () => {
+    render(<HeaderBar onMenuOpen={() => {}} />);
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hot')).not.toBeInTheDocument();
+  });
+});
+
+it('calls onLogoClick when logo is clicked', () => {
+  const spy = vi.fn();
+  render(<HeaderBar onMenuOpen={() => {}} onLogoClick={spy} />);
+  fireEvent.click(screen.getByText('S'));
+  expect(spy).toHaveBeenCalledTimes(1);
+});

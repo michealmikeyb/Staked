@@ -11,19 +11,36 @@ const SORT_OPTIONS: { sort: SortType; label: string }[] = [
 ];
 
 interface Props {
-  sortType: SortType;
-  onSortChange: (sort: SortType) => void;
+  sortType?: SortType;
+  onSortChange?: (sort: SortType) => void;
   onMenuOpen: () => void;
+  centerContent?: React.ReactNode;
+  onLogoClick?: () => void;
 }
 
-export default function HeaderBar({ sortType, onSortChange, onMenuOpen }: Props) {
+export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerContent, onLogoClick }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
-  const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType;
+  const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType ?? '';
 
   function handleSortSelect(sort: SortType) {
     setShowDropdown(false);
-    onSortChange(sort);
+    onSortChange?.(sort);
   }
+
+  const centerEl = centerContent ?? (sortType && onSortChange ? (
+    <button
+      onClick={() => setShowDropdown((v) => !v)}
+      aria-label={showDropdown ? `${currentLabel} ▾` : currentLabel}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        color: '#f5f5f5', fontSize: 13, fontWeight: 600,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}
+    >
+      {currentLabel}
+      <span style={{ color: '#888', fontSize: 11 }}>▾</span>
+    </button>
+  ) : null);
 
   return (
     <>
@@ -32,25 +49,19 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen }: Props)
         padding: '0 16px', height: 48, flexShrink: 0,
         background: '#1a1d24', borderBottom: '1px solid #2a2d35',
       }}>
-        <div style={{
-          width: 32, height: 32, background: '#ff6b35', borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0,
-        }}>
-          S
-        </div>
-        <button
-          onClick={() => setShowDropdown((v) => !v)}
-          aria-label={showDropdown ? `${currentLabel} ▾` : currentLabel}
+        <div
+          onClick={onLogoClick}
+          role={onLogoClick ? 'button' : undefined}
           style={{
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-            color: '#f5f5f5', fontSize: 13, fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 4,
+            width: 32, height: 32, background: '#ff6b35', borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0,
+            cursor: onLogoClick ? 'pointer' : 'default',
           }}
         >
-          {currentLabel}
-          <span style={{ color: '#888', fontSize: 11 }}>▾</span>
-        </button>
+          S
+        </div>
+        {centerEl}
         <div style={{ flex: 1 }} />
         <button
           onClick={onMenuOpen}
@@ -66,7 +77,7 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen }: Props)
         </button>
       </div>
 
-      {showDropdown && (
+      {showDropdown && sortType && onSortChange && (
         <>
           <div
             onClick={() => setShowDropdown(false)}
