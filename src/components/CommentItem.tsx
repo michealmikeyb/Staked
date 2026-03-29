@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { likeComment, type CommentView } from '../lib/lemmy';
+import { likeComment, resolveCommentId, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import styles from './CommentItem.module.css';
 
@@ -17,6 +17,8 @@ export default function CommentItem({ cv, auth, depth, onReply }: Props) {
   const [score, setScore] = useState(cv.counts.score);
   const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
   const lastTapRef = useRef<number>(0);
+  // Cache the resolved local comment ID on auth.instance to avoid re-resolving on every like.
+  const resolvedIdRef = useRef<number | null>(null);
 
   const handleClick = () => {
     const now = Date.now();
@@ -27,7 +29,16 @@ export default function CommentItem({ cv, auth, depth, onReply }: Props) {
       setLiked(newLiked);
       setScore((s) => s + delta);
       setFlash((f) => ({ key: f.key + 1, delta: delta as 1 | -1 }));
-      likeComment(auth.instance, auth.token, cv.comment.id, newLiked ? 1 : 0).catch(() => {
+      const doLike = async () => {
+        // cv.comment.id may be a local ID from a different (source) instance.
+        // Resolve the ID on auth.instance so the like API call targets the right comment.
+        if (resolvedIdRef.current === null) {
+          const resolved = await resolveCommentId(auth.instance, auth.token, cv.comment.ap_id).catch(() => null);
+          resolvedIdRef.current = resolved ?? cv.comment.id;
+        }
+        await likeComment(auth.instance, auth.token, resolvedIdRef.current, newLiked ? 1 : 0);
+      };
+      doLike().catch(() => {
         setLiked(!newLiked);
         setScore((s) => s - delta);
       });
