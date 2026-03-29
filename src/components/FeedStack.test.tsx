@@ -17,6 +17,12 @@ vi.mock('../lib/lemmy', () => ({
   upvotePost: vi.fn().mockResolvedValue(undefined),
   downvotePost: vi.fn().mockResolvedValue(undefined),
   savePost: vi.fn().mockResolvedValue(undefined),
+  fetchUnreadCount: vi.fn().mockResolvedValue(3),
+}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
 }));
 
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
@@ -211,5 +217,67 @@ describe('FeedStack menu drawer', () => {
     expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     expect(screen.queryByRole('button', { name: /saved/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('unread badge', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    const { fetchPosts, fetchUnreadCount } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+        creator: { name: 'alice' },
+        counts: { score: 847, comments: 0 },
+      },
+    ]);
+    (fetchUnreadCount as ReturnType<typeof vi.fn>).mockResolvedValue(3);
+  });
+
+  it('shows unread count badge on Inbox button when unreadCount > 0', async () => {
+    render(
+      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={5} setUnreadCount={() => {}} />,
+    );
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByLabelText('Menu'));
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
+
+  it('hides badge when unreadCount is 0', async () => {
+    render(
+      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={0} setUnreadCount={() => {}} />,
+    );
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByLabelText('Menu'));
+    expect(screen.queryByTestId('inbox-badge')).not.toBeInTheDocument();
+  });
+});
+
+describe('drawer navigation', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    const { fetchPosts, fetchUnreadCount } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+        creator: { name: 'alice' },
+        counts: { score: 847, comments: 0 },
+      },
+    ]);
+    (fetchUnreadCount as ReturnType<typeof vi.fn>).mockResolvedValue(3);
+  });
+
+  it('navigates to /inbox when Inbox button is clicked', async () => {
+    render(
+      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={0} setUnreadCount={() => {}} />,
+    );
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByLabelText('Menu'));
+    fireEvent.click(screen.getByText('Inbox'));
+    expect(mockNavigate).toHaveBeenCalledWith('/inbox');
   });
 });

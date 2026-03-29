@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchPosts, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
-
-const DRAWER_ITEMS = [
-  { icon: '🔖', label: 'Saved' },
-  { icon: '👤', label: 'Profile' },
-  { icon: '📬', label: 'Inbox' },
-] as const;
+import { useNavigate } from 'react-router-dom';
+import { fetchPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import HeaderBar from './HeaderBar';
+
+const DRAWER_ITEMS = [
+  { icon: '🔖', label: 'Saved' },
+  { icon: '👤', label: 'Profile' },
+] as const;
 
 interface Props {
   auth: AuthState;
@@ -21,7 +21,8 @@ interface Props {
 const STACK_VISIBLE = 3;
 const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
-export default function FeedStack({ auth, onLogout, unreadCount: _unreadCount, setUnreadCount: _setUnreadCount }: Props) {
+export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount }: Props) {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<PostView[]>([]);
   const [page, setPage] = useState(1);
   const seenRef = useRef<Set<number>>(loadSeen());
@@ -30,6 +31,12 @@ export default function FeedStack({ auth, onLogout, unreadCount: _unreadCount, s
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [sortType, setSortType] = useState<SortType>('TopTwelveHour');
   const [showDrawer, setShowDrawer] = useState(false);
+
+  useEffect(() => {
+    fetchUnreadCount(auth.instance, auth.token)
+      .then(setUnreadCount)
+      .catch(() => {});
+  }, [auth, setUnreadCount]);
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType) => {
     try {
@@ -144,7 +151,7 @@ export default function FeedStack({ auth, onLogout, unreadCount: _unreadCount, s
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
-      <HeaderBar sortType={sortType} onSortChange={handleSortChange} onMenuOpen={() => setShowDrawer((v) => !v)} />
+      <HeaderBar sortType={sortType} onSortChange={handleSortChange} onMenuOpen={() => setShowDrawer((v) => !v)} onLogoClick={() => navigate('/')} />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         {visible.map((post, i) => {
           const isTop = i === 0;
@@ -201,6 +208,34 @@ export default function FeedStack({ auth, onLogout, unreadCount: _unreadCount, s
                   {label}
                 </button>
               ))}
+              <button
+                onClick={() => { setShowDrawer(false); navigate('/inbox'); }}
+                style={{
+                  background: '#2a2d35', border: 'none', borderRadius: 12,
+                  cursor: 'pointer', padding: '14px 8px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  color: '#f5f5f5', fontSize: 12, fontWeight: 500,
+                  position: 'relative',
+                }}
+              >
+                {unreadCount > 0 && (
+                  <span
+                    data-testid="inbox-badge"
+                    style={{
+                      position: 'absolute', top: 8, right: 8,
+                      background: '#ff6b35', color: '#fff',
+                      borderRadius: '50%', minWidth: 18, height: 18,
+                      fontSize: 10, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 4px',
+                    }}
+                  >
+                    {unreadCount}
+                  </span>
+                )}
+                <span style={{ fontSize: 22 }}>📬</span>
+                Inbox
+              </button>
             </div>
           </div>
         </>
