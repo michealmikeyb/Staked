@@ -68,3 +68,28 @@ describe('InboxPage', () => {
     );
   });
 });
+
+describe('InboxPage unread dot', () => {
+  it('shows unread dot for unread notification', async () => {
+    renderInbox();
+    await waitFor(() => screen.getByText('REPLY'));
+    expect(screen.getByTestId('unread-dot')).toBeInTheDocument();
+  });
+
+  it('hides unread dot for read notification', async () => {
+    const { fetchReplies } = await import('../lib/lemmy');
+    (fetchReplies as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      {
+        comment_reply: { id: 10, read: true, published: '2026-03-29T10:00:00Z' },
+        comment: { id: 5, content: 'Read notification' },
+        post: { id: 1, name: 'Test Post' },
+        community: { id: 1, name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
+        creator: { id: 2, name: 'alice', display_name: null },
+        counts: { score: 1 },
+      },
+    ]);
+    renderInbox();
+    await waitFor(() => screen.getByText('Read notification'));
+    expect(screen.queryByTestId('unread-dot')).not.toBeInTheDocument();
+  });
+});

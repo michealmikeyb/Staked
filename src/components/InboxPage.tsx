@@ -142,10 +142,13 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
                   {formatTime(getPublished(item))}
                 </span>
                 {unread && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    width: 8, height: 8, borderRadius: '50%', background: '#ff6b35',
-                  }} />
+                  <span
+                    data-testid="unread-dot"
+                    style={{
+                      marginLeft: 'auto',
+                      width: 8, height: 8, borderRadius: '50%', background: '#ff6b35',
+                    }}
+                  />
                 )}
               </div>
               <div style={{
