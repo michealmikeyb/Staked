@@ -266,10 +266,6 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
             comments={comments}
             localReplies={localReplies}
             auth={auth}
-            postId={p.id}
-            instance={auth.instance}
-            token={auth.token}
-            replyTarget={replyTarget}
             onSetReplyTarget={setReplyTarget}
           />
         </div>

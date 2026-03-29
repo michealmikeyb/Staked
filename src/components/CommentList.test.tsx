@@ -40,10 +40,6 @@ function Wrapper({ onSubmit = vi.fn() }: { onSubmit?: (content: string) => Promi
         comments={mockComments}
         localReplies={localReplies}
         auth={mockAuth}
-        postId={10}
-        instance="lemmy.world"
-        token="tok"
-        replyTarget={replyTarget}
         onSetReplyTarget={setReplyTarget}
       />
       <ReplySheet

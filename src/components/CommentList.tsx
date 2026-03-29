@@ -7,14 +7,10 @@ interface Props {
   comments: CommentView[];
   localReplies: CommentView[];
   auth: AuthState;
-  postId: number;
-  instance: string;
-  token: string;
-  replyTarget: CommentView | null;
   onSetReplyTarget: (cv: CommentView | null) => void;
 }
 
-export default function CommentList({ comments, localReplies, auth, postId: _postId, instance: _instance, token: _token, replyTarget: _replyTarget, onSetReplyTarget }: Props) {
+export default function CommentList({ comments, localReplies, auth, onSetReplyTarget }: Props) {
   const items = useMemo(() => {
     const allItems = [...comments, ...localReplies];
     const childMap = new Map<string, CommentView[]>();
