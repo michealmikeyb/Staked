@@ -1,24 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type MutableRefObject } from 'react';
 import { fetchComments, resolvePostId, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-
-function instanceFromActorId(actorId: string): string {
-  try { return new URL(actorId).hostname; } catch { return ''; }
-}
-
-function sourceFromApId(apId: string): { instance: string; postId: number } | null {
-  try {
-    const url = new URL(apId);
-    const postId = parseInt(url.pathname.split('/').pop() ?? '', 10);
-    return isNaN(postId) ? null : { instance: url.hostname, postId };
-  } catch { return null; }
-}
+import { instanceFromActorId, sourceFromApId } from '../lib/urlUtils';
 
 interface Result {
   comments: CommentView[];
   commentsLoaded: boolean;
-  resolvedInstanceRef: React.MutableRefObject<string>;
-  resolvedTokenRef: React.MutableRefObject<string>;
+  resolvedInstanceRef: MutableRefObject<string>;
+  resolvedTokenRef: MutableRefObject<string>;
 }
 
 export function useCommentLoader(
