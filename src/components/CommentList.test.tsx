@@ -4,6 +4,7 @@ import CommentList from './CommentList';
 
 vi.mock('../lib/lemmy', () => ({
   likeComment: vi.fn().mockResolvedValue(undefined),
+  resolveCommentId: vi.fn().mockResolvedValue(null),
   createComment: vi.fn().mockResolvedValue({
     comment: { id: 99, content: 'My reply', path: '0.1.99' },
     creator: { name: 'me' },
