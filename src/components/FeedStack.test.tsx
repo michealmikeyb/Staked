@@ -117,7 +117,7 @@ describe('FeedStack header and sort', () => {
     const { fetchPosts } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
-        post: { id: 2, name: 'Hot Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
+        post: { id: 99, name: 'Hot Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/99' },
         community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
         creator: { name: 'bob' },
         counts: { score: 10, comments: 0 },
