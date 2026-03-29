@@ -10,7 +10,7 @@ interface Props {
 }
 
 const STACK_VISIBLE = 3;
-const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16 };
+const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
 export default function FeedStack({ auth, onLogout }: Props) {
   const [posts, setPosts] = useState<PostView[]>([]);
@@ -77,7 +77,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
 
   if (loading && posts.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', color: 'var(--text-secondary)' }}>
         Loading…
       </div>
     );
@@ -117,7 +117,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const visible = posts.slice(0, STACK_VISIBLE);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       {visible.map((post, i) => {
         const isTop = i === 0;
         const scale = 1 - i * 0.04;

@@ -2,7 +2,7 @@
   position: absolute;
   width: 92vw;
   max-width: 440px;
-  height: calc(100vh - 24px);
+  height: calc(100dvh - 48px);
   border-radius: 20px;
   background: var(--card-bg);
   display: flex;
