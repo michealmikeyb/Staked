@@ -15,6 +15,14 @@ vi.mock('./components/FeedStack', () => ({
   default: () => <div>FeedStack</div>,
 }));
 
+vi.mock('./components/InboxPage', () => ({
+  default: () => <div>InboxPage</div>,
+}));
+
+vi.mock('./components/PostDetailPage', () => ({
+  default: () => <div>PostDetailPage</div>,
+}));
+
 describe('App routing', () => {
   it('shows LoginPage when not authenticated', () => {
     render(<App />);

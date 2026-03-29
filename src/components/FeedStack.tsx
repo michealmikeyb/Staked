@@ -14,12 +14,14 @@ import HeaderBar from './HeaderBar';
 interface Props {
   auth: AuthState;
   onLogout: () => void;
+  unreadCount: number;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const STACK_VISIBLE = 3;
 const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
-export default function FeedStack({ auth, onLogout }: Props) {
+export default function FeedStack({ auth, onLogout, unreadCount: _unreadCount, setUnreadCount: _setUnreadCount }: Props) {
   const [posts, setPosts] = useState<PostView[]>([]);
   const [page, setPage] = useState(1);
   const seenRef = useRef<Set<number>>(loadSeen());

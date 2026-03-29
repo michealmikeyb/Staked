@@ -28,12 +28,12 @@ describe('FeedStack', () => {
   });
 
   it('shows a loading state initially', () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
   it('renders a post title after loading', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await waitFor(() => {
       expect(screen.getByText('Test Post Title')).toBeInTheDocument();
     });
@@ -41,7 +41,7 @@ describe('FeedStack', () => {
 
   it('does not render a post whose id is in the seen list', async () => {
     addSeen(1);
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await waitFor(() => {
       expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
     });
@@ -58,7 +58,7 @@ describe('FeedStack empty state', () => {
     const { fetchPosts } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /reset seen history/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('FeedStack empty state', () => {
     vi.stubGlobal('location', { reload: reloadMock });
     addSeen(99);
 
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     const btn = await screen.findByRole('button', { name: /reset seen history/i });
     fireEvent.click(btn);
 
@@ -101,14 +101,14 @@ describe('FeedStack header and sort', () => {
   });
 
   it('renders the header bar', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
     expect(screen.getByRole('button', { name: /menu/i })).toBeInTheDocument();
   });
 
   it('calls fetchPosts with default sort TopTwelveHour', async () => {
     const { fetchPosts } = await import('../lib/lemmy');
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
     expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour');
   });
@@ -124,7 +124,7 @@ describe('FeedStack header and sort', () => {
       },
     ]);
 
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
 
     // Open dropdown and pick Hot
@@ -158,7 +158,7 @@ describe('FeedStack keyboard shortcuts', () => {
   it('calls savePost and dismisses the top post when ArrowDown is pressed', async () => {
     const { savePost } = await import('../lib/lemmy');
 
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
 
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -188,7 +188,7 @@ describe('FeedStack menu drawer', () => {
   });
 
   it('opens the drawer when menu button is clicked', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe('FeedStack menu drawer', () => {
   });
 
   it('closes the drawer when a tile is clicked', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /saved/i }));
@@ -205,7 +205,7 @@ describe('FeedStack menu drawer', () => {
   });
 
   it('closes the drawer when the hamburger is clicked again', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
