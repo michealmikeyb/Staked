@@ -9,3 +9,9 @@ export function sourceFromApId(apId: string): { instance: string; postId: number
     return isNaN(postId) ? null : { instance: url.hostname, postId };
   } catch { return null; }
 }
+
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
+
+export function isImageUrl(url: string): boolean {
+  try { return IMAGE_EXT.test(new URL(url).pathname); } catch { return false; }
+}

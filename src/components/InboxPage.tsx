@@ -2,14 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchReplies, fetchMentions, fetchUnreadCount,
-  type CommentReplyView, type PersonMentionView,
+  type NotifItem,
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import HeaderBar from './HeaderBar';
-
-type NotifItem =
-  | { type: 'reply'; data: CommentReplyView }
-  | { type: 'mention'; data: PersonMentionView };
 
 function getPublished(item: NotifItem): string {
   return item.type === 'reply'

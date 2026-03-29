@@ -2,6 +2,10 @@ import { LemmyHttp, type PostView, type CommentView, type SortType, type Comment
 
 export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView };
 
+export type NotifItem =
+  | { type: 'reply'; data: CommentReplyView }
+  | { type: 'mention'; data: PersonMentionView };
+
 function client(instance: string, token?: string): LemmyHttp {
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   return new LemmyHttp(`https://${instance}`, { headers });

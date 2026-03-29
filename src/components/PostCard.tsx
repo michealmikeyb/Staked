@@ -7,7 +7,7 @@ import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
 import { useCommentLoader } from '../hooks/useCommentLoader';
-import { instanceFromActorId } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl } from '../lib/urlUtils';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
@@ -26,10 +26,6 @@ function communityInitial(name: string): string {
   return name.charAt(0).toUpperCase();
 }
 
-const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
-function isImageUrl(url: string): boolean {
-  try { return IMAGE_EXT.test(new URL(url).pathname); } catch { return false; }
-}
 
 export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
   const { post: p, community, creator, counts } = post;

@@ -2,27 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   markReplyAsRead, markMentionAsRead, createComment, resolveCommentId,
-  type CommentReplyView, type PersonMentionView, type CommentView,
+  type CommentView, type NotifItem,
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import { instanceFromActorId } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl } from '../lib/urlUtils';
 import { useCommentLoader } from '../hooks/useCommentLoader';
 import HeaderBar from './HeaderBar';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
 
-type NotifItem =
-  | { type: 'reply'; data: CommentReplyView }
-  | { type: 'mention'; data: PersonMentionView };
-
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
-
-function isImageUrl(url: string): boolean {
-  try { return IMAGE_EXT.test(new URL(url).pathname); } catch { return false; }
-}
 
 interface Props {
   auth: AuthState;
@@ -190,7 +180,7 @@ export default function PostDetailPage({ auth, setUnreadCount }: Props) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              {counts.child_count} comments — view on {new URL(post.ap_id).hostname}
+              {counts.child_count} replies — view on {instanceFromActorId(post.ap_id)}
             </a>
           )}
           <CommentList
