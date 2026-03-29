@@ -40,9 +40,18 @@ describe('login', () => {
 
 describe('fetchPosts', () => {
   it('returns an array of PostView', async () => {
-    const posts = await fetchPosts('lemmy.world', 'tok', 1);
+    const posts = await fetchPosts('lemmy.world', 'tok', 1, 'Hot');
     expect(posts).toHaveLength(1);
     expect(posts[0].post.id).toBe(1);
+  });
+
+  it('passes the sort type to getPosts', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await fetchPosts('lemmy.world', 'tok', 1, 'New');
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[0].value;
+    expect(mockInstance.getPosts).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'New' }),
+    );
   });
 });
 

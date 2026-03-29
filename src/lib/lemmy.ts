@@ -1,6 +1,6 @@
-import { LemmyHttp, type PostView, type CommentView } from 'lemmy-js-client';
+import { LemmyHttp, type PostView, type CommentView, type SortType } from 'lemmy-js-client';
 
-export type { PostView, CommentView };
+export type { PostView, CommentView, SortType };
 
 function client(instance: string, token?: string): LemmyHttp {
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -21,10 +21,11 @@ export async function fetchPosts(
   instance: string,
   token: string,
   page: number,
+  sort: SortType = 'TopTwelveHour',
 ): Promise<PostView[]> {
   const res = await client(instance, token).getPosts({
     type_: 'All',
-    sort: 'TopTwelveHour',
+    sort,
     page,
     limit: 10,
   });
