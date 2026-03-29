@@ -15,8 +15,7 @@ interface Props {
 export default function CommentItem({ cv, auth, depth, onReply }: Props) {
   const [liked, setLiked] = useState(false);
   const [score, setScore] = useState(cv.counts.score);
-  const [flashKey, setFlashKey] = useState(0);
-  const [flashDelta, setFlashDelta] = useState(0);
+  const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
   const lastTapRef = useRef<number>(0);
 
   const handleClick = () => {
@@ -27,8 +26,7 @@ export default function CommentItem({ cv, auth, depth, onReply }: Props) {
       const delta = newLiked ? 1 : -1;
       setLiked(newLiked);
       setScore((s) => s + delta);
-      setFlashDelta(delta);
-      setFlashKey((k) => k + 1);
+      setFlash((f) => ({ key: f.key + 1, delta: delta as 1 | -1 }));
       likeComment(auth.instance, auth.token, cv.comment.id, newLiked ? 1 : 0).catch(() => {
         setLiked(!newLiked);
         setScore((s) => s - delta);
@@ -48,9 +46,9 @@ export default function CommentItem({ cv, auth, depth, onReply }: Props) {
       <div className={styles.authorRow}>
         <span>@{cv.creator.name}</span>
         <span className={liked ? styles.scoreLiked : styles.score}>▲ {score}</span>
-        {flashKey > 0 && (
-          <span key={flashKey} className={styles.scoreFlash}>
-            {flashDelta > 0 ? '+1' : '-1'}
+        {flash.key > 0 && (
+          <span key={flash.key} className={styles.scoreFlash}>
+            {flash.delta > 0 ? '+1' : '-1'}
           </span>
         )}
       </div>
