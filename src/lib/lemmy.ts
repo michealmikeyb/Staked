@@ -100,7 +100,8 @@ export async function createComment(
 }
 
 export async function fetchUnreadCount(instance: string, token: string): Promise<number> {
-  const res = await client(instance, token).getUnreadCount({});
+  const res = await client(instance, token).getUnreadCount();
+  // private_messages excluded — not surfaced in this inbox UI
   return res.replies + res.mentions;
 }
 

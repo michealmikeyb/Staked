@@ -146,7 +146,7 @@ describe('fetchReplies', () => {
     const { fetchReplies } = await import('./lemmy');
     const { LemmyHttp } = await import('lemmy-js-client');
     await fetchReplies('lemmy.world', 'tok', false);
-    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
     expect(mockInstance.getReplies).toHaveBeenCalledWith(
       expect.objectContaining({ unread_only: false }),
     );
@@ -160,6 +160,16 @@ describe('fetchMentions', () => {
     expect(mentions).toHaveLength(1);
     expect(mentions[0].person_mention.id).toBe(20);
   });
+
+  it('passes unread_only flag', async () => {
+    const { fetchMentions } = await import('./lemmy');
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await fetchMentions('lemmy.world', 'tok', false);
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
+    expect(mockInstance.getPersonMentions).toHaveBeenCalledWith(
+      expect.objectContaining({ unread_only: false }),
+    );
+  });
 });
 
 describe('markReplyAsRead', () => {
@@ -172,7 +182,7 @@ describe('markReplyAsRead', () => {
     const { markReplyAsRead } = await import('./lemmy');
     const { LemmyHttp } = await import('lemmy-js-client');
     await markReplyAsRead('lemmy.world', 'tok', 10);
-    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
     expect(mockInstance.markCommentReplyAsRead).toHaveBeenCalledWith({ comment_reply_id: 10, read: true });
   });
 });
@@ -187,7 +197,7 @@ describe('markMentionAsRead', () => {
     const { markMentionAsRead } = await import('./lemmy');
     const { LemmyHttp } = await import('lemmy-js-client');
     await markMentionAsRead('lemmy.world', 'tok', 20);
-    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
     expect(mockInstance.markPersonMentionAsRead).toHaveBeenCalledWith({ person_mention_id: 20, read: true });
   });
 });
