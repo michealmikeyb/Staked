@@ -123,7 +123,7 @@ export default function PostDetailPage({ auth, setUnreadCount }: Props) {
       <HeaderBar
         onMenuOpen={() => {}}
         onLogoClick={() => navigate('/')}
-        centerContent={
+        leftContent={
           isIOS ? (
             <button
               onClick={() => navigate('/inbox')}

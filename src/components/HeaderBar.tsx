@@ -16,9 +16,10 @@ interface Props {
   onMenuOpen: () => void;
   centerContent?: React.ReactNode;
   onLogoClick?: () => void;
+  leftContent?: React.ReactNode;
 }
 
-export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerContent, onLogoClick }: Props) {
+export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerContent, onLogoClick, leftContent }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
   const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType ?? '';
 
@@ -49,17 +50,20 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerCo
         padding: '0 16px', height: 48, flexShrink: 0,
         background: '#1a1d24', borderBottom: '1px solid #2a2d35',
       }}>
-        <div
-          onClick={onLogoClick}
-          role={onLogoClick ? 'button' : undefined}
-          style={{
-            width: 32, height: 32, background: '#ff6b35', borderRadius: 8,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0,
-            cursor: onLogoClick ? 'pointer' : 'default',
-          }}
-        >
-          S
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            onClick={onLogoClick}
+            role={onLogoClick ? 'button' : undefined}
+            style={{
+              width: 32, height: 32, background: '#ff6b35', borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0,
+              cursor: onLogoClick ? 'pointer' : 'default',
+            }}
+          >
+            S
+          </div>
+          {leftContent}
         </div>
         {centerEl}
         <div style={{ flex: 1 }} />

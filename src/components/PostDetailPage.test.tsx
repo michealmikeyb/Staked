@@ -59,7 +59,8 @@ const notificationState = {
   },
 };
 
-function renderDetail(state = notificationState) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderDetail(state: any = notificationState) {
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/inbox/reply-10', state: { notification: state } }]}>
       <Routes>
@@ -103,5 +104,37 @@ describe('PostDetailPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText(/navigate to inbox/i)).toBeInTheDocument();
+  });
+
+  it('calls markMentionAsRead on mount for mention notification', async () => {
+    const { markMentionAsRead } = await import('../lib/lemmy');
+    const mentionState = {
+      type: 'mention' as const,
+      data: {
+        person_mention: { id: 20, read: false, published: '2026-03-29T10:00:00Z' },
+        comment: {
+          id: 5, content: 'Mentioned you!', path: '0.5',
+          ap_id: 'https://lemmy.world/comment/5',
+        },
+        post: {
+          id: 1, name: 'Post title',
+          ap_id: 'https://lemmy.world/post/1',
+          url: null, body: null, thumbnail_url: null,
+        },
+        community: { id: 1, name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
+        creator: { id: 2, name: 'bob', display_name: null, actor_id: 'https://lemmy.world/u/bob' },
+        counts: { score: 2, child_count: 0 },
+      },
+    };
+    renderDetail(mentionState);
+    await waitFor(() => expect(markMentionAsRead).toHaveBeenCalledWith('lemmy.world', 'tok', 20));
+  });
+
+  it('decrements unread count after marking as read', async () => {
+    renderDetail();
+    await waitFor(() => expect(mockSetUnreadCount).toHaveBeenCalled());
+    const updater = mockSetUnreadCount.mock.calls[0][0];
+    expect(updater(3)).toBe(2);
+    expect(updater(0)).toBe(0); // no-op at 0
   });
 });
