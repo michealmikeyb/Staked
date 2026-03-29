@@ -30,6 +30,14 @@ const mockComments = [
   },
 ] as unknown as CommentView[];
 
+function makeComment({ id, path }: { id: number; path: string }): CommentView {
+  return {
+    comment: { id, content: `Comment ${id}`, path, ap_id: `https://lemmy.world/comment/${id}` },
+    creator: { name: `user${id}` },
+    counts: { score: id * 2 },
+  } as unknown as CommentView;
+}
+
 // Wraps CommentList + ReplySheet together holding the lifted state — mirrors what PostCard does.
 function Wrapper({ onSubmit = vi.fn() }: { onSubmit?: (content: string) => Promise<void> }) {
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
@@ -88,5 +96,27 @@ describe('CommentList', () => {
     fireEvent.click(replyButtons[0]);
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(screen.queryByText(/replying to/i)).not.toBeInTheDocument();
+  });
+
+  it('passes isHighlighted=true only to the comment matching highlightCommentId', async () => {
+    const comments = [
+      makeComment({ id: 1, path: '0.1' }),
+      makeComment({ id: 2, path: '0.2' }),
+    ];
+    render(
+      <CommentList
+        comments={comments}
+        localReplies={[]}
+        auth={mockAuth}
+        onSetReplyTarget={() => {}}
+        highlightCommentId={2}
+      />,
+    );
+    // comment id=2 should have the orange border, id=1 should not
+    const items = screen.getAllByTestId('comment-item');
+    const item1 = items.find(el => el.getAttribute('data-comment-id') === '1')!;
+    const item2 = items.find(el => el.getAttribute('data-comment-id') === '2')!;
+    expect(item1).not.toHaveStyle({ border: '2px solid #ff6b35' });
+    expect(item2).toHaveStyle({ border: '2px solid #ff6b35' });
   });
 });

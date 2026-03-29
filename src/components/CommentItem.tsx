@@ -10,9 +10,10 @@ interface Props {
   auth: AuthState;
   depth: number;
   onReply: (cv: CommentView) => void;
+  isHighlighted?: boolean;
 }
 
-export default function CommentItem({ cv, auth, depth, onReply }: Props) {
+export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }: Props) {
   const [liked, setLiked] = useState(false);
   const [score, setScore] = useState(cv.counts.score);
   const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
@@ -50,8 +51,12 @@ export default function CommentItem({ cv, auth, depth, onReply }: Props) {
   return (
     <div
       data-testid="comment-item"
+      data-comment-id={cv.comment.id}
       className={styles.comment}
-      style={{ paddingLeft: `${16 + (depth - 1) * 14}px` }}
+      style={{
+        paddingLeft: `${16 + (depth - 1) * 14}px`,
+        ...(isHighlighted ? { border: '2px solid #ff6b35', borderRadius: 8 } : {}),
+      }}
       onClick={handleClick}
     >
       <div className={styles.authorRow}>

@@ -95,4 +95,19 @@ describe('CommentItem', () => {
     // depth 3 → 16 + (3-1)*14 = 44px
     expect(item).toHaveStyle('padding-left: 44px');
   });
+
+  it('applies orange border when isHighlighted is true', () => {
+    render(
+      <CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} isHighlighted />,
+    );
+    const el = screen.getByTestId('comment-item');
+    expect(el).toHaveStyle({ border: '2px solid #ff6b35' });
+  });
+
+  it('has data-comment-id attribute matching comment id', () => {
+    render(
+      <CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} />,
+    );
+    expect(screen.getByTestId('comment-item')).toHaveAttribute('data-comment-id', '7');
+  });
 });
