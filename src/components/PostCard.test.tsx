@@ -6,6 +6,7 @@ import { fireEvent } from '@testing-library/react';
 vi.mock('../lib/lemmy', () => ({
   fetchComments: vi.fn().mockResolvedValue([]),
   resolvePostId: vi.fn().mockResolvedValue(null),
+  savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ── Gesture mock ──────────────────────────────────────────────────────────────
@@ -129,5 +130,49 @@ describe('PostCard gestures', () => {
     capturedDragHandler!({ movement: [-200, 0], velocity: [0, 0], last: true });
 
     expect(onSwipeLeft).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onSave when scroll content is pulled down 80px from the top', () => {
+    const onSave = vi.fn();
+    const { getByTestId } = render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={onSave}
+      />
+    );
+
+    const scrollContent = getByTestId('scroll-content');
+    fireEvent.touchStart(scrollContent, { touches: [{ clientY: 0 }] });
+    fireEvent.touchMove(scrollContent, { touches: [{ clientY: 90 }] });
+    fireEvent.touchEnd(scrollContent);
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onSave when pull delta is below 80px', () => {
+    const onSave = vi.fn();
+    const { getByTestId } = render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={onSave}
+      />
+    );
+
+    const scrollContent = getByTestId('scroll-content');
+    fireEvent.touchStart(scrollContent, { touches: [{ clientY: 0 }] });
+    fireEvent.touchMove(scrollContent, { touches: [{ clientY: 50 }] });
+    fireEvent.touchEnd(scrollContent);
+
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

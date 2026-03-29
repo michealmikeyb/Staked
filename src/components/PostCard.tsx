@@ -143,6 +143,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
   const x = useMotionValue(0);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
+  const [pullDelta, setPullDelta] = useState(0);
+
   // Right swipe rotates CCW ("lifting"), left swipe CW ("sinking") — opposite of standard Tinder.
   const rotate = useTransform(x, [-150, 0, 150], [12, 0, -12]);
 
@@ -174,8 +178,29 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
       {...(bind() as object)}
     >
       <motion.div className={styles.overlay} style={{ backgroundColor: overlayColor }} />
+      <motion.div
+        className={styles.saveOverlay}
+        style={{ opacity: Math.min(pullDelta / 80, 1) }}
+      />
 
-      <div className={styles.scrollContent}>
+      <div
+        ref={scrollRef}
+        data-testid="scroll-content"
+        className={styles.scrollContent}
+        onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; }}
+        onTouchMove={(e) => {
+          const delta = e.touches[0].clientY - touchStartY.current;
+          if (scrollRef.current && scrollRef.current.scrollTop === 0 && delta > 0) {
+            setPullDelta(delta);
+          } else {
+            setPullDelta(0);
+          }
+        }}
+        onTouchEnd={() => {
+          if (pullDelta >= 80) onSave();
+          setPullDelta(0);
+        }}
+      >
         <div className={styles.meta}>
           <div className={styles.communityIcon}>{communityInitial(community.name)}</div>
           <div>
