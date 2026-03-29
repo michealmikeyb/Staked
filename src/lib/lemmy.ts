@@ -1,6 +1,6 @@
-import { LemmyHttp, type PostView, type CommentView, type SortType } from 'lemmy-js-client';
+import { LemmyHttp, type PostView, type CommentView, type SortType, type CommentReplyView, type PersonMentionView } from 'lemmy-js-client';
 
-export type { PostView, CommentView, SortType };
+export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView };
 
 function client(instance: string, token?: string): LemmyHttp {
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -97,4 +97,43 @@ export async function createComment(
     parent_id: parentId,
   });
   return res.comment_view;
+}
+
+export async function fetchUnreadCount(instance: string, token: string): Promise<number> {
+  const res = await client(instance, token).getUnreadCount({});
+  return res.replies + res.mentions;
+}
+
+export async function fetchReplies(
+  instance: string,
+  token: string,
+  unreadOnly: boolean,
+): Promise<CommentReplyView[]> {
+  const res = await client(instance, token).getReplies({
+    sort: 'New',
+    unread_only: unreadOnly,
+    limit: 50,
+  });
+  return res.replies;
+}
+
+export async function fetchMentions(
+  instance: string,
+  token: string,
+  unreadOnly: boolean,
+): Promise<PersonMentionView[]> {
+  const res = await client(instance, token).getPersonMentions({
+    sort: 'New',
+    unread_only: unreadOnly,
+    limit: 50,
+  });
+  return res.mentions;
+}
+
+export async function markReplyAsRead(instance: string, token: string, replyId: number): Promise<void> {
+  await client(instance, token).markCommentReplyAsRead({ comment_reply_id: replyId, read: true });
+}
+
+export async function markMentionAsRead(instance: string, token: string, mentionId: number): Promise<void> {
+  await client(instance, token).markPersonMentionAsRead({ person_mention_id: mentionId, read: true });
 }

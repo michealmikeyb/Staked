@@ -17,6 +17,33 @@ vi.mock('lemmy-js-client', () => {
         counts: { score: 1 },
       },
     }),
+    getUnreadCount: vi.fn().mockResolvedValue({ replies: 3, mentions: 1, private_messages: 0 }),
+    getReplies: vi.fn().mockResolvedValue({
+      replies: [
+        {
+          comment_reply: { id: 10, read: false, published: '2026-03-29T10:00:00Z' },
+          comment: { id: 5, content: 'Nice post!', path: '0.5' },
+          post: { id: 1, name: 'Best programming languages for 2025?' },
+          community: { id: 1, name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
+          creator: { id: 2, name: 'alice', actor_id: 'https://lemmy.world/u/alice' },
+          counts: { score: 1 },
+        },
+      ],
+    }),
+    getPersonMentions: vi.fn().mockResolvedValue({
+      mentions: [
+        {
+          person_mention: { id: 20, read: false, published: '2026-03-29T09:00:00Z' },
+          comment: { id: 6, content: 'Hey @me', path: '0.6' },
+          post: { id: 2, name: 'Ask Lemmy: tips for Rust?' },
+          community: { id: 2, name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
+          creator: { id: 3, name: 'bob', actor_id: 'https://lemmy.world/u/bob' },
+          counts: { score: 2 },
+        },
+      ],
+    }),
+    markCommentReplyAsRead: vi.fn().mockResolvedValue({}),
+    markPersonMentionAsRead: vi.fn().mockResolvedValue({}),
   }));
   return { LemmyHttp: MockLemmyHttp };
 });
@@ -96,5 +123,71 @@ describe('createComment', () => {
   it('works without parentId (top-level)', async () => {
     const cv = await createComment('lemmy.world', 'tok', 1, 'Top level');
     expect(cv.comment.id).toBe(99);
+  });
+});
+
+describe('fetchUnreadCount', () => {
+  it('returns replies + mentions total', async () => {
+    const { fetchUnreadCount } = await import('./lemmy');
+    const count = await fetchUnreadCount('lemmy.world', 'tok');
+    expect(count).toBe(4); // 3 replies + 1 mention
+  });
+});
+
+describe('fetchReplies', () => {
+  it('returns array of CommentReplyView', async () => {
+    const { fetchReplies } = await import('./lemmy');
+    const replies = await fetchReplies('lemmy.world', 'tok', true);
+    expect(replies).toHaveLength(1);
+    expect(replies[0].comment_reply.id).toBe(10);
+  });
+
+  it('passes unread_only flag', async () => {
+    const { fetchReplies } = await import('./lemmy');
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await fetchReplies('lemmy.world', 'tok', false);
+    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(mockInstance.getReplies).toHaveBeenCalledWith(
+      expect.objectContaining({ unread_only: false }),
+    );
+  });
+});
+
+describe('fetchMentions', () => {
+  it('returns array of PersonMentionView', async () => {
+    const { fetchMentions } = await import('./lemmy');
+    const mentions = await fetchMentions('lemmy.world', 'tok', true);
+    expect(mentions).toHaveLength(1);
+    expect(mentions[0].person_mention.id).toBe(20);
+  });
+});
+
+describe('markReplyAsRead', () => {
+  it('resolves without throwing', async () => {
+    const { markReplyAsRead } = await import('./lemmy');
+    await expect(markReplyAsRead('lemmy.world', 'tok', 10)).resolves.toBeUndefined();
+  });
+
+  it('calls markCommentReplyAsRead with read: true', async () => {
+    const { markReplyAsRead } = await import('./lemmy');
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await markReplyAsRead('lemmy.world', 'tok', 10);
+    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(mockInstance.markCommentReplyAsRead).toHaveBeenCalledWith({ comment_reply_id: 10, read: true });
+  });
+});
+
+describe('markMentionAsRead', () => {
+  it('resolves without throwing', async () => {
+    const { markMentionAsRead } = await import('./lemmy');
+    await expect(markMentionAsRead('lemmy.world', 'tok', 20)).resolves.toBeUndefined();
+  });
+
+  it('calls markPersonMentionAsRead with read: true', async () => {
+    const { markMentionAsRead } = await import('./lemmy');
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await markMentionAsRead('lemmy.world', 'tok', 20);
+    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(mockInstance.markPersonMentionAsRead).toHaveBeenCalledWith({ person_mention_id: 20, read: true });
   });
 });
