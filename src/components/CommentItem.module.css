@@ -1,0 +1,75 @@
+.comment {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.authorRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--accent);
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.score {
+  transition: color 0.2s;
+}
+
+.scoreLiked {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+.scoreFlash {
+  position: absolute;
+  left: 60px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  animation: floatUp 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+.body {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+  margin-top: 6px;
+}
+
+.body p {
+  margin: 0 0 6px;
+}
+
+.body p:last-child {
+  margin-bottom: 0;
+}
+
+.replyButton {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  padding: 4px 0 0;
+  cursor: pointer;
+  display: block;
+}
+
+.replyButton:hover {
+  color: var(--accent);
+}
