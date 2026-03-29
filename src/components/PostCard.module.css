@@ -121,3 +121,53 @@
   text-align: center;
   text-decoration: none;
 }
+
+.linkBanner {
+  margin: 0 16px 10px;
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.linkBannerPressed {
+  background: rgba(255, 107, 53, 0.12);
+  border-color: rgba(255, 107, 53, 0.4);
+}
+
+.linkBannerPressed .linkBannerDomain {
+  color: var(--accent);
+}
+
+.linkBannerIcon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.linkBannerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.linkBannerDomain {
+  font-size: 0.75rem;
+  color: #ccc;
+  font-weight: 500;
+}
+
+.linkBannerHint {
+  font-size: 0.65rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+.linkBannerArrow {
+  font-size: 0.8rem;
+  color: var(--accent);
+}

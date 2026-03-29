@@ -50,6 +50,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
 
   // Track which instance+token produced the successful comment fetch so replies go to the right place.
   const resolvedInstanceRef = useRef<string>(auth.instance);
@@ -189,6 +190,8 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
   const imageSrc = (p.url && isImageUrl(p.url)) ? p.url : p.thumbnail_url;
 
+  const showLinkBanner = !!p.url && !isImageUrl(p.url);
+
   const handleReplySubmit = async (content: string) => {
     const parentApId = replyTarget!.comment.ap_id;
     const parentId = await resolveCommentId(resolvedInstanceRef.current, resolvedTokenRef.current, parentApId).catch(() => null)
@@ -241,6 +244,24 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         </div>
 
         <div className={styles.title}>{p.name}</div>
+
+        {showLinkBanner && (
+          <div
+            data-testid="link-banner"
+            className={`${styles.linkBanner}${isLinkBannerPressed ? ` ${styles.linkBannerPressed}` : ''}`}
+            onPointerDown={() => setIsLinkBannerPressed(true)}
+            onPointerUp={() => setIsLinkBannerPressed(false)}
+            onPointerLeave={() => setIsLinkBannerPressed(false)}
+            onClick={() => window.open(p.url!, '_blank', 'noopener,noreferrer')}
+          >
+            <span className={styles.linkBannerIcon}>🔗</span>
+            <div className={styles.linkBannerContent}>
+              <div className={styles.linkBannerDomain}>{new URL(p.url!).hostname}</div>
+              <div className={styles.linkBannerHint}>Tap to open link</div>
+            </div>
+            <span className={styles.linkBannerArrow}>↗</span>
+          </div>
+        )}
 
         {imageSrc && <img className={styles.image} src={imageSrc} alt="" loading="lazy" />}
 

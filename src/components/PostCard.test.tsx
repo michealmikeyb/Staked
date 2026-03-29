@@ -291,3 +291,80 @@ describe('PostCard reply keyboard offset', () => {
     });
   });
 });
+
+describe('PostCard link banner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('open', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const LINK_POST = {
+    post: { id: 2, name: 'Link post', body: null, url: 'https://techcrunch.com/article', thumbnail_url: null },
+    community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+    creator: { name: 'carol' },
+    counts: { score: 50, comments: 5 },
+  } as unknown as PostView;
+
+  const IMAGE_POST = {
+    post: { id: 3, name: 'Image post', body: null, url: 'https://example.com/photo.jpg', thumbnail_url: null },
+    community: { name: 'pics', actor_id: 'https://lemmy.world/c/pics' },
+    creator: { name: 'dave' },
+    counts: { score: 10, comments: 0 },
+  } as unknown as PostView;
+
+  const TEXT_POST = {
+    post: { id: 4, name: 'Text post', body: 'Hello world', url: null, thumbnail_url: null },
+    community: { name: 'general', actor_id: 'https://lemmy.world/c/general' },
+    creator: { name: 'eve' },
+    counts: { score: 3, comments: 1 },
+  } as unknown as PostView;
+
+  it('renders the link banner for a link post', () => {
+    render(
+      <PostCard post={LINK_POST} auth={AUTH} zIndex={1} scale={1}
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onSave={vi.fn()} />
+    );
+    expect(screen.getByTestId('link-banner')).toBeInTheDocument();
+  });
+
+  it('shows the extracted domain in the banner', () => {
+    render(
+      <PostCard post={LINK_POST} auth={AUTH} zIndex={1} scale={1}
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onSave={vi.fn()} />
+    );
+    expect(screen.getByText('techcrunch.com')).toBeInTheDocument();
+  });
+
+  it('does not render the banner for an image URL post', () => {
+    render(
+      <PostCard post={IMAGE_POST} auth={AUTH} zIndex={1} scale={1}
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onSave={vi.fn()} />
+    );
+    expect(screen.queryByTestId('link-banner')).not.toBeInTheDocument();
+  });
+
+  it('does not render the banner for a text post', () => {
+    render(
+      <PostCard post={TEXT_POST} auth={AUTH} zIndex={1} scale={1}
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onSave={vi.fn()} />
+    );
+    expect(screen.queryByTestId('link-banner')).not.toBeInTheDocument();
+  });
+
+  it('opens the link in a new tab when the banner is clicked', () => {
+    render(
+      <PostCard post={LINK_POST} auth={AUTH} zIndex={1} scale={1}
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onSave={vi.fn()} />
+    );
+    fireEvent.click(screen.getByTestId('link-banner'));
+    expect(window.open).toHaveBeenCalledWith(
+      'https://techcrunch.com/article',
+      '_blank',
+      'noopener,noreferrer'
+    );
+  });
+});
