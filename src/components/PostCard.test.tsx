@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 
@@ -222,5 +222,72 @@ describe('PostCard reply submission', () => {
     expect(createComment).toHaveBeenCalledWith(
       'lemmy.world', 'tok', 1, 'My reply', 1
     );
+  });
+});
+
+describe('PostCard reply keyboard offset', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Mock visualViewport — jsdom doesn't implement it.
+    const listeners: Record<string, EventListenerOrEventListenerObject[]> = {};
+    const vv = {
+      height: 812,
+      offsetTop: 0,
+      addEventListener: (type: string, fn: EventListenerOrEventListenerObject) => {
+        listeners[type] = listeners[type] ?? [];
+        listeners[type].push(fn);
+      },
+      removeEventListener: (type: string, fn: EventListenerOrEventListenerObject) => {
+        listeners[type] = (listeners[type] ?? []).filter((f) => f !== fn);
+      },
+      _fire: (type: string) => {
+        for (const fn of listeners[type] ?? []) {
+          if (typeof fn === 'function') fn(new Event(type));
+          else fn.handleEvent(new Event(type));
+        }
+      },
+    };
+    vi.stubGlobal('innerHeight', 812);
+    vi.stubGlobal('visualViewport', vv);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('shifts the reply wrapper bottom up when the keyboard appears', async () => {
+    const { fetchComments } = await import('../lib/lemmy');
+    const mockComment = {
+      comment: { id: 1, content: 'Test comment', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
+      creator: { name: 'alice', display_name: null },
+      counts: { score: 5 },
+    };
+    (fetchComments as ReturnType<typeof vi.fn>).mockResolvedValue([mockComment]);
+
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    await waitFor(() => screen.getByText('Test comment'));
+    fireEvent.click(screen.getByRole('button', { name: /reply/i }));
+
+    const replyWrapper = screen.getByTestId('reply-wrapper');
+    expect(replyWrapper).toHaveStyle('bottom: 0px');
+
+    // Simulate keyboard appearing: visual viewport shrinks by 400px
+    (window.visualViewport as any).height = 412;
+    (window.visualViewport as any)._fire('resize');
+
+    await waitFor(() => {
+      expect(replyWrapper).toHaveStyle('bottom: 400px');
+    });
   });
 });

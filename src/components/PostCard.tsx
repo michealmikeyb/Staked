@@ -49,6 +49,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   // Track which instance+token produced the successful comment fetch so replies go to the right place.
   const resolvedInstanceRef = useRef<string>(auth.instance);
@@ -143,6 +144,20 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     load();
     return () => { cancelled = true; };
   }, [auth, p.ap_id, p.id, community.actor_id]);
+
+  useEffect(() => {
+    if (!replyTarget || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handler = () => {
+      setKeyboardOffset(window.innerHeight - vv.height - vv.offsetTop);
+    };
+    vv.addEventListener('resize', handler);
+    handler();
+    return () => {
+      vv.removeEventListener('resize', handler);
+      setKeyboardOffset(0);
+    };
+  }, [replyTarget]);
 
   const x = useMotionValue(0);
 
@@ -259,7 +274,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           />
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+      <div
+        data-testid="reply-wrapper"
+        style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}
+      >
         <ReplySheet
           target={replyTarget}
           onSubmit={handleReplySubmit}
