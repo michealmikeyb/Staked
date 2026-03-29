@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 
 // ── Lemmy mock ────────────────────────────────────────────────────────────────
 vi.mock('../lib/lemmy', () => ({
   fetchComments: vi.fn().mockResolvedValue([]),
   resolvePostId: vi.fn().mockResolvedValue(null),
+  resolveCommentId: vi.fn().mockResolvedValue(null),
+  createComment: vi.fn().mockResolvedValue({
+    comment: { id: 99, content: 'My reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
+    creator: { name: 'me', display_name: null },
+    counts: { score: 1 },
+  }),
   savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -174,5 +180,47 @@ describe('PostCard gestures', () => {
     fireEvent.touchEnd(scrollContent);
 
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('PostCard reply submission', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('calls createComment with correct args when a reply is submitted', async () => {
+    const { fetchComments, createComment } = await import('../lib/lemmy');
+    const mockComment = {
+      comment: { id: 1, content: 'Original comment', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
+      creator: { name: 'alice', display_name: null },
+      counts: { score: 5 },
+    };
+    (fetchComments as ReturnType<typeof vi.fn>).mockResolvedValue([mockComment]);
+
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    await waitFor(() => screen.getByText('Original comment'));
+
+    fireEvent.click(screen.getByRole('button', { name: /reply/i }));
+    fireEvent.change(screen.getByPlaceholderText(/write a reply/i), {
+      target: { value: 'My reply' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /send/i }));
+    });
+
+    expect(createComment).toHaveBeenCalledWith(
+      'lemmy.world', 'tok', 1, 'My reply', 1
+    );
   });
 });
