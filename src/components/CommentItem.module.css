@@ -15,12 +15,14 @@
 }
 
 .score {
+  color: var(--text-secondary);
   transition: color 0.2s;
 }
 
 .scoreLiked {
   color: var(--accent);
   font-weight: 700;
+  transition: color 0.2s;
 }
 
 @keyframes floatUp {
