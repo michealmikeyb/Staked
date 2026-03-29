@@ -109,20 +109,3 @@
   text-align: center;
   text-decoration: none;
 }
-
-.comment {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.commentAuthor {
-  font-size: 0.72rem;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-
-.commentBody {
-  font-size: 0.88rem;
-  color: var(--text-primary);
-  line-height: 1.5;
-}

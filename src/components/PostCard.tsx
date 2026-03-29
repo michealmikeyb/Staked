@@ -1,8 +1,9 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import { fetchComments, resolvePostId, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
+import CommentList from './CommentList';
 import styles from './PostCard.module.css';
 
 const SWIPE_THRESHOLD = 120;
@@ -40,6 +41,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
 
+  // Track which instance+token produced the successful comment fetch so replies go to the right place.
+  const resolvedInstanceRef = useRef<string>(auth.instance);
+  const resolvedTokenRef = useRef<string>(auth.token);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -50,6 +55,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
       if (source) {
         const sourceToken = source.instance === auth.instance ? auth.token : '';
         comments = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
+        if (comments.length > 0) {
+          resolvedInstanceRef.current = source.instance;
+          resolvedTokenRef.current = sourceToken;
+        }
       }
 
       // Cross-posts, non-Lemmy sources (Kbin/Mbin ap_ids etc.), or empty source fetch:
@@ -61,6 +70,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           if (localId != null) {
             const communityToken = communityInstance === auth.instance ? auth.token : '';
             comments = await fetchComments(communityInstance, communityToken, localId).catch(() => []);
+            if (comments.length > 0) {
+              resolvedInstanceRef.current = communityInstance;
+              resolvedTokenRef.current = communityToken;
+            }
           }
         }
       }
@@ -71,6 +84,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         comments = await fetchComments(auth.instance, auth.token, p.id).catch(() =>
           fetchComments(auth.instance, '', p.id).catch(() => [])
         );
+        if (comments.length > 0) {
+          resolvedInstanceRef.current = auth.instance;
+          resolvedTokenRef.current = auth.token;
+        }
       }
 
       if (!cancelled) { setComments(comments); setCommentsLoaded(true); }
@@ -145,19 +162,13 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
               {counts.comments} comments — view on {new URL(p.ap_id).hostname}
             </a>
           )}
-          {comments.map((cv) => {
-            const depth = cv.comment.path.split('.').length - 1;
-            return (
-              <div
-                key={cv.comment.id}
-                className={styles.comment}
-                style={{ paddingLeft: `${16 + (depth - 1) * 14}px` }}
-              >
-                <div className={styles.commentAuthor}>@{cv.creator.name} · ▲ {cv.counts.score}</div>
-                <div className={styles.commentBody}>{cv.comment.content}</div>
-              </div>
-            );
-          })}
+          <CommentList
+            comments={comments}
+            auth={auth}
+            postId={p.id}
+            instance={resolvedInstanceRef.current}
+            token={resolvedTokenRef.current}
+          />
         </div>
       </div>
     </motion.div>
