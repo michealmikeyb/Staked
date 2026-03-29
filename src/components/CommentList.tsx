@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function CommentList({ comments, auth, postId, instance, token }: Props) {
-  const [items, setItems] = useState<CommentView[]>(comments);
+  const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
 
   const handleSubmit = async (content: string) => {
@@ -24,9 +24,11 @@ export default function CommentList({ comments, auth, postId, instance, token }:
       content,
       replyTarget!.comment.id,
     );
-    setItems((prev) => [...prev, newComment]);
+    setLocalReplies((prev) => [...prev, newComment]);
     setReplyTarget(null);
   };
+
+  const items = [...comments, ...localReplies];
 
   return (
     <>
