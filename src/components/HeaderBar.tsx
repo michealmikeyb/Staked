@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { type SortType } from '../lib/lemmy';
 
 const SORT_OPTIONS: { sort: SortType; label: string }[] = [

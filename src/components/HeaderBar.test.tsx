@@ -8,7 +8,7 @@ const defaultProps = {
   onMenuOpen: vi.fn(),
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('HeaderBar', () => {
   it('renders the current sort label', () => {
