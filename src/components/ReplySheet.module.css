@@ -1,0 +1,77 @@
+.sheet {
+  position: sticky;
+  bottom: 0;
+  background: var(--card-bg);
+  border-top: 2px solid var(--accent);
+  border-radius: 12px 12px 0 0;
+  padding: 12px 16px;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+}
+
+.sheet.open {
+  transform: translateY(0);
+}
+
+.header {
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 72px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  resize: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.error {
+  font-size: 0.75rem;
+  color: #e55;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.send {
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  color: #fff;
+  cursor: pointer;
+}
+
+.send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
