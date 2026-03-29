@@ -188,9 +188,9 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     }
   }, { axis: 'x', filterTaps: true, pointer: { touch: true } });
 
-  const imageSrc = (p.url && isImageUrl(p.url)) ? p.url : p.thumbnail_url;
-
-  const showLinkBanner = !!p.url && !isImageUrl(p.url);
+  const isImage = !!p.url && isImageUrl(p.url);
+  const imageSrc = isImage ? p.url : p.thumbnail_url;
+  const showLinkBanner = !!p.url && !isImage;
 
   const handleReplySubmit = async (content: string) => {
     const parentApId = replyTarget!.comment.ap_id;
@@ -248,7 +248,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         {showLinkBanner && (
           <div
             data-testid="link-banner"
-            className={`${styles.linkBanner}${isLinkBannerPressed ? ` ${styles.linkBannerPressed}` : ''}`}
+            className={isLinkBannerPressed ? `${styles.linkBanner} ${styles.linkBannerPressed}` : styles.linkBanner}
             onPointerDown={() => setIsLinkBannerPressed(true)}
             onPointerUp={() => setIsLinkBannerPressed(false)}
             onPointerLeave={() => setIsLinkBannerPressed(false)}
@@ -256,7 +256,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           >
             <span className={styles.linkBannerIcon}>🔗</span>
             <div className={styles.linkBannerContent}>
-              <div className={styles.linkBannerDomain}>{new URL(p.url!).hostname}</div>
+              <div className={styles.linkBannerDomain}>{instanceFromActorId(p.url!)}</div>
               <div className={styles.linkBannerHint}>Tap to open link</div>
             </div>
             <span className={styles.linkBannerArrow}>↗</span>
