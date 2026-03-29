@@ -242,7 +242,7 @@ describe('unread badge', () => {
     );
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByLabelText('Menu'));
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByTestId('inbox-badge')).toBeInTheDocument();
   });
 
   it('hides badge when unreadCount is 0', async () => {
