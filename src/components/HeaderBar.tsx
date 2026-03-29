@@ -30,7 +30,7 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerCo
   const centerEl = centerContent ?? (sortType && onSortChange ? (
     <button
       onClick={() => setShowDropdown((v) => !v)}
-      aria-label={showDropdown ? `${currentLabel} ▾` : currentLabel}
+      aria-label={showDropdown ? currentLabel : `${currentLabel} ▾`}
       style={{
         background: 'none', border: 'none', cursor: 'pointer', padding: 0,
         color: '#f5f5f5', fontSize: 13, fontWeight: 600,

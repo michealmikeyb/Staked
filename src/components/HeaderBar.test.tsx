@@ -50,9 +50,10 @@ describe('HeaderBar', () => {
 
   it('marks the active sort with a checkmark', () => {
     render(<HeaderBar {...defaultProps} sortType="Hot" />);
-    fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
-    // The Hot option button should contain the checkmark character
-    expect(screen.getByRole('button', { name: /^hot$/i })).toHaveTextContent('✓');
+    fireEvent.click(screen.getByRole('button', { name: /hot/i }));
+    // The Hot option button in the dropdown should contain the checkmark character
+    const hotButtons = screen.getAllByRole('button', { name: /^hot$/i });
+    expect(hotButtons[1]).toHaveTextContent('✓');
   });
 });
 
@@ -83,9 +84,11 @@ describe('centerContent prop', () => {
   });
 });
 
-it('calls onLogoClick when logo is clicked', () => {
-  const spy = vi.fn();
-  render(<HeaderBar onMenuOpen={() => {}} onLogoClick={spy} />);
-  fireEvent.click(screen.getByText('S'));
-  expect(spy).toHaveBeenCalledTimes(1);
+describe('onLogoClick prop', () => {
+  it('calls onLogoClick when logo is clicked', () => {
+    const spy = vi.fn();
+    render(<HeaderBar onMenuOpen={() => {}} onLogoClick={spy} />);
+    fireEvent.click(screen.getByText('S'));
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
 });
