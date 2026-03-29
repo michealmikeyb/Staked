@@ -90,7 +90,7 @@ The logo (`S`) click handler is always `() => navigate('/')`.
 
 **Header:**
 - `S` logo → navigates to `/` (feed).
-- `← Inbox` text link rendered just right of the logo (in the left section of the header) → navigates to `/inbox`.
+- `← Inbox` text link rendered just right of the logo (in the left section of the header) → navigates to `/inbox`. **Only rendered on iOS** (detected via `navigator.userAgent`). On Android the system/browser back button handles navigation natively via the hash router.
 - No center content (sort dropdown hidden).
 
 **Body layout:** Same visual structure as `PostCard` but non-swipeable:
