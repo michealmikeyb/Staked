@@ -1,9 +1,10 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
-import { fetchComments, resolvePostId, type PostView, type CommentView } from '../lib/lemmy';
+import { fetchComments, resolvePostId, resolveCommentId, createComment, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import CommentList from './CommentList';
+import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
 
 const SWIPE_THRESHOLD = 120;
@@ -46,6 +47,8 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
+  const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
 
   // Track which instance+token produced the successful comment fetch so replies go to the right place.
   const resolvedInstanceRef = useRef<string>(auth.instance);
@@ -171,6 +174,19 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
   const imageSrc = (p.url && isImageUrl(p.url)) ? p.url : p.thumbnail_url;
 
+  const handleReplySubmit = async (content: string) => {
+    const parentApId = replyTarget!.comment.ap_id;
+    const parentId = await resolveCommentId(resolvedInstanceRef.current, resolvedTokenRef.current, parentApId).catch(() => null)
+      ?? replyTarget!.comment.id;
+    const newComment = await createComment(resolvedInstanceRef.current, resolvedTokenRef.current, p.id, content, parentId);
+    const remapped = {
+      ...newComment,
+      comment: { ...newComment.comment, path: replyTarget!.comment.path + '.' + newComment.comment.id },
+    };
+    setLocalReplies((prev) => [...prev, remapped]);
+    setReplyTarget(null);
+  };
+
   return (
     <motion.div
       className={styles.card}
@@ -233,12 +249,22 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           )}
           <CommentList
             comments={comments}
+            localReplies={localReplies}
             auth={auth}
             postId={p.id}
             instance={auth.instance}
             token={auth.token}
+            replyTarget={replyTarget}
+            onSetReplyTarget={setReplyTarget}
           />
         </div>
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+        <ReplySheet
+          target={replyTarget}
+          onSubmit={handleReplySubmit}
+          onClose={() => setReplyTarget(null)}
+        />
       </div>
     </motion.div>
   );

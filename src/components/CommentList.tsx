@@ -1,35 +1,20 @@
-import { useState, useMemo } from 'react';
-import { createComment, resolveCommentId, type CommentView } from '../lib/lemmy';
+import { useMemo } from 'react';
+import { type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import CommentItem from './CommentItem';
-import ReplySheet from './ReplySheet';
 
 interface Props {
   comments: CommentView[];
+  localReplies: CommentView[];
   auth: AuthState;
   postId: number;
   instance: string;
   token: string;
+  replyTarget: CommentView | null;
+  onSetReplyTarget: (cv: CommentView | null) => void;
 }
 
-export default function CommentList({ comments, auth, postId, instance, token }: Props) {
-  const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
-  const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
-
-  const handleSubmit = async (content: string) => {
-    // Parent comment may come from a foreign instance — resolve its local ID on the home instance.
-    const parentApId = replyTarget!.comment.ap_id;
-    const parentId = await resolveCommentId(instance, token, parentApId).catch(() => null)
-      ?? replyTarget!.comment.id;
-    const newComment = await createComment(instance, token, postId, content, parentId);
-    // Remap path to use source-instance parent path so the tree-building childMap lookup works.
-    // The API returns home-instance IDs in the path, which don't match source-instance IDs.
-    const remapped = { ...newComment, comment: { ...newComment.comment, path: replyTarget!.comment.path + '.' + newComment.comment.id } };
-    setLocalReplies((prev) => [...prev, remapped]);
-    setReplyTarget(null);
-  };
-
-  // Preserve the API's score-based ordering while grouping each comment with its descendants.
+export default function CommentList({ comments, localReplies, auth, postId: _postId, instance: _instance, token: _token, replyTarget: _replyTarget, onSetReplyTarget }: Props) {
   const items = useMemo(() => {
     const allItems = [...comments, ...localReplies];
     const childMap = new Map<string, CommentView[]>();
@@ -63,15 +48,10 @@ export default function CommentList({ comments, auth, postId, instance, token }:
             cv={cv}
             auth={auth}
             depth={depth}
-            onReply={(cv) => setReplyTarget(cv)}
+            onReply={onSetReplyTarget}
           />
         );
       })}
-      <ReplySheet
-        target={replyTarget}
-        onSubmit={handleSubmit}
-        onClose={() => setReplyTarget(null)}
-      />
     </>
   );
 }
