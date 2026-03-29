@@ -42,8 +42,8 @@ export default function FeedStack({ auth, onLogout }: Props) {
   }, [auth]);
 
   useEffect(() => {
-    loadMore(1, 'TopTwelveHour');
-  }, [loadMore]);
+    loadMore(1, sortType);
+  }, [loadMore]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (posts.length <= 3 && !loading && canLoadMore) {
