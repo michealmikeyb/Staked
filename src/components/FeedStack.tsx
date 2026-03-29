@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchPosts, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
+
+const DRAWER_ITEMS = [
+  { icon: '🔖', label: 'Saved' },
+  { icon: '👤', label: 'Profile' },
+  { icon: '📬', label: 'Inbox' },
+] as const;
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
@@ -44,7 +50,10 @@ export default function FeedStack({ auth, onLogout }: Props) {
 
   useEffect(() => {
     loadMore(1, sortType);
-  }, [loadMore]); // eslint-disable-line react-hooks/exhaustive-deps
+    // sortType intentionally omitted: handleSortChange already calls loadMore(1, newSort) directly.
+    // Including sortType here would double-fetch on every sort change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadMore]);
 
   useEffect(() => {
     if (posts.length <= 3 && !loading && canLoadMore) {
@@ -175,11 +184,7 @@ export default function FeedStack({ auth, onLogout }: Props) {
             zIndex: 40, padding: 16,
           }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {[
-                { icon: '🔖', label: 'Saved' },
-                { icon: '👤', label: 'Profile' },
-                { icon: '📬', label: 'Inbox' },
-              ].map(({ icon, label }) => (
+              {DRAWER_ITEMS.map(({ icon, label }) => (
                 <button
                   key={label}
                   onClick={() => setShowDrawer(false)}
