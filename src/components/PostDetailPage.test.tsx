@@ -55,7 +55,7 @@ const notificationState = {
     },
     community: { id: 1, name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
     creator: { id: 2, name: 'alice', display_name: null, actor_id: 'https://lemmy.world/u/alice' },
-    counts: { score: 5, comments: 12 },
+    counts: { score: 5, child_count: 12 },
   },
 };
 

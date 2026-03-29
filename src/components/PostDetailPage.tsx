@@ -18,6 +18,12 @@ type NotifItem =
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
+
+function isImageUrl(url: string): boolean {
+  try { return IMAGE_EXT.test(new URL(url).pathname); } catch { return false; }
+}
+
 interface Props {
   auth: AuthState;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
@@ -110,8 +116,7 @@ export default function PostDetailPage({ auth, setUnreadCount }: Props) {
     setReplyTarget(null);
   };
 
-  const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
-  const isImage = !!post.url && IMAGE_EXT.test(new URL(post.url).pathname);
+  const isImage = !!post.url && isImageUrl(post.url);
   const imageSrc = isImage ? post.url : post.thumbnail_url;
   const showLinkBanner = !!post.url && !isImage;
 
@@ -174,7 +179,7 @@ export default function PostDetailPage({ auth, setUnreadCount }: Props) {
 
         <div className={styles.footer}>
           <span>▲ {counts.score}</span>
-          <span>💬 {counts.child_count}</span>
+          <span>💬 {counts.child_count} replies</span>
         </div>
 
         <div className={styles.commentsSection}>
