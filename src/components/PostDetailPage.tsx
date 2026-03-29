@@ -1,10 +1,209 @@
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import {
+  markReplyAsRead, markMentionAsRead, createComment, resolveCommentId,
+  type CommentReplyView, type PersonMentionView, type CommentView,
+} from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
+import { instanceFromActorId } from '../lib/urlUtils';
+import { useCommentLoader } from '../hooks/useCommentLoader';
+import HeaderBar from './HeaderBar';
+import CommentList from './CommentList';
+import ReplySheet from './ReplySheet';
+import styles from './PostCard.module.css';
 
-interface PostDetailPageProps {
+type NotifItem =
+  | { type: 'reply'; data: CommentReplyView }
+  | { type: 'mention'; data: PersonMentionView };
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+interface Props {
   auth: AuthState;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
-export default function PostDetailPage({ auth, setUnreadCount: _setUnreadCount }: PostDetailPageProps) {
-  return <div>PostDetailPage - {auth.username}</div>;
+export default function PostDetailPage({ auth, setUnreadCount }: Props) {
+  const { notifId: _notifId } = useParams<{ notifId: string }>();
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const notification = state?.notification as NotifItem | undefined;
+
+  const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
+  const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
+  const markedReadRef = useRef(false);
+
+  // Call hooks unconditionally before any early return
+  const { comments, commentsLoaded, resolvedInstanceRef, resolvedTokenRef } = useCommentLoader(
+    notification?.data.post ?? { ap_id: '', id: 0 },
+    notification?.data.community ?? { actor_id: '' },
+    auth,
+  );
+
+  const highlightCommentId = notification?.data.comment.id;
+
+  // Scroll highlighted comment into view once comments load
+  useEffect(() => {
+    if (!commentsLoaded || highlightCommentId == null) return;
+    const el = document.querySelector(`[data-comment-id="${highlightCommentId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [commentsLoaded, highlightCommentId]);
+
+  // Mark as read on mount (once)
+  useEffect(() => {
+    if (!notification) return;
+    if (markedReadRef.current) return;
+    markedReadRef.current = true;
+
+    const doMark = async () => {
+      if (notification.type === 'reply') {
+        await markReplyAsRead(auth.instance, auth.token, notification.data.comment_reply.id);
+      } else {
+        await markMentionAsRead(auth.instance, auth.token, notification.data.person_mention.id);
+      }
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    };
+    doMark().catch(() => {});
+  }, [auth, notification, setUnreadCount]);
+
+  // Keyboard offset for reply sheet
+  useEffect(() => {
+    if (!replyTarget || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handler = () => setKeyboardOffset(window.innerHeight - vv.height - vv.offsetTop);
+    vv.addEventListener('resize', handler);
+    handler();
+    return () => { vv.removeEventListener('resize', handler); setKeyboardOffset(0); };
+  }, [replyTarget]);
+
+  if (!notification) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
+        <HeaderBar onMenuOpen={() => {}} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+          Navigate to Inbox to view this notification.
+        </div>
+      </div>
+    );
+  }
+
+  const post = notification.data.post;
+  const community = notification.data.community;
+  const creator = notification.data.creator;
+  const counts = notification.data.counts;
+
+  const handleReplySubmit = async (content: string) => {
+    const parentApId = replyTarget!.comment.ap_id;
+    const parentId =
+      await resolveCommentId(resolvedInstanceRef.current, resolvedTokenRef.current, parentApId).catch(() => null)
+      ?? replyTarget!.comment.id;
+    const newComment = await createComment(
+      resolvedInstanceRef.current, resolvedTokenRef.current, post.id, content, parentId,
+    );
+    const remapped = {
+      ...newComment,
+      comment: { ...newComment.comment, path: replyTarget!.comment.path + '.' + newComment.comment.id },
+    };
+    setLocalReplies((prev) => [...prev, remapped]);
+    setReplyTarget(null);
+  };
+
+  const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
+  const isImage = !!post.url && IMAGE_EXT.test(new URL(post.url).pathname);
+  const imageSrc = isImage ? post.url : post.thumbnail_url;
+  const showLinkBanner = !!post.url && !isImage;
+
+  const communityInstance = instanceFromActorId(community.actor_id);
+  const communityInitial = community.name.charAt(0).toUpperCase();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a', position: 'relative' }}>
+      <HeaderBar
+        onMenuOpen={() => {}}
+        onLogoClick={() => navigate('/')}
+        centerContent={
+          isIOS ? (
+            <button
+              onClick={() => navigate('/inbox')}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#aaa', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              ← Inbox
+            </button>
+          ) : undefined
+        }
+      />
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {/* Community meta */}
+        <div className={styles.meta}>
+          <div className={styles.communityIcon}>{communityInitial}</div>
+          <div>
+            <div className={styles.communityName}>c/{community.name}</div>
+            <div className={styles.instanceName}>
+              {communityInstance} • {creator.display_name ?? creator.name}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.title}>{post.name}</div>
+
+        {showLinkBanner && (
+          <div
+            className={isLinkBannerPressed ? `${styles.linkBanner} ${styles.linkBannerPressed}` : styles.linkBanner}
+            onPointerDown={() => setIsLinkBannerPressed(true)}
+            onPointerUp={() => setIsLinkBannerPressed(false)}
+            onPointerLeave={() => setIsLinkBannerPressed(false)}
+            onClick={() => window.open(post.url!, '_blank', 'noopener,noreferrer')}
+          >
+            <span className={styles.linkBannerIcon}>🔗</span>
+            <div className={styles.linkBannerContent}>
+              <div className={styles.linkBannerDomain}>{instanceFromActorId(post.url!)}</div>
+              <div className={styles.linkBannerHint}>Tap to open link</div>
+            </div>
+            <span className={styles.linkBannerArrow}>↗</span>
+          </div>
+        )}
+
+        {imageSrc && <img className={styles.image} src={imageSrc} alt="" loading="lazy" />}
+
+        {post.body && <div className={styles.excerpt}>{post.body}</div>}
+
+        <div className={styles.footer}>
+          <span>▲ {counts.score}</span>
+          <span>💬 {counts.child_count}</span>
+        </div>
+
+        <div className={styles.commentsSection}>
+          {commentsLoaded && comments.length === 0 && counts.child_count > 0 && (
+            <a
+              className={styles.commentsFallback}
+              href={post.ap_id}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {counts.child_count} comments — view on {new URL(post.ap_id).hostname}
+            </a>
+          )}
+          <CommentList
+            comments={comments}
+            localReplies={localReplies}
+            auth={auth}
+            onSetReplyTarget={setReplyTarget}
+            highlightCommentId={highlightCommentId}
+          />
+        </div>
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}>
+        <ReplySheet
+          target={replyTarget}
+          onSubmit={handleReplySubmit}
+          onClose={() => setReplyTarget(null)}
+        />
+      </div>
+    </div>
+  );
 }

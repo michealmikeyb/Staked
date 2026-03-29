@@ -40,7 +40,7 @@ function formatTime(iso: string): string {
 
 interface Props {
   auth: AuthState;
-  setUnreadCount: (n: number) => void;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export default function InboxPage({ auth, setUnreadCount }: Props) {
