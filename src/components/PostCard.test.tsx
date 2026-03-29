@@ -58,6 +58,7 @@ describe('PostCard', () => {
         scale={1}
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
       />
     );
     expect(screen.getByText('Rust post')).toBeInTheDocument();
@@ -72,6 +73,7 @@ describe('PostCard', () => {
         scale={1}
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
       />
     );
     expect(screen.getByText(/programming/i)).toBeInTheDocument();
@@ -93,6 +95,7 @@ describe('PostCard gestures', () => {
         scale={1}
         onSwipeRight={onSwipeRight}
         onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
       />
     );
     const card = container.firstChild as HTMLElement;
@@ -115,6 +118,7 @@ describe('PostCard gestures', () => {
         scale={1}
         onSwipeRight={vi.fn()}
         onSwipeLeft={onSwipeLeft}
+        onSave={vi.fn()}
       />
     );
     const card = container.firstChild as HTMLElement;

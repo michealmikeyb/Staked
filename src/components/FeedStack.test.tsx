@@ -16,6 +16,7 @@ vi.mock('../lib/lemmy', () => ({
   resolvePostId: vi.fn().mockResolvedValue(null),
   upvotePost: vi.fn().mockResolvedValue(undefined),
   downvotePost: vi.fn().mockResolvedValue(undefined),
+  savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
@@ -79,5 +80,38 @@ describe('FeedStack empty state', () => {
     expect(localStorage.getItem('stakswipe_seen')).toBeNull();
     expect(reloadMock).toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('FeedStack keyboard shortcuts', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    const { fetchPosts } = await import('../lib/lemmy');
+    // Return the post on page 1, then empty so pagination stops and avoids infinite loop.
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 847, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+  });
+
+  it('calls savePost and dismisses the top post when ArrowDown is pressed', async () => {
+    const { savePost } = await import('../lib/lemmy');
+
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+    await waitFor(() => {
+      expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
+    });
   });
 });

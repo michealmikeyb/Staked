@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchPosts, upvotePost, downvotePost, type PostView } from '../lib/lemmy';
+import { fetchPosts, upvotePost, downvotePost, savePost, type PostView } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
@@ -68,6 +68,9 @@ export default function FeedStack({ auth, onLogout }: Props) {
       } else if (e.key === 'ArrowLeft') {
         downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
         dismissTop(topPost.post.id);
+      } else if (e.key === 'ArrowDown') {
+        savePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        dismissTop(topPost.post.id);
       }
     }
 
@@ -135,6 +138,10 @@ export default function FeedStack({ auth, onLogout }: Props) {
             } : () => {}}
             onSwipeLeft={isTop ? async () => {
               await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+              dismissTop(post.post.id);
+            } : () => {}}
+            onSave={isTop ? () => {
+              savePost(auth.instance, auth.token, post.post.id).catch(() => {});
               dismissTop(post.post.id);
             } : () => {}}
           />

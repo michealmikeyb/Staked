@@ -16,6 +16,7 @@ interface Props {
   scale: number;
   onSwipeRight: () => void;
   onSwipeLeft: () => void;
+  onSave: () => void;
 }
 
 function communityInitial(name: string): string {
@@ -40,7 +41,7 @@ function sourceFromApId(apId: string): { instance: string; postId: number } | nu
   } catch { return null; }
 }
 
-export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft }: Props) {
+export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const [comments, setComments] = useState<CommentView[]>([]);
