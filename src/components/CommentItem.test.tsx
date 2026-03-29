@@ -4,6 +4,7 @@ import CommentItem from './CommentItem';
 
 vi.mock('../lib/lemmy', () => ({
   likeComment: vi.fn().mockResolvedValue(undefined),
+  resolveCommentId: vi.fn().mockResolvedValue(null),
 }));
 
 const mockCv = {
