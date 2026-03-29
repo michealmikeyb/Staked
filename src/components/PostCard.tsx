@@ -1,11 +1,12 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
-import { fetchComments, resolvePostId, resolveCommentId, createComment, type PostView, type CommentView } from '../lib/lemmy';
+import { resolveCommentId, createComment, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
+import { useCommentLoader } from '../hooks/useCommentLoader';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
@@ -45,106 +46,11 @@ function sourceFromApId(apId: string): { instance: string; postId: number } | nu
 export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
-  const [comments, setComments] = useState<CommentView[]>([]);
-  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const { comments, commentsLoaded, resolvedInstanceRef, resolvedTokenRef } = useCommentLoader(p, community, auth);
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
-
-  // Track which instance+token produced the successful comment fetch so replies go to the right place.
-  const resolvedInstanceRef = useRef<string>(auth.instance);
-  const resolvedTokenRef = useRef<string>(auth.token);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      let comments: CommentView[] = [];
-      const source = sourceFromApId(p.ap_id);
-
-      if (source) {
-        const sourceToken = source.instance === auth.instance ? auth.token : '';
-        comments = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
-        if (comments.length > 0) {
-          resolvedInstanceRef.current = source.instance;
-          resolvedTokenRef.current = sourceToken;
-        }
-      }
-
-      // Cross-posts, non-Lemmy sources (Kbin/Mbin ap_ids etc.), or empty source fetch:
-      // resolve via the community's home instance.
-      if (comments.length === 0) {
-        const communityInstance = instanceFromActorId(community.actor_id);
-        if (communityInstance && communityInstance !== source?.instance) {
-          const localId = await resolvePostId(communityInstance, p.ap_id).catch(() => null);
-          if (localId != null) {
-            const communityToken = communityInstance === auth.instance ? auth.token : '';
-            comments = await fetchComments(communityInstance, communityToken, localId).catch(() => []);
-            if (comments.length > 0) {
-              resolvedInstanceRef.current = communityInstance;
-              resolvedTokenRef.current = communityToken;
-            }
-          }
-        }
-      }
-
-      // Last resort: user's home instance with the already-known local post ID.
-      // Try authenticated first; fall back to anonymous if token is expired (401).
-      if (comments.length === 0 && source?.instance !== auth.instance) {
-        comments = await fetchComments(auth.instance, auth.token, p.id).catch(() =>
-          fetchComments(auth.instance, '', p.id).catch(() => [])
-        );
-        if (comments.length > 0) {
-          resolvedInstanceRef.current = auth.instance;
-          resolvedTokenRef.current = auth.token;
-        }
-      }
-
-      // Merge in home-instance comments so replies posted there appear immediately,
-      // even before they federate back to the source instance.
-      if (auth.token && source?.instance !== auth.instance) {
-        const homeComments = await fetchComments(auth.instance, auth.token, p.id).catch(() => []);
-        if (homeComments.length > 0) {
-          const seenApIds = new Set(comments.map(c => c.comment.ap_id));
-          const novel = homeComments.filter(c => !seenApIds.has(c.comment.ap_id));
-          if (novel.length > 0) {
-            // Remap each novel comment's path to use source-instance IDs so threading is correct.
-            const homeIdToApId = new Map(homeComments.map(c => [c.comment.id, c.comment.ap_id]));
-            const sourceApIdToComment = new Map(comments.map(c => [c.comment.ap_id, c]));
-
-            const result = [...comments];
-            for (const nc of novel) {
-              const pathParts = nc.comment.path.split('.');
-              const parentLocalId = pathParts.length > 2 ? parseInt(pathParts[pathParts.length - 2]) : null;
-              const parentApId = parentLocalId != null ? homeIdToApId.get(parentLocalId) : null;
-              const parentInSource = parentApId ? sourceApIdToComment.get(parentApId) : null;
-
-              if (parentInSource) {
-                const sourcePath = parentInSource.comment.path + '.' + nc.comment.id;
-                const remapped = { ...nc, comment: { ...nc.comment, path: sourcePath } };
-                const parentPath = parentInSource.comment.path;
-                const parentFoundIdx = result.findIndex(c => c.comment.ap_id === parentApId);
-                let insertIdx = parentFoundIdx + 1;
-                while (insertIdx < result.length && result[insertIdx].comment.path.startsWith(parentPath + '.')) {
-                  insertIdx++;
-                }
-                result.splice(insertIdx, 0, remapped);
-              } else {
-                result.push(nc);
-              }
-            }
-            comments = result;
-          }
-        }
-      }
-
-      if (!cancelled) { setComments(comments); setCommentsLoaded(true); }
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, [auth, p.ap_id, p.id, community.actor_id]);
 
   useEffect(() => {
     if (!replyTarget || !window.visualViewport) return;
