@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchPosts, upvotePost, downvotePost, savePost, type PostView } from '../lib/lemmy';
+import { fetchPosts, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
+import HeaderBar from './HeaderBar';
 
 interface Props {
   auth: AuthState;
@@ -19,10 +20,11 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
+  const [sortType, setSortType] = useState<SortType>('TopTwelveHour');
 
-  const loadMore = useCallback(async (nextPage: number) => {
+  const loadMore = useCallback(async (nextPage: number, sort: SortType) => {
     try {
-      const newPosts = await fetchPosts(auth.instance, auth.token, nextPage);
+      const newPosts = await fetchPosts(auth.instance, auth.token, nextPage, sort);
       if (newPosts.length === 0) {
         setCanLoadMore(false);
       } else {
@@ -40,16 +42,25 @@ export default function FeedStack({ auth, onLogout }: Props) {
   }, [auth]);
 
   useEffect(() => {
-    loadMore(1);
+    loadMore(1, 'TopTwelveHour');
   }, [loadMore]);
 
   useEffect(() => {
     if (posts.length <= 3 && !loading && canLoadMore) {
       const nextPage = page + 1;
       setPage(nextPage);
-      loadMore(nextPage);
+      loadMore(nextPage, sortType);
     }
-  }, [posts.length, loading, page, loadMore, canLoadMore]);
+  }, [posts.length, loading, page, loadMore, canLoadMore, sortType]);
+
+  function handleSortChange(newSort: SortType) {
+    setSortType(newSort);
+    setPosts([]);
+    setPage(1);
+    setCanLoadMore(true);
+    setLoading(true);
+    loadMore(1, newSort);
+  }
 
   function dismissTop(postId: number) {
     addSeen(postId);
@@ -120,34 +131,37 @@ export default function FeedStack({ auth, onLogout }: Props) {
   const visible = posts.slice(0, STACK_VISIBLE);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
-      {visible.map((post, i) => {
-        const isTop = i === 0;
-        const scale = 1 - i * 0.04;
-        const zIndex = STACK_VISIBLE - i;
-        return (
-          <PostCard
-            key={post.post.id}
-            post={post}
-            auth={auth}
-            zIndex={zIndex}
-            scale={isTop ? 1 : scale}
-            onSwipeRight={isTop ? async () => {
-              await upvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
-              dismissTop(post.post.id);
-            } : () => {}}
-            onSwipeLeft={isTop ? async () => {
-              await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
-              dismissTop(post.post.id);
-            } : () => {}}
-            onSave={isTop ? () => {
-              savePost(auth.instance, auth.token, post.post.id).catch(() => {});
-              dismissTop(post.post.id);
-            } : () => {}}
-          />
-        );
-      })}
-      <SwipeHint />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
+      <HeaderBar sortType={sortType} onSortChange={handleSortChange} onMenuOpen={() => {}} />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+        {visible.map((post, i) => {
+          const isTop = i === 0;
+          const scale = 1 - i * 0.04;
+          const zIndex = STACK_VISIBLE - i;
+          return (
+            <PostCard
+              key={post.post.id}
+              post={post}
+              auth={auth}
+              zIndex={zIndex}
+              scale={isTop ? 1 : scale}
+              onSwipeRight={isTop ? async () => {
+                await upvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                dismissTop(post.post.id);
+              } : () => {}}
+              onSwipeLeft={isTop ? async () => {
+                await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                dismissTop(post.post.id);
+              } : () => {}}
+              onSave={isTop ? () => {
+                savePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                dismissTop(post.post.id);
+              } : () => {}}
+            />
+          );
+        })}
+        <SwipeHint />
+      </div>
     </div>
   );
 }

@@ -83,6 +83,60 @@ describe('FeedStack empty state', () => {
   });
 });
 
+describe('FeedStack header and sort', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 847, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+  });
+
+  it('renders the header bar', async () => {
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+    expect(screen.getByRole('button', { name: /menu/i })).toBeInTheDocument();
+  });
+
+  it('calls fetchPosts with default sort TopTwelveHour', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour');
+  });
+
+  it('resets the feed and re-fetches when sort changes', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 2, name: 'Hot Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'bob' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} />);
+    await screen.findByText('Test Post Title');
+
+    // Open dropdown and pick Hot
+    fireEvent.click(screen.getByRole('button', { name: /top 12h/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
+
+    await waitFor(() => {
+      expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot');
+    });
+  });
+});
+
 describe('FeedStack keyboard shortcuts', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
