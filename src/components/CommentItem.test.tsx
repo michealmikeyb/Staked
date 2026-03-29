@@ -67,6 +67,20 @@ describe('CommentItem', () => {
     expect(likeComment).not.toHaveBeenCalled();
   });
 
+  it('reverts score and liked state when likeComment rejects', async () => {
+    const { likeComment } = await import('../lib/lemmy');
+    vi.mocked(likeComment).mockRejectedValueOnce(new Error('Network error'));
+    render(<CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} />);
+    const comment = screen.getByTestId('comment-item');
+    await act(async () => {
+      fireEvent.click(comment);
+      fireEvent.click(comment);
+    });
+    // After the rejected API call, score should revert to 10
+    await act(async () => {});
+    expect(screen.getByText(/10/)).toBeInTheDocument();
+  });
+
   it('reply button calls onReply with the comment view', () => {
     const onReply = vi.fn();
     render(<CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={onReply} />);
