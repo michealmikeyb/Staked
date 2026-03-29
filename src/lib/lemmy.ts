@@ -73,3 +73,30 @@ export async function resolvePostId(instance: string, apId: string): Promise<num
   const res = await client(instance).resolveObject({ q: apId });
   return res.post?.post.id ?? null;
 }
+
+export async function likeComment(
+  instance: string,
+  token: string,
+  commentId: number,
+  score: 1 | 0,
+): Promise<void> {
+  // @ts-expect-error legacy auth
+  await client(instance).likeComment({ comment_id: commentId, score, auth: token });
+}
+
+export async function createComment(
+  instance: string,
+  token: string,
+  postId: number,
+  content: string,
+  parentId?: number,
+): Promise<CommentView> {
+  const res = await client(instance).createComment({
+    post_id: postId,
+    content,
+    parent_id: parentId,
+    // @ts-expect-error legacy auth
+    auth: token,
+  });
+  return res.comment_view;
+}
