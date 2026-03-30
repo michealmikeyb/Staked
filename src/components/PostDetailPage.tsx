@@ -5,7 +5,6 @@ import {
   type NotifItem,
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import { useCommentLoader } from '../hooks/useCommentLoader';
 import MenuDrawer from './MenuDrawer';
 import PostDetailCard from './PostDetailCard';
 
@@ -24,18 +23,6 @@ export default function PostDetailPage({ auth, setUnreadCount, unreadCount = 0 }
   const notification = state?.notification as NotifItem | undefined;
 
   const markedReadRef = useRef(false);
-
-  const { comments, commentsLoaded } = useCommentLoader(
-    notification?.data.post ?? { ap_id: '', id: 0 },
-    notification?.data.community ?? { actor_id: '' },
-    auth,
-  );
-
-  // Match the notification comment by ap_id to get the source-instance local ID
-  const notifCommentApId = notification?.data.comment.ap_id;
-  const highlightCommentId = commentsLoaded
-    ? comments.find((c) => c.comment.ap_id === notifCommentApId)?.comment.id
-    : undefined;
 
   // Mark as read on mount (once)
   useEffect(() => {
@@ -97,7 +84,7 @@ export default function PostDetailPage({ auth, setUnreadCount, unreadCount = 0 }
           creator={creator}
           counts={counts}
           auth={auth}
-          highlightCommentId={highlightCommentId}
+          notifCommentApId={notification.data.comment.ap_id}
         />
       </div>
     </div>

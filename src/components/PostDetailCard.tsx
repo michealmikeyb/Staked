@@ -39,11 +39,11 @@ interface Props {
   creator: Creator;
   counts: Counts;
   auth: AuthState;
-  highlightCommentId?: number;
+  notifCommentApId?: string;
 }
 
 export default function PostDetailCard({
-  post, community, creator, counts, auth, highlightCommentId,
+  post, community, creator, counts, auth, notifCommentApId,
 }: Props) {
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
@@ -56,6 +56,10 @@ export default function PostDetailCard({
     { actor_id: community.actor_id },
     auth,
   );
+
+  const highlightCommentId = commentsLoaded && notifCommentApId
+    ? comments.find((c) => c.comment.ap_id === notifCommentApId)?.comment.id
+    : undefined;
 
   // Scroll highlighted comment into view once loaded
   useEffect(() => {
