@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { login } from '../lib/lemmy';
 import { saveAuth, type AuthState } from '../lib/store';
 import styles from './LoginPage.module.css';
+import Logo from './Logo';
 
 const POPULAR_INSTANCES = [
   'lemmy.world',
@@ -45,7 +46,7 @@ export default function LoginPage({ onLogin }: Props) {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logo}>Stakswipe</div>
+      <Logo variant="full" size={56} />
       <div className={styles.tagline}>Lemmy, fast</div>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div>

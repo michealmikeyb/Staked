@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { type SortType } from '../lib/lemmy';
+import Logo from './Logo';
 
 const SORT_OPTIONS: { sort: SortType; label: string }[] = [
   { sort: 'Active', label: 'Active' },
@@ -51,18 +52,7 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerCo
         background: '#1a1d24', borderBottom: '1px solid #2a2d35',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            onClick={onLogoClick}
-            role={onLogoClick ? 'button' : undefined}
-            style={{
-              width: 32, height: 32, background: '#ff6b35', borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0,
-              cursor: onLogoClick ? 'pointer' : 'default',
-            }}
-          >
-            S
-          </div>
+          <Logo variant="mark" size={32} onClick={onLogoClick} />
           {leftContent}
         </div>
         {centerEl}
