@@ -34,7 +34,7 @@ const mockPostView = {
   counts: { score: 42, comments: 7 },
 };
 
-function renderPage(state?: object) {
+function renderPage(state?: object | false) {
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/profile/1', state: state ?? { post: mockPostView } }]}>
       <Routes>
