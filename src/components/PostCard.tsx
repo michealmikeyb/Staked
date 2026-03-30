@@ -114,7 +114,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; }}
         onTouchMove={(e) => {
           const delta = e.touches[0].clientY - touchStartY.current;
-          if (scrollRef.current && scrollRef.current.scrollTop === 0 && delta > 0) {
+          if (scrollRef.current && scrollRef.current.scrollTop <= 0 && delta > 0) {
             setPullDelta(delta);
           } else {
             setPullDelta(0);
