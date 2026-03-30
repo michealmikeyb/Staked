@@ -201,3 +201,27 @@ describe('markMentionAsRead', () => {
     expect(mockInstance.markPersonMentionAsRead).toHaveBeenCalledWith({ person_mention_id: 20, read: true });
   });
 });
+
+describe('fetchSavedPosts', () => {
+  it('calls getPosts with type_ Saved and returns posts', async () => {
+    const mockPost = {
+      post: { id: 1, name: 'Saved Post', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null },
+      community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+      creator: { name: 'alice', display_name: null },
+      counts: { score: 10, comments: 2, child_count: 2 },
+    };
+    const { fetchSavedPosts } = await import('./lemmy');
+    const result = await fetchSavedPosts('lemmy.world', 'mytoken', 1);
+
+    const { LemmyHttp } = await import('lemmy-js-client');
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
+    expect(mockInstance.getPosts).toHaveBeenCalledWith({
+      type_: 'Saved',
+      sort: 'New',
+      page: 1,
+      limit: 20,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].post.id).toBe(1);
+  });
+});

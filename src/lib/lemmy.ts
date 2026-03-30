@@ -56,6 +56,20 @@ export async function savePost(
   await client(instance, token).savePost({ post_id: postId, save: true });
 }
 
+export async function fetchSavedPosts(
+  instance: string,
+  token: string,
+  page: number,
+): Promise<PostView[]> {
+  const res = await client(instance, token).getPosts({
+    type_: 'Saved',
+    sort: 'New',
+    page,
+    limit: 20,
+  });
+  return res.posts;
+}
+
 export async function fetchComments(
   instance: string,
   token: string,
