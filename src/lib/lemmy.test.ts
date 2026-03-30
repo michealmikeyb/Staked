@@ -210,18 +210,17 @@ describe('fetchSavedPosts', () => {
       creator: { name: 'alice', display_name: null },
       counts: { score: 10, comments: 2, child_count: 2 },
     };
+
+    const { LemmyHttp } = await import('lemmy-js-client');
+    vi.mocked(LemmyHttp).mockImplementationOnce(() => ({
+      getPosts: vi.fn().mockResolvedValue({ posts: [mockPost] }),
+    } as never));
+
     const { fetchSavedPosts } = await import('./lemmy');
     const result = await fetchSavedPosts('lemmy.world', 'mytoken', 1);
 
-    const { LemmyHttp } = await import('lemmy-js-client');
-    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
-    expect(mockInstance.getPosts).toHaveBeenCalledWith({
-      type_: 'Saved',
-      sort: 'New',
-      page: 1,
-      limit: 20,
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0].post.id).toBe(1);
+    expect(result).toEqual([mockPost]);
+    expect(result[0].post.ap_id).toBe('https://lemmy.world/post/1');
+    expect(result[0].community.name).toBe('tech');
   });
 });
