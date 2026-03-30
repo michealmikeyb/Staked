@@ -4,12 +4,7 @@ import { fetchPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type 
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
-import HeaderBar from './HeaderBar';
-
-const DRAWER_ITEMS = [
-  { icon: '🔖', label: 'Saved' },
-  { icon: '👤', label: 'Profile' },
-] as const;
+import MenuDrawer from './MenuDrawer';
 
 interface Props {
   auth: AuthState;
@@ -30,7 +25,6 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [sortType, setSortType] = useState<SortType>('TopTwelveHour');
-  const [showDrawer, setShowDrawer] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount(auth.instance, auth.token)
@@ -151,7 +145,13 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
-      <HeaderBar sortType={sortType} onSortChange={handleSortChange} onMenuOpen={() => setShowDrawer((v) => !v)} onLogoClick={() => navigate('/')} />
+      <MenuDrawer
+        sortType={sortType}
+        onSortChange={handleSortChange}
+        onNavigate={navigate}
+        onLogoClick={() => navigate('/')}
+        unreadCount={unreadCount}
+      />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         {visible.map((post, i) => {
           const isTop = i === 0;
@@ -181,65 +181,6 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
         })}
         <SwipeHint />
       </div>
-      {showDrawer && (
-        <>
-          <div
-            onClick={() => setShowDrawer(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 39 }}
-          />
-          <div style={{
-            position: 'fixed', top: 48, left: 0, right: 0,
-            background: '#1a1d24', borderBottom: '1px solid #2a2d35',
-            zIndex: 40, padding: 16,
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {DRAWER_ITEMS.map(({ icon, label }) => (
-                <button
-                  key={label}
-                  onClick={() => setShowDrawer(false)}
-                  style={{
-                    background: '#2a2d35', border: 'none', borderRadius: 12,
-                    cursor: 'pointer', padding: '14px 8px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                    color: '#f5f5f5', fontSize: 12, fontWeight: 500,
-                  }}
-                >
-                  <span style={{ fontSize: 22 }}>{icon}</span>
-                  {label}
-                </button>
-              ))}
-              <button
-                onClick={() => { setShowDrawer(false); navigate('/inbox'); }}
-                style={{
-                  background: '#2a2d35', border: 'none', borderRadius: 12,
-                  cursor: 'pointer', padding: '14px 8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  color: '#f5f5f5', fontSize: 12, fontWeight: 500,
-                  position: 'relative',
-                }}
-              >
-                {unreadCount > 0 && (
-                  <span
-                    data-testid="inbox-badge"
-                    style={{
-                      position: 'absolute', top: 8, right: 8,
-                      background: '#ff6b35', color: '#fff',
-                      borderRadius: '50%', minWidth: 18, height: 18,
-                      fontSize: 10, fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 4px',
-                    }}
-                  >
-                    {unreadCount}
-                  </span>
-                )}
-                <span style={{ fontSize: 22 }}>📬</span>
-                Inbox
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

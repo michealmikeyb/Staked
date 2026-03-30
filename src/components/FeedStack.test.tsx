@@ -280,4 +280,14 @@ describe('drawer navigation', () => {
     fireEvent.click(screen.getByText('Inbox'));
     expect(mockNavigate).toHaveBeenCalledWith('/inbox');
   });
+
+  it('navigates to /saved when Saved button is clicked', async () => {
+    render(
+      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={0} setUnreadCount={() => {}} />,
+    );
+    await screen.findByText('Test Post Title');
+    fireEvent.click(screen.getByLabelText('Menu'));
+    fireEvent.click(screen.getByText('Saved'));
+    expect(mockNavigate).toHaveBeenCalledWith('/saved');
+  });
 });
