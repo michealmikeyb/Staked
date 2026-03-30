@@ -37,9 +37,10 @@ function formatTime(iso: string): string {
 interface Props {
   auth: AuthState;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  unreadCount: number;
 }
 
-export default function InboxPage({ auth, setUnreadCount }: Props) {
+export default function InboxPage({ auth, setUnreadCount, unreadCount }: Props) {
   const navigate = useNavigate();
   const [items, setItems] = useState<NotifItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +101,7 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
         onNavigate={navigate}
         onLogoClick={() => navigate('/')}
         centerContent={filterToggle}
+        unreadCount={unreadCount}
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {loading && (
