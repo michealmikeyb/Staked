@@ -84,9 +84,9 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
   const handleReplySubmit = async (content: string) => {
     const parentApId = replyTarget!.comment.ap_id;
-    const parentId = await resolveCommentId(resolvedInstanceRef.current, resolvedTokenRef.current, parentApId).catch(() => null)
+    const parentId = await resolveCommentId(auth.instance, auth.token, parentApId).catch(() => null)
       ?? replyTarget!.comment.id;
-    const newComment = await createComment(resolvedInstanceRef.current, resolvedTokenRef.current, p.id, content, parentId);
+    const newComment = await createComment(auth.instance, auth.token, p.id, content, parentId);
     const remapped = {
       ...newComment,
       comment: { ...newComment.comment, path: replyTarget!.comment.path + '.' + newComment.comment.id },

@@ -83,10 +83,10 @@ export default function PostDetailCard({
   const handleReplySubmit = async (content: string) => {
     const parentApId = replyTarget!.comment.ap_id;
     const parentId =
-      await resolveCommentId(resolvedInstanceRef.current, resolvedTokenRef.current, parentApId).catch(() => null)
+      await resolveCommentId(auth.instance, auth.token, parentApId).catch(() => null)
       ?? replyTarget!.comment.id;
     const newComment = await createComment(
-      resolvedInstanceRef.current, resolvedTokenRef.current, post.id, content, parentId,
+      auth.instance, auth.token, post.id, content, parentId,
     );
     const remapped = {
       ...newComment,

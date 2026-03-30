@@ -33,6 +33,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
   }, [auth, setUnreadCount]);
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType) => {
+    setLoading(true);
     try {
       const newPosts = await fetchPosts(auth.instance, auth.token, nextPage, sort);
       if (newPosts.length === 0) {
