@@ -68,12 +68,12 @@ describe('MenuDrawer', () => {
     expect(screen.queryByRole('button', { name: /inbox/i })).not.toBeInTheDocument();
   });
 
-  it('closes drawer when Profile is clicked (no-op nav)', () => {
+  it('calls onNavigate with /profile and closes drawer when Profile is clicked', () => {
     renderDrawer();
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /profile/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/profile');
     expect(screen.queryByRole('button', { name: /profile/i })).not.toBeInTheDocument();
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('shows unread badge on Inbox button when unreadCount > 0', () => {

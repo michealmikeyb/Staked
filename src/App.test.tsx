@@ -23,6 +23,22 @@ vi.mock('./components/PostDetailPage', () => ({
   default: () => <div>PostDetailPage</div>,
 }));
 
+vi.mock('./components/SavedPage', () => ({
+  default: () => <div>SavedPage</div>,
+}));
+
+vi.mock('./components/SavedPostDetailPage', () => ({
+  default: () => <div>SavedPostDetailPage</div>,
+}));
+
+vi.mock('./components/ProfilePage', () => ({
+  default: () => <div>ProfilePage</div>,
+}));
+
+vi.mock('./components/ProfilePostDetailPage', () => ({
+  default: () => <div>ProfilePostDetailPage</div>,
+}));
+
 describe('App routing', () => {
   it('shows LoginPage when not authenticated', () => {
     render(<App />);

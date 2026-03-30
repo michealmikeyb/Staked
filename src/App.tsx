@@ -7,6 +7,8 @@ import InboxPage from './components/InboxPage';
 import PostDetailPage from './components/PostDetailPage';
 import SavedPage from './components/SavedPage';
 import SavedPostDetailPage from './components/SavedPostDetailPage';
+import ProfilePage from './components/ProfilePage';
+import ProfilePostDetailPage from './components/ProfilePostDetailPage';
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(() => loadAuth());
@@ -54,6 +56,14 @@ export default function App() {
         <Route
           path="/saved/:postId"
           element={<SavedPostDetailPage auth={auth} />}
+        />
+        <Route
+          path="/profile"
+          element={<ProfilePage auth={auth} />}
+        />
+        <Route
+          path="/profile/:postId"
+          element={<ProfilePostDetailPage auth={auth} />}
         />
       </Routes>
     </HashRouter>

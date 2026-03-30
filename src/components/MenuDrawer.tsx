@@ -70,7 +70,7 @@ export default function MenuDrawer({
                 Saved
               </button>
               <button
-                onClick={() => setShowDrawer(false)}
+                onClick={() => handleNavigate('/profile')}
                 aria-label="Profile"
                 style={drawerButtonStyle}
               >
