@@ -30,7 +30,7 @@ const mockSetUnreadCount = vi.fn();
 function renderInbox() {
   return render(
     <MemoryRouter initialEntries={['/inbox']}>
-      <InboxPage auth={mockAuth} setUnreadCount={mockSetUnreadCount} />
+      <InboxPage auth={mockAuth} setUnreadCount={mockSetUnreadCount} unreadCount={0} />
     </MemoryRouter>,
   );
 }

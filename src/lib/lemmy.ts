@@ -62,6 +62,7 @@ export async function fetchSavedPosts(
   page: number,
 ): Promise<PostView[]> {
   const res = await client(instance, token).getPosts({
+    // @ts-expect-error legacy type
     type_: 'Saved',
     sort: 'New',
     page,

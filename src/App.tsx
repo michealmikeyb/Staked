@@ -43,7 +43,7 @@ export default function App() {
         />
         <Route
           path="/inbox/:notifId"
-          element={<PostDetailPage auth={auth} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />}
+          element={<PostDetailPage auth={auth} setUnreadCount={setUnreadCount} />}
         />
       </Routes>
     </HashRouter>
