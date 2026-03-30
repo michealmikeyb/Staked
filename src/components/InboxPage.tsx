@@ -5,7 +5,7 @@ import {
   type NotifItem,
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import HeaderBar from './HeaderBar';
+import MenuDrawer from './MenuDrawer';
 
 function getPublished(item: NotifItem): string {
   return item.type === 'reply'
@@ -44,7 +44,6 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
   const [items, setItems] = useState<NotifItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadOnly, setUnreadOnly] = useState(true);
-  const [showDrawer, setShowDrawer] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount(auth.instance, auth.token)
@@ -97,7 +96,11 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
-      <HeaderBar onMenuOpen={() => setShowDrawer((v) => !v)} onLogoClick={() => navigate('/')} centerContent={filterToggle} />
+      <MenuDrawer
+        onNavigate={navigate}
+        onLogoClick={() => navigate('/')}
+        centerContent={filterToggle}
+      />
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {loading && (
           <div style={{ textAlign: 'center', color: '#888', padding: 32 }}>Loading…</div>
@@ -168,58 +171,6 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
           );
         })}
       </div>
-      {showDrawer && (
-        <>
-          <div
-            onClick={() => setShowDrawer(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 39 }}
-          />
-          <div style={{
-            position: 'fixed', top: 48, left: 0, right: 0,
-            background: '#1a1d24', borderBottom: '1px solid #2a2d35',
-            zIndex: 40, padding: 16,
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              <button
-                onClick={() => setShowDrawer(false)}
-                style={{
-                  background: '#2a2d35', border: 'none', borderRadius: 12,
-                  cursor: 'pointer', padding: '14px 8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  color: '#f5f5f5', fontSize: 12, fontWeight: 500,
-                }}
-              >
-                <span style={{ fontSize: 22 }}>🔖</span>
-                Saved
-              </button>
-              <button
-                onClick={() => setShowDrawer(false)}
-                style={{
-                  background: '#2a2d35', border: 'none', borderRadius: 12,
-                  cursor: 'pointer', padding: '14px 8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  color: '#f5f5f5', fontSize: 12, fontWeight: 500,
-                }}
-              >
-                <span style={{ fontSize: 22 }}>👤</span>
-                Profile
-              </button>
-              <button
-                onClick={() => { setShowDrawer(false); navigate('/inbox'); }}
-                style={{
-                  background: '#2a2d35', border: 'none', borderRadius: 12,
-                  cursor: 'pointer', padding: '14px 8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  color: '#f5f5f5', fontSize: 12, fontWeight: 500,
-                }}
-              >
-                <span style={{ fontSize: 22 }}>📬</span>
-                Inbox
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
