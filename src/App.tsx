@@ -5,6 +5,8 @@ import LoginPage from './components/LoginPage';
 import FeedStack from './components/FeedStack';
 import InboxPage from './components/InboxPage';
 import PostDetailPage from './components/PostDetailPage';
+import SavedPage from './components/SavedPage';
+import SavedPostDetailPage from './components/SavedPostDetailPage';
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(() => loadAuth());
@@ -44,6 +46,14 @@ export default function App() {
         <Route
           path="/inbox/:notifId"
           element={<PostDetailPage auth={auth} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />}
+        />
+        <Route
+          path="/saved"
+          element={<SavedPage auth={auth} />}
+        />
+        <Route
+          path="/saved/:postId"
+          element={<SavedPostDetailPage auth={auth} />}
         />
       </Routes>
     </HashRouter>

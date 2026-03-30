@@ -20,11 +20,11 @@ function placeholderColor(name: string): string {
 export default function SavedPage({ auth }: Props) {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<PostView[]>([]);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
   const loadingRef = useRef(false);
+  const pageRef = useRef(1);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const loadPage = useCallback(async (pageNum: number) => {
@@ -49,12 +49,10 @@ export default function SavedPage({ auth }: Props) {
     }
   }, [auth]);
 
-  // Initial load
   useEffect(() => {
     loadPage(1);
   }, [loadPage]);
 
-  // IntersectionObserver for infinite scroll
   useEffect(() => {
     if (!canLoadMore) return;
     if (typeof IntersectionObserver === 'undefined') return;
@@ -63,15 +61,14 @@ export default function SavedPage({ auth }: Props) {
 
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !loadingRef.current && canLoadMore) {
-        const nextPage = page + 1;
-        setPage(nextPage);
-        loadPage(nextPage);
+        pageRef.current += 1;
+        loadPage(pageRef.current);
       }
     }, { threshold: 0.1 });
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [canLoadMore, page, loadPage]);
+  }, [canLoadMore, loadPage]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
@@ -103,7 +100,6 @@ export default function SavedPage({ auth }: Props) {
                 cursor: 'pointer',
               }}
             >
-              {/* Banner */}
               {bannerSrc ? (
                 <img
                   src={bannerSrc}
@@ -120,7 +116,6 @@ export default function SavedPage({ auth }: Props) {
                   🔖
                 </div>
               )}
-              {/* Body */}
               <div style={{ padding: '10px 12px 12px' }}>
                 <div style={{ fontSize: 10, color: '#ff6b35', fontWeight: 600, marginBottom: 5 }}>
                   c/{community.name}
@@ -141,7 +136,6 @@ export default function SavedPage({ auth }: Props) {
             </div>
           );
         })}
-        {/* Sentinel for infinite scroll */}
         {canLoadMore && !error && <div ref={sentinelRef} style={{ height: 1 }} />}
       </div>
     </div>

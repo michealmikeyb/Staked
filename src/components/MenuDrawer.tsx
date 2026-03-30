@@ -36,6 +36,8 @@ export default function MenuDrawer({
     position: 'relative',
   };
 
+  const iconStyle: React.CSSProperties = { fontSize: 22 };
+
   return (
     <>
       <HeaderBar
@@ -64,7 +66,7 @@ export default function MenuDrawer({
                 aria-label="Saved"
                 style={drawerButtonStyle}
               >
-                <span style={{ fontSize: 22 }}>🔖</span>
+                <span style={iconStyle}>🔖</span>
                 Saved
               </button>
               <button
@@ -72,7 +74,7 @@ export default function MenuDrawer({
                 aria-label="Profile"
                 style={drawerButtonStyle}
               >
-                <span style={{ fontSize: 22 }}>👤</span>
+                <span style={iconStyle}>👤</span>
                 Profile
               </button>
               <button
@@ -95,7 +97,7 @@ export default function MenuDrawer({
                     {unreadCount}
                   </span>
                 )}
-                <span style={{ fontSize: 22 }}>📬</span>
+                <span style={iconStyle}>📬</span>
                 Inbox
               </button>
             </div>

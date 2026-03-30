@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   resolveCommentId, createComment, type CommentView,
 } from '../lib/lemmy';
@@ -57,11 +57,11 @@ export default function PostDetailCard({
     auth,
   );
 
-  const highlightCommentId = commentsLoaded && notifCommentApId
-    ? comments.find((c) => c.comment.ap_id === notifCommentApId)?.comment.id
-    : undefined;
+  const highlightCommentId = useMemo(() => {
+    if (!commentsLoaded || !notifCommentApId) return undefined;
+    return comments.find((c) => c.comment.ap_id === notifCommentApId)?.comment.id;
+  }, [comments, commentsLoaded, notifCommentApId]);
 
-  // Scroll highlighted comment into view once loaded
   useEffect(() => {
     if (highlightCommentId == null) return;
     const timeout = setTimeout(() => {
@@ -71,7 +71,6 @@ export default function PostDetailCard({
     return () => clearTimeout(timeout);
   }, [highlightCommentId]);
 
-  // Keyboard offset for reply sheet
   useEffect(() => {
     if (!replyTarget || !window.visualViewport) return;
     const vv = window.visualViewport;
