@@ -96,7 +96,7 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
-      <HeaderBar onMenuOpen={() => {}} centerContent={filterToggle} />
+      <HeaderBar onMenuOpen={() => {}} onLogoClick={() => navigate('/')} centerContent={filterToggle} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {loading && (
           <div style={{ textAlign: 'center', color: '#888', padding: 32 }}>Loading…</div>
