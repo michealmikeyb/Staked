@@ -38,7 +38,7 @@ const mockPostView = {
   },
   community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
   creator: { name: 'alice', display_name: null },
-  counts: { score: 55, child_count: 3 },
+  counts: { score: 55, comments: 3 },
 };
 
 function renderPage(withState = true) {

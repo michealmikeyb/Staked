@@ -52,7 +52,7 @@ export default function SavedPostDetailPage({ auth }: Props) {
           post={post}
           community={community}
           creator={creator}
-          counts={{ score: counts.score, child_count: (counts as any).comments ?? 0 }}
+          counts={counts}
           auth={auth}
         />
       </div>

@@ -55,7 +55,7 @@ export default function PostDetailPage({ auth, setUnreadCount, unreadCount = 0 }
   const post = notification.data.post;
   const community = notification.data.community;
   const creator = notification.data.creator;
-  const counts = notification.data.counts;
+  const counts = { score: 0, comments: notification.data.counts.child_count };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>

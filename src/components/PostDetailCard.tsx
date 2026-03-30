@@ -30,7 +30,7 @@ interface Creator {
 
 interface Counts {
   score: number;
-  child_count: number;
+  comments: number;
 }
 
 interface Props {
@@ -148,18 +148,18 @@ export default function PostDetailCard({
 
         <div className={styles.footer}>
           <span>▲ {counts.score}</span>
-          <span>💬 {counts.child_count} replies</span>
+          <span>💬 {counts.comments} replies</span>
         </div>
 
         <div className={styles.commentsSection}>
-          {commentsLoaded && comments.length === 0 && counts.child_count > 0 && (
+          {commentsLoaded && comments.length === 0 && counts.comments > 0 && (
             <a
               className={styles.commentsFallback}
               href={post.ap_id}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {counts.child_count} replies — view on {instanceFromActorId(post.ap_id)}
+              {counts.comments} replies — view on {instanceFromActorId(post.ap_id)}
             </a>
           )}
           <CommentList

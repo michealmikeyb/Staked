@@ -40,7 +40,7 @@ const mockCommunity = {
 };
 
 const mockCreator = { name: 'alice', display_name: null };
-const mockCounts = { score: 42, child_count: 7 };
+const mockCounts = { score: 42, comments: 7 };
 
 function renderCard(overrides = {}) {
   return render(
