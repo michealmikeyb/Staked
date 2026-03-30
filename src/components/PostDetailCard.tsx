@@ -51,7 +51,7 @@ export default function PostDetailCard({
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { comments, commentsLoaded, resolvedInstanceRef, resolvedTokenRef } = useCommentLoader(
+  const { comments, commentsLoaded } = useCommentLoader(
     { ap_id: post.ap_id, id: post.id },
     { actor_id: community.actor_id },
     auth,

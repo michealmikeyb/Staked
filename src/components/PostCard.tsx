@@ -30,7 +30,7 @@ function communityInitial(name: string): string {
 export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
-  const { comments, commentsLoaded, resolvedInstanceRef, resolvedTokenRef } = useCommentLoader(p, community, auth);
+  const { comments, commentsLoaded } = useCommentLoader(p, community, auth);
   const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
