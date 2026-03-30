@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, fetchPersonDetails } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -44,6 +44,11 @@ vi.mock('lemmy-js-client', () => {
     }),
     markCommentReplyAsRead: vi.fn().mockResolvedValue({}),
     markPersonMentionAsRead: vi.fn().mockResolvedValue({}),
+    getPersonDetails: vi.fn().mockResolvedValue({
+      person_view: {},
+      posts: [{ post: { id: 1, name: 'Test Post' }, community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' }, creator: { name: 'alice', display_name: null }, counts: { score: 10, comments: 2 } }],
+      comments: [{ comment: { id: 5, content: 'Great post!', ap_id: 'https://lemmy.world/comment/5', path: '0.5', published: '2026-03-29T10:00:00Z' }, post: { id: 1, name: 'Test Post', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null }, community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' }, creator: { name: 'alice', display_name: null }, counts: { score: 3 } }],
+    }),
   }));
   return { LemmyHttp: MockLemmyHttp };
 });
@@ -222,5 +227,27 @@ describe('fetchSavedPosts', () => {
     expect(result).toEqual([mockPost]);
     expect(result[0].post.ap_id).toBe('https://lemmy.world/post/1');
     expect(result[0].community.name).toBe('tech');
+  });
+});
+
+describe('fetchPersonDetails', () => {
+  it('returns posts and comments for the user', async () => {
+    const result = await fetchPersonDetails('lemmy.world', 'tok', 'alice', 1);
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0].post.name).toBe('Test Post');
+    expect(result.comments).toHaveLength(1);
+    expect(result.comments[0].comment.content).toBe('Great post!');
+  });
+
+  it('calls getPersonDetails with correct params', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await fetchPersonDetails('lemmy.world', 'tok', 'alice', 2);
+    const instance = vi.mocked(LemmyHttp).mock.results[0].value;
+    expect(instance.getPersonDetails).toHaveBeenCalledWith({
+      username: 'alice',
+      sort: 'New',
+      page: 2,
+      limit: 20,
+    });
   });
 });

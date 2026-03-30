@@ -156,3 +156,18 @@ export async function markReplyAsRead(instance: string, token: string, replyId: 
 export async function markMentionAsRead(instance: string, token: string, mentionId: number): Promise<void> {
   await client(instance, token).markPersonMentionAsRead({ person_mention_id: mentionId, read: true });
 }
+
+export async function fetchPersonDetails(
+  instance: string,
+  token: string,
+  username: string,
+  page: number,
+): Promise<{ posts: PostView[]; comments: CommentView[] }> {
+  const res = await client(instance, token).getPersonDetails({
+    username,
+    sort: 'New',
+    page,
+    limit: 20,
+  });
+  return { posts: res.posts, comments: res.comments };
+}
