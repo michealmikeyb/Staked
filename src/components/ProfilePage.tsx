@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchPersonDetails, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import { isImageUrl } from '../lib/urlUtils';
+import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import MenuDrawer from './MenuDrawer';
 
 interface Props {
@@ -14,13 +14,6 @@ type Tab = 'all' | 'posts' | 'comments';
 type FeedItem =
   | { kind: 'post'; data: PostView; published: string }
   | { kind: 'comment'; data: CommentView; published: string };
-
-function placeholderColor(name: string): string {
-  const colors = ['#1a2a3a', '#2a1a3a', '#1a3a2a', '#3a2a1a', '#2a3a1a', '#3a1a2a'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
-  return colors[Math.abs(hash) % colors.length];
-}
 
 export default function ProfilePage({ auth }: Props) {
   const navigate = useNavigate();
@@ -76,16 +69,16 @@ export default function ProfilePage({ auth }: Props) {
     return () => observer.disconnect();
   }, [canLoadMore, loadPage]);
 
-  // Merge posts and comments sorted newest-first for the All tab
-  const allItems: FeedItem[] = [
+  const allItems = useMemo<FeedItem[]>(() => [
     ...posts.map((pv): FeedItem => ({ kind: 'post', data: pv, published: pv.post.published })),
     ...comments.map((cv): FeedItem => ({ kind: 'comment', data: cv, published: cv.comment.published })),
-  ].sort((a, b) => b.published.localeCompare(a.published));
+  ].sort((a, b) => b.published.localeCompare(a.published)), [posts, comments]);
 
-  const visibleItems: FeedItem[] =
+  const visibleItems = useMemo<FeedItem[]>(() =>
     tab === 'posts' ? allItems.filter((i) => i.kind === 'post') :
     tab === 'comments' ? allItems.filter((i) => i.kind === 'comment') :
-    allItems;
+    allItems,
+  [allItems, tab]);
 
   const isEmpty = !loading && !error && posts.length === 0 && comments.length === 0;
 
@@ -164,7 +157,6 @@ export default function ProfilePage({ auth }: Props) {
             );
           }
 
-          // comment item
           const { comment, post, community, counts } = item.data;
           return (
             <div

@@ -2,19 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSavedPosts, type PostView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import { isImageUrl } from '../lib/urlUtils';
+import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import MenuDrawer from './MenuDrawer';
 
 interface Props {
   auth: AuthState;
-}
-
-// Deterministic muted colour for posts with no image
-function placeholderColor(name: string): string {
-  const colors = ['#1a2a3a', '#2a1a3a', '#1a3a2a', '#3a2a1a', '#2a3a1a', '#3a1a2a'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
-  return colors[Math.abs(hash) % colors.length];
 }
 
 export default function SavedPage({ auth }: Props) {
