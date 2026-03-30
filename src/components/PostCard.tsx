@@ -170,7 +170,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
               target="_blank"
               rel="noopener noreferrer"
             >
-              {counts.comments} comments — view on {new URL(p.ap_id).hostname}
+              {counts.comments} comments — view on {instanceFromActorId(p.ap_id)}
             </a>
           )}
           <CommentList

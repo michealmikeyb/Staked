@@ -73,7 +73,7 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
   }, [auth, unreadOnly]);
 
   const filterToggle = (
-    <div style={{ display: 'flex', gap: 0, background: '#2a2d35', borderRadius: 20, padding: 2 }}>
+    <div style={{ display: 'flex', background: '#2a2d35', borderRadius: 20, padding: 2 }}>
       {(['Unread', 'All'] as const).map((label) => {
         const active = label === 'Unread' ? unreadOnly : !unreadOnly;
         return (
@@ -123,7 +123,6 @@ export default function InboxPage({ auth, setUnreadCount }: Props) {
                 borderRadius: 12,
                 padding: '12px 14px',
                 cursor: 'pointer',
-                position: 'relative',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>

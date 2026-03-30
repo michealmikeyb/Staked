@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function PostDetailPage({ auth, setUnreadCount }: Props) {
-  const { notifId: _notifId } = useParams<{ notifId: string }>();
+  useParams<{ notifId: string }>();
   const { state } = useLocation();
   const navigate = useNavigate();
   const notification = state?.notification as NotifItem | undefined;
@@ -31,7 +31,6 @@ export default function PostDetailPage({ auth, setUnreadCount }: Props) {
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const markedReadRef = useRef(false);
 
-  // Call hooks unconditionally before any early return
   const { comments, commentsLoaded, resolvedInstanceRef, resolvedTokenRef } = useCommentLoader(
     notification?.data.post ?? { ap_id: '', id: 0 },
     notification?.data.community ?? { actor_id: '' },
@@ -133,7 +132,6 @@ export default function PostDetailPage({ auth, setUnreadCount }: Props) {
         }
       />
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        {/* Community meta */}
         <div className={styles.meta}>
           <div className={styles.communityIcon}>{communityInitial}</div>
           <div>

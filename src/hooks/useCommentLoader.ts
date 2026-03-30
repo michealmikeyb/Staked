@@ -51,10 +51,12 @@ export function useCommentLoader(
         }
       }
 
+      let cachedHomeComments: CommentView[] | null = null;
+
       if (loaded.length === 0 && source?.instance !== auth.instance) {
-        loaded = await fetchComments(auth.instance, auth.token, post.id).catch(() =>
-          fetchComments(auth.instance, '', post.id).catch(() => [])
-        );
+        cachedHomeComments = await fetchComments(auth.instance, auth.token, post.id).catch(() => null) ?? [];
+        loaded = cachedHomeComments.length > 0 ? cachedHomeComments
+          : await fetchComments(auth.instance, '', post.id).catch(() => []);
         if (loaded.length > 0) {
           resolvedInstanceRef.current = auth.instance;
           resolvedTokenRef.current = auth.token;
@@ -62,7 +64,7 @@ export function useCommentLoader(
       }
 
       if (auth.token && source?.instance !== auth.instance) {
-        const homeComments = await fetchComments(auth.instance, auth.token, post.id).catch(() => []);
+        const homeComments = cachedHomeComments ?? await fetchComments(auth.instance, auth.token, post.id).catch(() => []);
         if (homeComments.length > 0) {
           const seenApIds = new Set(loaded.map((c) => c.comment.ap_id));
           const novel = homeComments.filter((c) => !seenApIds.has(c.comment.ap_id));
