@@ -58,15 +58,7 @@ describe('ProfilePostDetailPage', () => {
   });
 
   it('shows fallback when no route state', () => {
-    renderPage(undefined);
-    // Override with no state
-    render(
-      <MemoryRouter initialEntries={[{ pathname: '/profile/1', state: undefined }]}>
-        <Routes>
-          <Route path="/profile/:postId" element={<ProfilePostDetailPage auth={mockAuth} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage(false);
     expect(screen.getByText('Navigate to Profile to view this post.')).toBeInTheDocument();
   });
 
