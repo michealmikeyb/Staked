@@ -1,5 +1,7 @@
 interface LogoProps {
   variant?: 'mark' | 'full';
+  /** 'horizontal' (default) or 'vertical' — only applies to variant="full" */
+  layout?: 'horizontal' | 'vertical';
   size?: number;
   onClick?: () => void;
 }
@@ -10,7 +12,7 @@ interface LogoProps {
  * variant="full"  — icon + wordmark (for LoginPage / splash)
  * size            — icon height in px (default 32); wordmark scales proportionally
  */
-export default function Logo({ variant = 'mark', size = 32, onClick }: LogoProps) {
+export default function Logo({ variant = 'mark', layout = 'horizontal', size = 32, onClick }: LogoProps) {
   // Three fanned playing cards with a right-arrow on the front card.
   // viewBox 34×34; all cards pivot around (17, 17).
   const cardMark = (
@@ -66,7 +68,43 @@ export default function Logo({ variant = 'mark', size = 32, onClick }: LogoProps
     return cardMark;
   }
 
-  // full: icon + wordmark side-by-side
+  const wordmark = (
+    <span
+      aria-label="Stakswipe"
+      style={{
+        fontFamily: "'Syne', system-ui, sans-serif",
+        fontWeight: 800,
+        fontSize: Math.round(size * 0.72),
+        lineHeight: 1,
+        letterSpacing: '-0.5px',
+        userSelect: 'none',
+      }}
+    >
+      <span style={{ color: '#f5f5f5' }}>STAK</span>
+      <span style={{ color: '#ff6b35' }}>SWIPE</span>
+    </span>
+  );
+
+  if (layout === 'vertical') {
+    return (
+      <div
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        style={{
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: Math.round(size * 0.18),
+          cursor: onClick ? 'pointer' : 'default',
+        }}
+      >
+        {cardMark}
+        {wordmark}
+      </div>
+    );
+  }
+
+  // full horizontal: icon + wordmark side-by-side
   return (
     <div
       onClick={onClick}
@@ -79,20 +117,7 @@ export default function Logo({ variant = 'mark', size = 32, onClick }: LogoProps
       }}
     >
       {cardMark}
-      <span
-        aria-label="Stakswipe"
-        style={{
-          fontFamily: "'Syne', system-ui, sans-serif",
-          fontWeight: 800,
-          fontSize: Math.round(size * 0.72),
-          lineHeight: 1,
-          letterSpacing: '-0.5px',
-          userSelect: 'none',
-        }}
-      >
-        <span style={{ color: '#f5f5f5' }}>STAK</span>
-        <span style={{ color: '#ff6b35' }}>SWIPE</span>
-      </span>
+      {wordmark}
     </div>
   );
 }
