@@ -135,7 +135,7 @@ export default function SavedPage({ auth }: Props) {
                 </div>
                 <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
                   <span>▲ {counts.score}</span>
-                  <span>💬 {counts.child_count}</span>
+                  <span>💬 {counts.comments}</span>
                 </div>
               </div>
             </div>

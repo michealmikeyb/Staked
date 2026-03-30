@@ -24,21 +24,7 @@ const mockPost = {
 };
 
 vi.mock('../lib/lemmy', () => ({
-  fetchSavedPosts: vi.fn().mockResolvedValue([
-    {
-      post: {
-        id: 1,
-        name: 'A Saved Post',
-        ap_id: 'https://lemmy.world/post/1',
-        url: null,
-        thumbnail_url: null,
-        body: null,
-      },
-      community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-      creator: { name: 'alice', display_name: null },
-      counts: { score: 100, comments: 5, child_count: 5 },
-    },
-  ]),
+  fetchSavedPosts: vi.fn(),
 }));
 
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
@@ -51,7 +37,11 @@ function renderPage() {
   );
 }
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(async () => {
+  vi.clearAllMocks();
+  const { fetchSavedPosts } = await import('../lib/lemmy');
+  (fetchSavedPosts as ReturnType<typeof vi.fn>).mockResolvedValue([mockPost]);
+});
 
 describe('SavedPage', () => {
   it('shows loading state initially', () => {
