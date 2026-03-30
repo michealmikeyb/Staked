@@ -1,0 +1,149 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { fetchSavedPosts, type PostView } from '../lib/lemmy';
+import { type AuthState } from '../lib/store';
+import { isImageUrl } from '../lib/urlUtils';
+import MenuDrawer from './MenuDrawer';
+
+interface Props {
+  auth: AuthState;
+}
+
+// Deterministic muted colour for posts with no image
+function placeholderColor(name: string): string {
+  const colors = ['#1a2a3a', '#2a1a3a', '#1a3a2a', '#3a2a1a', '#2a3a1a', '#3a1a2a'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return colors[Math.abs(hash) % colors.length];
+}
+
+export default function SavedPage({ auth }: Props) {
+  const navigate = useNavigate();
+  const [posts, setPosts] = useState<PostView[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [canLoadMore, setCanLoadMore] = useState(true);
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const loadPage = useCallback(async (pageNum: number) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const result = await fetchSavedPosts(auth.instance, auth.token, pageNum);
+      if (result.length === 0) {
+        setCanLoadMore(false);
+      } else {
+        setPosts((prev) => [...prev, ...result]);
+      }
+    } catch (err) {
+      if (pageNum === 1) {
+        setError(err instanceof Error ? err.message : 'Failed to load saved posts');
+      } else {
+        setCanLoadMore(false);
+      }
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  }, [auth]);
+
+  // Initial load
+  useEffect(() => {
+    loadPage(1);
+  }, [loadPage]);
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    if (!canLoadMore) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loadingRef.current && canLoadMore) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        loadPage(nextPage);
+      }
+    }, { threshold: 0.1 });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [canLoadMore, page, loadPage]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
+      <MenuDrawer onNavigate={navigate} onLogoClick={() => navigate('/')} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+        {loading && (
+          <div style={{ textAlign: 'center', color: '#888', padding: 32 }}>Loading…</div>
+        )}
+        {!loading && error && (
+          <div style={{ textAlign: 'center', color: '#ff4444', padding: 32 }}>{error}</div>
+        )}
+        {!loading && !error && posts.length === 0 && (
+          <div style={{ textAlign: 'center', color: '#888', padding: 32 }}>No saved posts</div>
+        )}
+        {posts.map((pv) => {
+          const { post, community, counts } = pv;
+          const isImage = !!post.url && isImageUrl(post.url);
+          const bannerSrc = isImage ? post.url : post.thumbnail_url;
+
+          return (
+            <div
+              key={post.id}
+              onClick={() => navigate(`/saved/${post.id}`, { state: { post: pv } })}
+              style={{
+                margin: '6px 12px',
+                background: '#1e2128',
+                borderRadius: 12,
+                overflow: 'hidden',
+                cursor: 'pointer',
+              }}
+            >
+              {/* Banner */}
+              {bannerSrc ? (
+                <img
+                  src={bannerSrc}
+                  alt=""
+                  style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%', height: 120,
+                  background: placeholderColor(post.name),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 32, color: 'rgba(255,255,255,0.15)',
+                }}>
+                  🔖
+                </div>
+              )}
+              {/* Body */}
+              <div style={{ padding: '10px 12px 12px' }}>
+                <div style={{ fontSize: 10, color: '#ff6b35', fontWeight: 600, marginBottom: 5 }}>
+                  c/{community.name}
+                </div>
+                <div style={{
+                  fontSize: 14, fontWeight: 600, color: '#f0f0f0', lineHeight: 1.35,
+                  marginBottom: 8,
+                  display: '-webkit-box', WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>
+                  {post.name}
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
+                  <span>▲ {counts.score}</span>
+                  <span>💬 {counts.child_count}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {/* Sentinel for infinite scroll */}
+        {canLoadMore && !error && <div ref={sentinelRef} style={{ height: 1 }} />}
+      </div>
+    </div>
+  );
+}
