@@ -11,6 +11,10 @@ interface Props {
 
 type Tab = 'all' | 'posts' | 'comments';
 
+type FeedItem =
+  | { kind: 'post'; data: PostView; published: string }
+  | { kind: 'comment'; data: CommentView; published: string };
+
 function placeholderColor(name: string): string {
   const colors = ['#1a2a3a', '#2a1a3a', '#1a3a2a', '#3a2a1a', '#2a3a1a', '#3a1a2a'];
   let hash = 0;
@@ -73,12 +77,8 @@ export default function ProfilePage({ auth }: Props) {
   }, [canLoadMore, loadPage]);
 
   // Merge posts and comments sorted newest-first for the All tab
-  type FeedItem =
-    | { kind: 'post'; data: PostView; published: string }
-    | { kind: 'comment'; data: CommentView; published: string };
-
   const allItems: FeedItem[] = [
-    ...posts.map((pv): FeedItem => ({ kind: 'post', data: pv, published: pv.post.published ?? '' })),
+    ...posts.map((pv): FeedItem => ({ kind: 'post', data: pv, published: pv.post.published })),
     ...comments.map((cv): FeedItem => ({ kind: 'comment', data: cv, published: cv.comment.published })),
   ].sort((a, b) => b.published.localeCompare(a.published));
 
@@ -95,7 +95,7 @@ export default function ProfilePage({ auth }: Props) {
     color: tab === t ? '#ff6b35' : '#555',
     borderBottom: tab === t ? '2px solid #ff6b35' : '2px solid transparent',
     marginBottom: -2,
-    background: 'none', border: 'none', cursor: 'pointer',
+    background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer',
   });
 
   return (

@@ -16,7 +16,7 @@ vi.mock('../lib/lemmy', () => ({
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
 
 const mockPost = {
-  post: { id: 1, name: 'My Terminal Setup', ap_id: 'https://lemmy.world/post/1', url: null, thumbnail_url: null, body: null },
+  post: { id: 1, name: 'My Terminal Setup', ap_id: 'https://lemmy.world/post/1', url: null, thumbnail_url: null, body: null, published: '2026-03-29T15:30:00Z' },
   community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' },
   creator: { name: 'alice', display_name: null },
   counts: { score: 42, comments: 7 },
