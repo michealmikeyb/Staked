@@ -123,7 +123,7 @@ describe('ProfilePage', () => {
 });
 
 describe('ProfilePage with target prop', () => {
-  it('fetches from target instance with no token when target is provided', async () => {
+  it('fetches via auth.instance using user@instance format when target is provided', async () => {
     const { fetchPersonDetails } = await import('../lib/lemmy');
     (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [] });
     render(
@@ -132,7 +132,7 @@ describe('ProfilePage with target prop', () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
-    expect(fetchPersonDetails).toHaveBeenCalledWith('beehaw.org', undefined, 'bob', 1);
+    expect(fetchPersonDetails).toHaveBeenCalledWith('lemmy.world', 'tok', 'bob@beehaw.org', 1);
   });
 
   it('shows target username and instance in header', async () => {

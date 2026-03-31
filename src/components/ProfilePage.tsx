@@ -18,9 +18,12 @@ type FeedItem =
 
 export default function ProfilePage({ auth, target }: Props) {
   const navigate = useNavigate();
-  const effectiveUsername = target?.username ?? auth.username;
-  const effectiveInstance = target?.instance ?? auth.instance;
-  const effectiveToken = target ? undefined : auth.token;
+  // Display values shown in the header
+  const displayUsername = target?.username ?? auth.username;
+  const displayInstance = target?.instance ?? auth.instance;
+  // Fetch from auth.instance using "user@instance" format so federation handles it —
+  // avoids hitting non-Lemmy instances (PieFed, Kbin, etc.) directly.
+  const fetchUsername = target ? `${target.username}@${target.instance}` : auth.username;
 
   const [posts, setPosts] = useState<PostView[]>([]);
   const [comments, setComments] = useState<CommentView[]>([]);
@@ -36,7 +39,7 @@ export default function ProfilePage({ auth, target }: Props) {
     if (loadingRef.current) return;
     loadingRef.current = true;
     try {
-      const result = await fetchPersonDetails(effectiveInstance, effectiveToken, effectiveUsername, pageNum);
+      const result = await fetchPersonDetails(auth.instance, auth.token, fetchUsername, pageNum);
       if (result.posts.length === 0 && result.comments.length === 0) {
         setCanLoadMore(false);
       } else {
@@ -53,7 +56,7 @@ export default function ProfilePage({ auth, target }: Props) {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [effectiveInstance, effectiveToken, effectiveUsername]);
+  }, [auth.instance, auth.token, fetchUsername]);
 
   useEffect(() => {
     loadPage(1);
@@ -102,9 +105,9 @@ export default function ProfilePage({ auth, target }: Props) {
 
       <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid #2a2d35' }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f0f0', marginBottom: 2 }}>
-          u/{effectiveUsername}
+          u/{displayUsername}
         </div>
-        <div style={{ fontSize: 11, color: '#666' }}>{effectiveInstance}</div>
+        <div style={{ fontSize: 11, color: '#666' }}>{displayInstance}</div>
       </div>
 
       <div style={{ display: 'flex', borderBottom: '2px solid #2a2d35', background: '#1a1d24' }}>
