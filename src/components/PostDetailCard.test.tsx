@@ -123,9 +123,9 @@ describe('PostDetailCard', () => {
     expect(screen.getByTestId('share-button')).toBeInTheDocument();
   });
 
-  it('does not render share button when auth is absent', () => {
+  it('renders share button when auth is absent (anonymous users can share)', () => {
     render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
-    expect(screen.queryByTestId('share-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('share-button')).toBeInTheDocument();
   });
 
   it('calls navigator.share when share button clicked and API available', () => {

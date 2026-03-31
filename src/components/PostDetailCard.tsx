@@ -53,11 +53,11 @@ export default function PostDetailCard({
   const [toastVisible, setToastVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const anonAuth: AuthState = {
+  const anonAuth: AuthState = useMemo(() => ({
     instance: instanceFromActorId(community.actor_id),
     token: '',
     username: '',
-  };
+  }), [community.actor_id]);
   const { comments, commentsLoaded } = useCommentLoader(
     { ap_id: post.ap_id, id: post.id },
     { actor_id: community.actor_id },
@@ -88,8 +88,7 @@ export default function PostDetailCard({
   }, [replyTarget, auth]);
 
   const handleShare = () => {
-    if (!auth) return;
-    const url = getShareUrl(auth.instance, post.id);
+    const url = getShareUrl((auth ?? anonAuth).instance, post.id);
     if (navigator.share) {
       navigator.share({ title: post.name, url });
     } else {
@@ -167,15 +166,13 @@ export default function PostDetailCard({
         <div className={styles.footer}>
           <span>▲ {counts.score}</span>
           <span>💬 {counts.comments} replies</span>
-          {auth && (
-            <button
-              data-testid="share-button"
-              className={styles.shareButton}
-              onClick={handleShare}
-            >
-              Share ↗
-            </button>
-          )}
+          <button
+            data-testid="share-button"
+            className={styles.shareButton}
+            onClick={handleShare}
+          >
+            Share ↗
+          </button>
         </div>
 
         <div className={styles.commentsSection}>
