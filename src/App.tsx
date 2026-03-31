@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, useParams } from 'react-router-dom';
 import { loadAuth, clearAuth, type AuthState } from './lib/store';
 import LoginPage from './components/LoginPage';
 import FeedStack from './components/FeedStack';
@@ -10,6 +10,24 @@ import SavedPostDetailPage from './components/SavedPostDetailPage';
 import ProfilePage from './components/ProfilePage';
 import ProfilePostDetailPage from './components/ProfilePostDetailPage';
 import SharedPostPage from './components/SharedPostPage';
+
+function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
+  auth: AuthState;
+  onLogout: () => void;
+  unreadCount: number;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  const { instance, name } = useParams<{ instance: string; name: string }>();
+  return (
+    <FeedStack
+      auth={auth}
+      onLogout={onLogout}
+      unreadCount={unreadCount}
+      setUnreadCount={setUnreadCount}
+      community={{ name: name!, instance: instance! }}
+    />
+  );
+}
 
 function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -39,6 +57,17 @@ function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () =>
       <Route path="/saved/:postId" element={<SavedPostDetailPage auth={auth} />} />
       <Route path="/profile" element={<ProfilePage auth={auth} />} />
       <Route path="/profile/:postId" element={<ProfilePostDetailPage auth={auth} />} />
+      <Route
+        path="/community/:instance/:name"
+        element={
+          <CommunityFeedRoute
+            auth={auth}
+            onLogout={onLogout}
+            unreadCount={unreadCount}
+            setUnreadCount={setUnreadCount}
+          />
+        }
+      />
     </Routes>
   );
 }
