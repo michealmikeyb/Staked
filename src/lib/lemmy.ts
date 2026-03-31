@@ -180,7 +180,7 @@ export async function markMentionAsRead(instance: string, token: string, mention
 
 export async function fetchPersonDetails(
   instance: string,
-  token: string,
+  token: string | undefined,
   username: string,
   page: number,
 ): Promise<{ posts: PostView[]; comments: CommentView[] }> {
