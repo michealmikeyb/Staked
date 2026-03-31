@@ -18,6 +18,14 @@ vi.mock('../lib/lemmy', () => ({
   downvotePost: vi.fn().mockResolvedValue(undefined),
   savePost: vi.fn().mockResolvedValue(undefined),
   fetchUnreadCount: vi.fn().mockResolvedValue(3),
+  fetchCommunityPosts: vi.fn().mockResolvedValue([
+    {
+      post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
+      community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
+      creator: { name: 'bob' },
+      counts: { score: 10, comments: 2 },
+    },
+  ]),
 }));
 
 const mockNavigate = vi.fn();
@@ -289,5 +297,78 @@ describe('drawer navigation', () => {
     fireEvent.click(screen.getByLabelText('Menu'));
     fireEvent.click(screen.getByText('Saved'));
     expect(mockNavigate).toHaveBeenCalledWith('/saved');
+  });
+});
+
+describe('FeedStack community mode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('renders CommunityHeader instead of MenuDrawer when community prop is set', async () => {
+    render(
+      <FeedStack
+        auth={AUTH}
+        onLogout={vi.fn()}
+        unreadCount={0}
+        setUnreadCount={vi.fn()}
+        community={{ name: 'rust', instance: 'lemmy.world' }}
+      />
+    );
+    await screen.findByText('Community Post');
+    expect(screen.getAllByText('c/rust').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /menu/i })).not.toBeInTheDocument();
+  });
+
+  it('calls fetchCommunityPosts with the correct communityRef', async () => {
+    const { fetchCommunityPosts } = await import('../lib/lemmy');
+    render(
+      <FeedStack
+        auth={AUTH}
+        onLogout={vi.fn()}
+        unreadCount={0}
+        setUnreadCount={vi.fn()}
+        community={{ name: 'rust', instance: 'lemmy.world' }}
+      />
+    );
+    await screen.findByText('Community Post');
+    expect(fetchCommunityPosts).toHaveBeenCalledWith(
+      'lemmy.world', 'tok', 'rust@lemmy.world', 1, 'Active',
+    );
+  });
+
+  it('shows a post that is in the seen list (independent seen tracking)', async () => {
+    addSeen(2); // post id 2 is the community post
+    render(
+      <FeedStack
+        auth={AUTH}
+        onLogout={vi.fn()}
+        unreadCount={0}
+        setUnreadCount={vi.fn()}
+        community={{ name: 'rust', instance: 'lemmy.world' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Community Post')).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state without reset button when community feed is exhausted', async () => {
+    const { fetchCommunityPosts } = await import('../lib/lemmy');
+    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    render(
+      <FeedStack
+        auth={AUTH}
+        onLogout={vi.fn()}
+        unreadCount={0}
+        setUnreadCount={vi.fn()}
+        community={{ name: 'rust', instance: 'lemmy.world' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /reset seen history/i })).not.toBeInTheDocument();
+    });
   });
 });

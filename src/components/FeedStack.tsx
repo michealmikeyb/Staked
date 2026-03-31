@@ -1,41 +1,46 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
+import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
+import CommunityHeader from './CommunityHeader';
 
 interface Props {
   auth: AuthState;
   onLogout: () => void;
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  community?: { name: string; instance: string };
 }
 
 const STACK_VISIBLE = 3;
 const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
-export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount }: Props) {
+export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<PostView[]>([]);
   const [page, setPage] = useState(1);
-  const seenRef = useRef<Set<number>>(loadSeen());
+  const seenRef = useRef<Set<number>>(community ? new Set() : loadSeen());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
-  const [sortType, setSortType] = useState<SortType>('TopTwelveHour');
+  const [sortType, setSortType] = useState<SortType>(community ? 'Active' : 'TopTwelveHour');
 
   useEffect(() => {
+    if (community) return;
     fetchUnreadCount(auth.instance, auth.token)
       .then(setUnreadCount)
       .catch(() => {});
-  }, [auth, setUnreadCount]);
+  }, [auth, setUnreadCount, community]);
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType) => {
     setLoading(true);
     try {
-      const newPosts = await fetchPosts(auth.instance, auth.token, nextPage, sort);
+      const newPosts = community
+        ? await fetchCommunityPosts(auth.instance, auth.token, `${community.name}@${community.instance}`, nextPage, sort)
+        : await fetchPosts(auth.instance, auth.token, nextPage, sort);
       if (newPosts.length === 0) {
         setCanLoadMore(false);
       } else {
@@ -50,12 +55,13 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  // Use primitive values (not the community object) as deps to avoid re-creating
+  // loadMore every render when the parent passes `community={{ ... }}` inline.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, community?.name, community?.instance]);
 
   useEffect(() => {
     loadMore(1, sortType);
-    // sortType intentionally omitted: handleSortChange already calls loadMore(1, newSort) directly.
-    // Including sortType here would double-fetch on every sort change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadMore]);
 
@@ -126,12 +132,14 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
     return (
       <div style={screenStyle}>
         <div style={{ color: 'var(--text-secondary)' }}>You've seen everything!</div>
-        <button
-          onClick={() => { clearSeen(); window.location.reload(); }}
-          style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
-        >
-          Reset seen history
-        </button>
+        {!community && (
+          <button
+            onClick={() => { clearSeen(); window.location.reload(); }}
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
+          >
+            Reset seen history
+          </button>
+        )}
         <button
           onClick={onLogout}
           style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
@@ -146,13 +154,22 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
-      <MenuDrawer
-        sortType={sortType}
-        onSortChange={handleSortChange}
-        onNavigate={navigate}
-        onLogoClick={() => navigate('/')}
-        unreadCount={unreadCount}
-      />
+      {community ? (
+        <CommunityHeader
+          name={community.name}
+          sortType={sortType}
+          onSortChange={handleSortChange}
+          onBack={() => navigate(-1)}
+        />
+      ) : (
+        <MenuDrawer
+          sortType={sortType}
+          onSortChange={handleSortChange}
+          onNavigate={navigate}
+          onLogoClick={() => navigate('/')}
+          unreadCount={unreadCount}
+        />
+      )}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         {visible.map((post, i) => {
           const isTop = i === 0;
