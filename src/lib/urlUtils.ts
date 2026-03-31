@@ -23,3 +23,8 @@ const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i;
 export function isImageUrl(url: string): boolean {
   try { return IMAGE_EXT.test(new URL(url).pathname); } catch { return false; }
 }
+
+export function getShareUrl(instance: string, postId: number): string {
+  const base = import.meta.env.VITE_BASE_URL ?? 'https://stakswipe.com';
+  return `${base}/#/post/${instance}/${postId}`;
+}
