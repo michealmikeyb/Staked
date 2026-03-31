@@ -63,16 +63,6 @@ export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }:
       onClick={handleClick}
     >
       <div className={styles.authorRow}>
-        {cv.creator.avatar ? (
-          <img src={cv.creator.avatar} alt="" className={styles.creatorAvatar} />
-        ) : (
-          <span
-            className={styles.creatorAvatarFallback}
-            style={{ background: placeholderColor(cv.creator.name) }}
-          >
-            {cv.creator.name.charAt(0).toUpperCase()}
-          </span>
-        )}
         <span
           className={styles.creatorName}
           onClick={(e) => {
@@ -80,6 +70,16 @@ export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }:
             navigate(`/user/${instanceFromActorId(cv.creator.actor_id)}/${cv.creator.name}`);
           }}
         >
+          {cv.creator.avatar ? (
+            <img src={cv.creator.avatar} alt="" className={styles.creatorAvatar} />
+          ) : (
+            <span
+              className={styles.creatorAvatarFallback}
+              style={{ background: placeholderColor(cv.creator.name) }}
+            >
+              {cv.creator.name.charAt(0).toUpperCase()}
+            </span>
+          )}
           @{cv.creator.display_name ?? cv.creator.name}
         </span>
         <span className={liked ? styles.scoreLiked : styles.score}>▲ {score}</span>
