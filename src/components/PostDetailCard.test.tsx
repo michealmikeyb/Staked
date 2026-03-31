@@ -1,29 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import PostDetailCard from './PostDetailCard';
 
 vi.mock('../lib/lemmy', () => ({
   fetchComments: vi.fn().mockResolvedValue([]),
   resolvePostId: vi.fn().mockResolvedValue(null),
   resolveCommentId: vi.fn().mockResolvedValue(null),
   createComment: vi.fn().mockResolvedValue({
-    comment: { id: 99, content: 'reply', ap_id: 'https://lemmy.world/comment/99', path: '0.99' },
+    comment: { id: 99, content: 'reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
     creator: { name: 'me', display_name: null },
-    counts: { score: 0 },
+    counts: { score: 1 },
   }),
 }));
 
 vi.mock('../hooks/useCommentLoader', () => ({
-  useCommentLoader: vi.fn().mockReturnValue({
-    comments: [],
-    commentsLoaded: true,
-    resolvedInstanceRef: { current: 'lemmy.world' },
-    resolvedTokenRef: { current: 'tok' },
-  }),
+  useCommentLoader: () => ({ comments: [], commentsLoaded: true, resolvedInstanceRef: { current: '' }, resolvedTokenRef: { current: '' } }),
 }));
 
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
+import PostDetailCard from './PostDetailCard';
+
+const POST = { id: 1, name: 'A shared post', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null };
+const COMMUNITY = { name: 'linux', actor_id: 'https://lemmy.world/c/linux' };
+const CREATOR = { name: 'alice', display_name: null };
+const COUNTS = { score: 10, comments: 2 };
+const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 
 const mockPost = {
   id: 1,
@@ -41,8 +41,9 @@ const mockCommunity = {
 
 const mockCreator = { name: 'alice', display_name: null };
 const mockCounts = { score: 42, comments: 7 };
+const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
 
-function renderCard(overrides = {}) {
+function renderCard(overrides: Record<string, unknown> = {}) {
   return render(
     <MemoryRouter>
       <PostDetailCard
@@ -60,6 +61,21 @@ function renderCard(overrides = {}) {
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('PostDetailCard', () => {
+  it('renders without auth (anonymous mode)', () => {
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
+    expect(screen.getByText('A shared post')).toBeInTheDocument();
+  });
+
+  it('does not render ReplySheet when auth is absent', () => {
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
+    expect(screen.queryByTestId('reply-wrapper')).not.toBeInTheDocument();
+  });
+
+  it('renders with auth (authenticated mode)', () => {
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    expect(screen.getByText('A shared post')).toBeInTheDocument();
+  });
+
   it('renders post title', () => {
     renderCard();
     expect(screen.getByText('Test Post Title')).toBeInTheDocument();

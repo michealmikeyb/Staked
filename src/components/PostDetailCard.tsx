@@ -38,7 +38,7 @@ interface Props {
   community: Community;
   creator: Creator;
   counts: Counts;
-  auth: AuthState;
+  auth?: AuthState;
   notifCommentApId?: string;
 }
 
@@ -51,10 +51,15 @@ export default function PostDetailCard({
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const anonAuth: AuthState = {
+    instance: instanceFromActorId(community.actor_id),
+    token: '',
+    username: '',
+  };
   const { comments, commentsLoaded } = useCommentLoader(
     { ap_id: post.ap_id, id: post.id },
     { actor_id: community.actor_id },
-    auth,
+    auth ?? anonAuth,
   );
 
   const highlightCommentId = useMemo(() => {
@@ -72,15 +77,16 @@ export default function PostDetailCard({
   }, [highlightCommentId]);
 
   useEffect(() => {
-    if (!replyTarget || !window.visualViewport) return;
+    if (!replyTarget || !auth || !window.visualViewport) return;
     const vv = window.visualViewport;
     const handler = () => setKeyboardOffset(window.innerHeight - vv.height - vv.offsetTop);
     vv.addEventListener('resize', handler);
     handler();
     return () => { vv.removeEventListener('resize', handler); setKeyboardOffset(0); };
-  }, [replyTarget]);
+  }, [replyTarget, auth]);
 
   const handleReplySubmit = async (content: string) => {
+    if (!auth) return;
     const parentApId = replyTarget!.comment.ap_id;
     const parentId =
       await resolveCommentId(auth.instance, auth.token, parentApId).catch(() => null)
@@ -164,19 +170,21 @@ export default function PostDetailCard({
           <CommentList
             comments={comments}
             localReplies={localReplies}
-            auth={auth}
+            auth={auth ?? anonAuth}
             onSetReplyTarget={setReplyTarget}
             highlightCommentId={highlightCommentId}
           />
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}>
-        <ReplySheet
-          target={replyTarget}
-          onSubmit={handleReplySubmit}
-          onClose={() => setReplyTarget(null)}
-        />
-      </div>
+      {auth && (
+        <div data-testid="reply-wrapper" style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}>
+          <ReplySheet
+            target={replyTarget}
+            onSubmit={handleReplySubmit}
+            onClose={() => setReplyTarget(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
