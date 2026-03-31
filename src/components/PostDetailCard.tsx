@@ -5,6 +5,7 @@ import {
 import { type AuthState } from '../lib/store';
 import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import { useCommentLoader } from '../hooks/useCommentLoader';
+import { useShare } from '../hooks/useShare';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import Toast from './Toast';
@@ -50,7 +51,7 @@ export default function PostDetailCard({
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
+  const { share, toastVisible, setToastVisible } = useShare();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const anonAuth: AuthState = useMemo(() => ({
@@ -87,15 +88,7 @@ export default function PostDetailCard({
     return () => { vv.removeEventListener('resize', handler); setKeyboardOffset(0); };
   }, [replyTarget, auth]);
 
-  const handleShare = () => {
-    const url = getShareUrl((auth ?? anonAuth).instance, post.id);
-    if (navigator.share) {
-      navigator.share({ title: post.name, url });
-    } else {
-      navigator.clipboard.writeText(url);
-      setToastVisible(true);
-    }
-  };
+  const handleShare = () => share(post.name, getShareUrl((auth ?? anonAuth).instance, post.id));
 
   const handleReplySubmit = async (content: string) => {
     if (!auth) return;
@@ -118,7 +111,6 @@ export default function PostDetailCard({
   const imageSrc = isImage ? post.url : post.thumbnail_url;
   const showLinkBanner = !!post.url && !isImage;
 
-  const communityInstance = instanceFromActorId(community.actor_id);
   const communityInitial = community.name.charAt(0).toUpperCase();
 
   return (
@@ -135,7 +127,7 @@ export default function PostDetailCard({
           <div>
             <div className={styles.communityName}>c/{community.name}</div>
             <div className={styles.instanceName}>
-              {communityInstance} • {creator.display_name ?? creator.name}
+              {anonAuth.instance} • {creator.display_name ?? creator.name}
             </div>
           </div>
         </div>

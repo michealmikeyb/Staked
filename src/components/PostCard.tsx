@@ -7,6 +7,7 @@ import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
 import { useCommentLoader } from '../hooks/useCommentLoader';
+import { useShare } from '../hooks/useShare';
 import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import Toast from './Toast';
 
@@ -36,7 +37,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
+  const { share, toastVisible, setToastVisible } = useShare();
 
   useEffect(() => {
     if (!replyTarget || !window.visualViewport) return;
@@ -84,15 +85,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const imageSrc = isImage ? p.url : p.thumbnail_url;
   const showLinkBanner = !!p.url && !isImage;
 
-  const handleShare = () => {
-    const url = getShareUrl(auth.instance, p.id);
-    if (navigator.share) {
-      navigator.share({ title: p.name, url });
-    } else {
-      navigator.clipboard.writeText(url);
-      setToastVisible(true);
-    }
-  };
+  const handleShare = () => share(p.name, getShareUrl(auth.instance, p.id));
 
   const handleReplySubmit = async (content: string) => {
     const parentApId = replyTarget!.comment.ap_id;
