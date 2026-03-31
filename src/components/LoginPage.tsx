@@ -47,7 +47,7 @@ export default function LoginPage({ onLogin }: Props) {
   return (
     <div className={styles.page}>
       <Logo variant="full" layout="vertical" size={44} />
-      <div className={styles.tagline}>Lemmy, fast</div>
+      <div className={styles.tagline}>Lemmy, stacked</div>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div>
           <div className={styles.label}>Instance</div>
