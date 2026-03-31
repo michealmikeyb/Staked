@@ -63,7 +63,7 @@ const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 const MOCK_POST = {
   post: { id: 1, name: 'Rust post', body: null, url: 'https://example.com', thumbnail_url: null },
   community: { name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
-  creator: { name: 'bob' },
+  creator: { name: 'bob', actor_id: 'https://lemmy.world/u/bob', avatar: undefined },
   counts: { score: 200, comments: 15 },
 } as unknown as PostView;
 
@@ -96,6 +96,22 @@ describe('PostCard', () => {
       />
     );
     expect(screen.getByText(/programming/i)).toBeInTheDocument();
+  });
+
+  it('navigates to user profile when creator name is tapped', () => {
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('bob'));
+    expect(mockNavigate).toHaveBeenCalledWith('/user/lemmy.world/bob');
   });
 
   it('navigates to community feed when community name is clicked', () => {

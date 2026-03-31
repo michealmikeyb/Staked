@@ -9,7 +9,7 @@ import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
 import { useCommentLoader } from '../hooks/useCommentLoader';
 import { useShare } from '../hooks/useShare';
-import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl, getShareUrl, placeholderColor } from '../lib/urlUtils';
 import Toast from './Toast';
 
 const SWIPE_THRESHOLD = 120;
@@ -142,7 +142,26 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
             >
               c/{community.name}
             </div>
-            <div className={styles.instanceName}>{instance} • {creator.display_name ?? creator.name}</div>
+            <div className={styles.instanceName}>{instance}</div>
+            <button
+              className={styles.creatorLink}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/user/${instanceFromActorId(creator.actor_id)}/${creator.name}`);
+              }}
+            >
+              {creator.avatar ? (
+                <img src={creator.avatar} alt="" className={styles.creatorAvatar} />
+              ) : (
+                <span
+                  className={styles.creatorAvatarFallback}
+                  style={{ background: placeholderColor(creator.name) }}
+                >
+                  {creator.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+              {creator.display_name ?? creator.name}
+            </button>
           </div>
         </div>
 
