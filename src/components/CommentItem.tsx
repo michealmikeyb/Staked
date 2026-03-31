@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { likeComment, resolveCommentId, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
+import { instanceFromActorId, placeholderColor } from '../lib/urlUtils';
 import styles from './CommentItem.module.css';
 
 interface Props {
@@ -14,6 +16,7 @@ interface Props {
 }
 
 export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }: Props) {
+  const navigate = useNavigate();
   const [liked, setLiked] = useState(false);
   const [score, setScore] = useState(cv.counts.score);
   const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
@@ -60,7 +63,25 @@ export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }:
       onClick={handleClick}
     >
       <div className={styles.authorRow}>
-        <span>@{cv.creator.display_name ?? cv.creator.name}</span>
+        {cv.creator.avatar ? (
+          <img src={cv.creator.avatar} alt="" className={styles.creatorAvatar} />
+        ) : (
+          <span
+            className={styles.creatorAvatarFallback}
+            style={{ background: placeholderColor(cv.creator.name) }}
+          >
+            {cv.creator.name.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span
+          className={styles.creatorName}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/user/${instanceFromActorId(cv.creator.actor_id)}/${cv.creator.name}`);
+          }}
+        >
+          @{cv.creator.display_name ?? cv.creator.name}
+        </span>
         <span className={liked ? styles.scoreLiked : styles.score}>▲ {score}</span>
         {flash.key > 0 && (
           <span key={flash.key} className={styles.scoreFlash}>

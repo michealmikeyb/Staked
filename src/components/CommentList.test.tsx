@@ -10,22 +10,27 @@ vi.mock('../lib/lemmy', () => ({
   resolveCommentId: vi.fn().mockResolvedValue(null),
   createComment: vi.fn().mockResolvedValue({
     comment: { id: 99, content: 'My reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
-    creator: { name: 'me' },
+    creator: { name: 'me', actor_id: 'https://lemmy.world/u/me' },
     counts: { score: 1 },
   }),
 }));
+
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => vi.fn() };
+});
 
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
 
 const mockComments = [
   {
     comment: { id: 1, content: 'First comment', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
-    creator: { name: 'alice' },
+    creator: { name: 'alice', actor_id: 'https://lemmy.world/u/alice' },
     counts: { score: 5 },
   },
   {
     comment: { id: 2, content: 'Second comment', path: '0.2', ap_id: 'https://lemmy.world/comment/2' },
-    creator: { name: 'bob' },
+    creator: { name: 'bob', actor_id: 'https://lemmy.world/u/bob' },
     counts: { score: 3 },
   },
 ] as unknown as CommentView[];
@@ -33,7 +38,7 @@ const mockComments = [
 function makeComment({ id, path }: { id: number; path: string }): CommentView {
   return {
     comment: { id, content: `Comment ${id}`, path, ap_id: `https://lemmy.world/comment/${id}` },
-    creator: { name: `user${id}` },
+    creator: { name: `user${id}`, actor_id: `https://lemmy.world/u/user${id}` },
     counts: { score: id * 2 },
   } as unknown as CommentView;
 }

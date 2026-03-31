@@ -7,15 +7,21 @@ vi.mock('../lib/lemmy', () => ({
   resolveCommentId: vi.fn().mockResolvedValue(null),
 }));
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 const mockCv = {
-  comment: { id: 7, content: '**Bold** and ![img](https://example.com/img.png)', path: '0.7' },
-  creator: { name: 'alice' },
+  comment: { id: 7, content: '**Bold** and ![img](https://example.com/img.png)', path: '0.7', ap_id: 'https://lemmy.world/comment/7' },
+  creator: { name: 'alice', actor_id: 'https://beehaw.org/u/alice', avatar: undefined },
   counts: { score: 10 },
 };
 
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); mockNavigate.mockClear(); });
 
 describe('CommentItem', () => {
   it('renders the author and score', () => {
@@ -109,5 +115,22 @@ describe('CommentItem', () => {
       <CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} />,
     );
     expect(screen.getByTestId('comment-item')).toHaveAttribute('data-comment-id', '7');
+  });
+
+  it('tapping the author name navigates to user profile', () => {
+    render(<CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} />);
+    fireEvent.click(screen.getByText(/@alice/));
+    expect(mockNavigate).toHaveBeenCalledWith('/user/beehaw.org/alice');
+  });
+
+  it('tapping the author name does not trigger the double-tap like', async () => {
+    const { likeComment } = await import('../lib/lemmy');
+    render(<CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} />);
+    // Two rapid clicks on the author name — stopPropagation prevents them reaching the comment div
+    await act(async () => {
+      fireEvent.click(screen.getByText(/@alice/));
+      fireEvent.click(screen.getByText(/@alice/));
+    });
+    expect(likeComment).not.toHaveBeenCalled();
   });
 });
