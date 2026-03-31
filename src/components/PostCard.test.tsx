@@ -35,6 +35,12 @@ vi.mock('../lib/urlUtils', async (importOriginal) => {
   return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1') };
 });
 
+// ── React Router mock ─────────────────────────────────────────────────────────
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
+
 // ── Framer Motion mock ────────────────────────────────────────────────────────
 // animate() is async in the real library; we call onComplete immediately so
 // onSwipeRight/Left fires synchronously in tests.
@@ -90,6 +96,22 @@ describe('PostCard', () => {
       />
     );
     expect(screen.getByText(/programming/i)).toBeInTheDocument();
+  });
+
+  it('navigates to community feed when community name is clicked', () => {
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('c/programming'));
+    expect(mockNavigate).toHaveBeenCalledWith('/community/lemmy.world/programming');
   });
 
   it('calls navigator.share when share button is tapped and share API available', async () => {

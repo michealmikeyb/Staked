@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
+import { useNavigate } from 'react-router-dom';
 import { resolveCommentId, createComment, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import CommentList from './CommentList';
@@ -38,6 +39,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!replyTarget || !window.visualViewport) return;
@@ -133,7 +135,13 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         <div className={styles.meta}>
           <div className={styles.communityIcon}>{communityInitial(community.name)}</div>
           <div>
-            <div className={styles.communityName}>c/{community.name}</div>
+            <div
+              className={styles.communityName}
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/community/${instance}/${community.name}`)}
+            >
+              c/{community.name}
+            </div>
             <div className={styles.instanceName}>{instance} • {creator.display_name ?? creator.name}</div>
           </div>
         </div>
