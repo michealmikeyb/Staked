@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../lib/lemmy', () => ({
@@ -16,6 +16,11 @@ vi.mock('../lib/lemmy', () => ({
 vi.mock('../hooks/useCommentLoader', () => ({
   useCommentLoader: () => ({ comments: [], commentsLoaded: true, resolvedInstanceRef: { current: '' }, resolvedTokenRef: { current: '' } }),
 }));
+
+vi.mock('../lib/urlUtils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/urlUtils')>();
+  return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1') };
+});
 
 import PostDetailCard from './PostDetailCard';
 
@@ -111,5 +116,39 @@ describe('PostDetailCard', () => {
     renderCard();
     expect(screen.queryByText('Tap to open link')).not.toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('renders share button when auth is present', () => {
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    expect(screen.getByTestId('share-button')).toBeInTheDocument();
+  });
+
+  it('does not render share button when auth is absent', () => {
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
+    expect(screen.queryByTestId('share-button')).not.toBeInTheDocument();
+  });
+
+  it('calls navigator.share when share button clicked and API available', () => {
+    const shareMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: shareMock, writable: true, configurable: true });
+
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    fireEvent.click(screen.getByTestId('share-button'));
+
+    expect(shareMock).toHaveBeenCalledWith({
+      title: 'A shared post',
+      url: 'https://stakswipe.com/#/post/lemmy.world/1',
+    });
+  });
+
+  it('copies to clipboard when share API unavailable', () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, writable: true, configurable: true });
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: writeTextMock }, writable: true, configurable: true });
+
+    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    fireEvent.click(screen.getByTestId('share-button'));
+
+    expect(writeTextMock).toHaveBeenCalledWith('https://stakswipe.com/#/post/lemmy.world/1');
   });
 });
