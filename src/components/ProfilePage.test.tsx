@@ -121,3 +121,30 @@ describe('ProfilePage', () => {
     await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 });
+
+describe('ProfilePage with target prop', () => {
+  it('fetches from target instance with no token when target is provided', async () => {
+    const { fetchPersonDetails } = await import('../lib/lemmy');
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [] });
+    render(
+      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
+        <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    expect(fetchPersonDetails).toHaveBeenCalledWith('beehaw.org', undefined, 'bob', 1);
+  });
+
+  it('shows target username and instance in header', async () => {
+    const { fetchPersonDetails } = await import('../lib/lemmy');
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [] });
+    render(
+      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
+        <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    expect(screen.getByText('u/bob')).toBeInTheDocument();
+    expect(screen.getByText('beehaw.org')).toBeInTheDocument();
+  });
+});
