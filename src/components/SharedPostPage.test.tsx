@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 vi.mock('../lib/lemmy', () => ({
@@ -11,6 +11,7 @@ vi.mock('../lib/lemmy', () => ({
   }),
   fetchComments: vi.fn().mockResolvedValue([]),
   resolvePostId: vi.fn().mockResolvedValue(null),
+  resolveCommentId: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../hooks/useCommentLoader', () => ({
@@ -35,9 +36,11 @@ describe('SharedPostPage', () => {
     await waitFor(() => expect(screen.getByText('Hello from Lemmy')).toBeInTheDocument());
   });
 
-  it('shows loading state initially', () => {
+  it('shows loading state initially', async () => {
     renderAt('/post/lemmy.world/42');
     expect(screen.getByTestId('shared-post-loading')).toBeInTheDocument();
+    // Wait for loading to complete
+    await waitFor(() => expect(screen.queryByTestId('shared-post-loading')).not.toBeInTheDocument());
   });
 
   it('shows error when fetchPost rejects', async () => {
