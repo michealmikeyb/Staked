@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { type SortType } from '../lib/lemmy';
-
-const SORT_OPTIONS: { sort: SortType; label: string }[] = [
-  { sort: 'Active', label: 'Active' },
-  { sort: 'Hot', label: 'Hot' },
-  { sort: 'New', label: 'New' },
-  { sort: 'TopSixHour', label: 'Top 6h' },
-  { sort: 'TopTwelveHour', label: 'Top 12h' },
-  { sort: 'TopDay', label: 'Top Day' },
-];
+import { SORT_OPTIONS } from './HeaderBar';
 
 interface Props {
   name: string;

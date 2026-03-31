@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { type SortType } from '../lib/lemmy';
 import Logo from './Logo';
 
-const SORT_OPTIONS: { sort: SortType; label: string }[] = [
+export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
   { sort: 'Active', label: 'Active' },
   { sort: 'Hot', label: 'Hot' },
   { sort: 'New', label: 'New' },
