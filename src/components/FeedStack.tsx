@@ -83,7 +83,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   }
 
   function dismissTop(postId: number) {
-    addSeen(postId);
+    if (!community) addSeen(postId);
     seenRef.current.add(postId);
     setPosts((prev) => prev.slice(1));
   }

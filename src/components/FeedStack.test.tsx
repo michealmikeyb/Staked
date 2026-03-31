@@ -307,6 +307,18 @@ describe('FeedStack community mode', () => {
   });
 
   it('renders CommunityHeader instead of MenuDrawer when community prop is set', async () => {
+    const { fetchCommunityPosts } = await import('../lib/lemmy');
+    (fetchCommunityPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
+          community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
+          creator: { name: 'bob' },
+          counts: { score: 10, comments: 2 },
+        },
+      ])
+      .mockResolvedValue([]);
+
     render(
       <FeedStack
         auth={AUTH}
@@ -317,12 +329,21 @@ describe('FeedStack community mode', () => {
       />
     );
     await screen.findByText('Community Post');
-    expect(screen.getAllByText('c/rust').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('c/rust')).toHaveLength(2);
     expect(screen.queryByRole('button', { name: /menu/i })).not.toBeInTheDocument();
   });
 
   it('calls fetchCommunityPosts with the correct communityRef', async () => {
     const { fetchCommunityPosts } = await import('../lib/lemmy');
+    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
+        community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
+        creator: { name: 'bob' },
+        counts: { score: 10, comments: 2 },
+      },
+    ]);
+
     render(
       <FeedStack
         auth={AUTH}
@@ -339,6 +360,16 @@ describe('FeedStack community mode', () => {
   });
 
   it('shows a post that is in the seen list (independent seen tracking)', async () => {
+    const { fetchCommunityPosts } = await import('../lib/lemmy');
+    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
+        community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
+        creator: { name: 'bob' },
+        counts: { score: 10, comments: 2 },
+      },
+    ]);
+
     addSeen(2); // post id 2 is the community post
     render(
       <FeedStack
