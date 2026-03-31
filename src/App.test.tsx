@@ -81,4 +81,16 @@ describe('App routing', () => {
 
     await waitFor(() => expect(screen.getByText('Shared Post')).toBeInTheDocument());
   });
+
+  it('renders ProfilePage at /user/:instance/:username when authenticated', async () => {
+    const { loadAuth } = await import('./lib/store');
+    vi.mocked(loadAuth).mockReturnValue({
+      token: 'tok',
+      instance: 'lemmy.world',
+      username: 'alice',
+    });
+    window.location.hash = '#/user/beehaw.org/bob';
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('ProfilePage')).toBeInTheDocument());
+  });
 });

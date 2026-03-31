@@ -29,6 +29,11 @@ function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
   );
 }
 
+function UserProfileRoute({ auth }: { auth: AuthState }) {
+  const { instance, username } = useParams<{ instance: string; username: string }>();
+  return <ProfilePage auth={auth} target={{ instance: instance!, username: username! }} />;
+}
+
 function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) {
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -68,6 +73,7 @@ function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () =>
           />
         }
       />
+      <Route path="/user/:instance/:username" element={<UserProfileRoute auth={auth} />} />
     </Routes>
   );
 }
