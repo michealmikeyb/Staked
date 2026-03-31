@@ -1,10 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 vi.mock('./lib/store', () => ({
   loadAuth: vi.fn().mockReturnValue(null),
   clearAuth: vi.fn(),
+}));
+
+vi.mock('./lib/lemmy', () => ({
+  fetchPost: vi.fn().mockResolvedValue({
+    post: { id: 5, name: 'Shared Post', ap_id: 'https://lemmy.world/post/5', url: null, body: null, thumbnail_url: null },
+    community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' },
+    creator: { name: 'carol', display_name: null },
+    counts: { score: 10, comments: 0 },
+  }),
 }));
 
 vi.mock('./components/LoginPage', () => ({
@@ -39,7 +48,15 @@ vi.mock('./components/ProfilePostDetailPage', () => ({
   default: () => <div>ProfilePostDetailPage</div>,
 }));
 
+vi.mock('./components/SharedPostPage', () => ({
+  default: () => <div>Shared Post</div>,
+}));
+
 describe('App routing', () => {
+  beforeEach(() => {
+    window.location.hash = '';
+  });
+
   it('shows LoginPage when not authenticated', () => {
     render(<App />);
     expect(screen.getByText('LoginPage')).toBeInTheDocument();
@@ -54,5 +71,14 @@ describe('App routing', () => {
     });
     render(<App />);
     expect(screen.getByText('FeedStack')).toBeInTheDocument();
+  });
+
+  it('renders SharedPostPage at /post/:instance/:postId without auth', async () => {
+    localStorage.clear();
+    window.location.hash = '#/post/lemmy.world/5';
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Shared Post')).toBeInTheDocument());
   });
 });
