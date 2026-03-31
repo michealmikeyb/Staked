@@ -36,6 +36,22 @@ export async function fetchPosts(
   return res.posts;
 }
 
+export async function fetchCommunityPosts(
+  instance: string,
+  token: string,
+  communityRef: string,
+  page: number,
+  sort: SortType = 'Active',
+): Promise<PostView[]> {
+  const res = await client(instance, token).getPosts({
+    community_name: communityRef,
+    sort,
+    page,
+    limit: 10,
+  });
+  return res.posts;
+}
+
 async function votePost(instance: string, token: string, postId: number, score: 1 | -1): Promise<void> {
   await client(instance, token).likePost({ post_id: postId, score });
 }

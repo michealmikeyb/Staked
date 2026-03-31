@@ -267,3 +267,22 @@ describe('fetchPost', () => {
     expect(result.post.id).toBe(5);
   });
 });
+
+describe('fetchCommunityPosts', () => {
+  it('calls getPosts with the community_name ref', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    const { fetchCommunityPosts } = await import('./lemmy');
+    await fetchCommunityPosts('lemmy.world', 'tok', 'asklemmy@lemmy.world', 1, 'New');
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[0].value;
+    expect(mockInstance.getPosts).toHaveBeenCalledWith(
+      expect.objectContaining({ community_name: 'asklemmy@lemmy.world', sort: 'New', page: 1 }),
+    );
+  });
+
+  it('returns the posts array', async () => {
+    const { fetchCommunityPosts } = await import('./lemmy');
+    const posts = await fetchCommunityPosts('lemmy.world', 'tok', 'asklemmy@lemmy.world', 1, 'Active');
+    expect(posts).toHaveLength(1);
+    expect(posts[0].post.id).toBe(1);
+  });
+});
