@@ -29,6 +29,12 @@ vi.mock('@use-gesture/react', () => ({
   },
 }));
 
+// ── urlUtils mock ─────────────────────────────────────────────────────────────
+vi.mock('../lib/urlUtils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/urlUtils')>();
+  return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1') };
+});
+
 // ── Framer Motion mock ────────────────────────────────────────────────────────
 // animate() is async in the real library; we call onComplete immediately so
 // onSwipeRight/Left fires synchronously in tests.
@@ -84,6 +90,50 @@ describe('PostCard', () => {
       />
     );
     expect(screen.getByText(/programming/i)).toBeInTheDocument();
+  });
+
+  it('calls navigator.share when share button is tapped and share API available', async () => {
+    const shareMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: shareMock, writable: true, configurable: true });
+
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('share-button'));
+    expect(shareMock).toHaveBeenCalledWith({
+      title: 'Rust post',
+      url: 'https://stakswipe.com/#/post/lemmy.world/1',
+    });
+  });
+
+  it('copies to clipboard when share API unavailable', async () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, writable: true, configurable: true });
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: writeTextMock }, writable: true, configurable: true });
+
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('share-button'));
+    expect(writeTextMock).toHaveBeenCalledWith('https://stakswipe.com/#/post/lemmy.world/1');
   });
 });
 

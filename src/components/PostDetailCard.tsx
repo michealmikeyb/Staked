@@ -3,10 +3,11 @@ import {
   resolveCommentId, createComment, type CommentView,
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import { instanceFromActorId, isImageUrl } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import { useCommentLoader } from '../hooks/useCommentLoader';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
+import Toast from './Toast';
 import styles from './PostCard.module.css';
 
 interface Post {
@@ -49,6 +50,7 @@ export default function PostDetailCard({
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const anonAuth: AuthState = {
@@ -84,6 +86,17 @@ export default function PostDetailCard({
     handler();
     return () => { vv.removeEventListener('resize', handler); setKeyboardOffset(0); };
   }, [replyTarget, auth]);
+
+  const handleShare = () => {
+    if (!auth) return;
+    const url = getShareUrl(auth.instance, post.id);
+    if (navigator.share) {
+      navigator.share({ title: post.name, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      setToastVisible(true);
+    }
+  };
 
   const handleReplySubmit = async (content: string) => {
     if (!auth) return;
@@ -154,6 +167,15 @@ export default function PostDetailCard({
         <div className={styles.footer}>
           <span>▲ {counts.score}</span>
           <span>💬 {counts.comments} replies</span>
+          {auth && (
+            <button
+              data-testid="share-button"
+              className={styles.shareButton}
+              onClick={handleShare}
+            >
+              Share ↗
+            </button>
+          )}
         </div>
 
         <div className={styles.commentsSection}>
@@ -185,6 +207,7 @@ export default function PostDetailCard({
           />
         </div>
       )}
+      <Toast message="Link copied" visible={toastVisible} onHide={() => setToastVisible(false)} />
     </div>
   );
 }

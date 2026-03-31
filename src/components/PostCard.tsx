@@ -7,7 +7,8 @@ import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import styles from './PostCard.module.css';
 import { useCommentLoader } from '../hooks/useCommentLoader';
-import { instanceFromActorId, isImageUrl } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
+import Toast from './Toast';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
@@ -35,6 +36,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
 
   useEffect(() => {
     if (!replyTarget || !window.visualViewport) return;
@@ -81,6 +83,16 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const isImage = !!p.url && isImageUrl(p.url);
   const imageSrc = isImage ? p.url : p.thumbnail_url;
   const showLinkBanner = !!p.url && !isImage;
+
+  const handleShare = () => {
+    const url = getShareUrl(auth.instance, p.id);
+    if (navigator.share) {
+      navigator.share({ title: p.name, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      setToastVisible(true);
+    }
+  };
 
   const handleReplySubmit = async (content: string) => {
     const parentApId = replyTarget!.comment.ap_id;
@@ -160,6 +172,13 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         <div className={styles.footer}>
           <span>▲ {counts.score}</span>
           <span>💬 {counts.comments}</span>
+          <button
+            data-testid="share-button"
+            className={styles.shareButton}
+            onClick={handleShare}
+          >
+            Share ↗
+          </button>
         </div>
 
         <div className={styles.commentsSection}>
@@ -191,6 +210,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           onClose={() => setReplyTarget(null)}
         />
       </div>
+      <Toast message="Link copied" visible={toastVisible} onHide={() => setToastVisible(false)} />
     </motion.div>
   );
 }

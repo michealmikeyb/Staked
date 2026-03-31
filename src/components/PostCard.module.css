@@ -171,3 +171,15 @@
   font-size: 0.8rem;
   color: var(--accent);
 }
+
+.shareButton {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
