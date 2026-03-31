@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, fetchPersonDetails } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, fetchPersonDetails, fetchPost } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -48,6 +48,14 @@ vi.mock('lemmy-js-client', () => {
       person_view: {},
       posts: [{ post: { id: 1, name: 'Test Post' }, community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' }, creator: { name: 'alice', display_name: null }, counts: { score: 10, comments: 2 } }],
       comments: [{ comment: { id: 5, content: 'Great post!', ap_id: 'https://lemmy.world/comment/5', path: '0.5', published: '2026-03-29T10:00:00Z' }, post: { id: 1, name: 'Test Post', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null }, community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' }, creator: { name: 'alice', display_name: null }, counts: { score: 3 } }],
+    }),
+    getPost: vi.fn().mockResolvedValue({
+      post_view: {
+        post: { id: 5, name: 'Shared Post', ap_id: 'https://lemmy.world/post/5', url: null, body: null, thumbnail_url: null },
+        community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' },
+        creator: { name: 'carol', display_name: null },
+        counts: { score: 55, comments: 3 },
+      },
     }),
   }));
   return { LemmyHttp: MockLemmyHttp };
@@ -249,5 +257,13 @@ describe('fetchPersonDetails', () => {
       page: 2,
       limit: 20,
     });
+  });
+});
+
+describe('fetchPost', () => {
+  it('returns the post_view from getPost', async () => {
+    const result = await fetchPost('lemmy.world', 5);
+    expect(result.post.name).toBe('Shared Post');
+    expect(result.post.id).toBe(5);
   });
 });

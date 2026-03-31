@@ -70,6 +70,11 @@ export async function fetchSavedPosts(
   return res.posts;
 }
 
+export async function fetchPost(instance: string, postId: number): Promise<PostView> {
+  const res = await client(instance).getPost({ id: postId });
+  return res.post_view;
+}
+
 export async function fetchComments(
   instance: string,
   token: string,
