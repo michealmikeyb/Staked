@@ -148,9 +148,11 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     >
       <motion.div className={styles.overlay} style={{ backgroundColor: overlayColor }} />
       <motion.div
-        className={styles.saveOverlay}
+        className={styles.undoOverlay}
         style={{ opacity: Math.min(pullDelta / 80, 1) }}
-      />
+      >
+        <span style={{ fontSize: '3rem' }}>↩</span>
+      </motion.div>
 
       <div
         ref={scrollRef}
