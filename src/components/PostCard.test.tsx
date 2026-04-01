@@ -210,6 +210,36 @@ describe('PostCard', () => {
     expect(screen.getByText(/commenting on post/i)).toBeInTheDocument();
   });
 
+  it('clicking edit button on own comment opens edit sheet and calls editComment on submit', async () => {
+    const { fetchComments, editComment } = await import('../lib/lemmy');
+    vi.mocked(fetchComments).mockResolvedValueOnce([
+      {
+        comment: { id: 7, content: 'My comment', path: '0.7', ap_id: 'https://lemmy.world/comment/7' },
+        creator: { name: 'alice', actor_id: 'https://lemmy.world/u/alice', avatar: undefined, display_name: null },
+        counts: { score: 1 },
+      } as never,
+    ]);
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    expect(screen.getByText(/editing your comment/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Edited text' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /send/i }));
+    });
+    expect(editComment).toHaveBeenCalledWith('lemmy.world', 'tok', 7, 'Edited text');
+  });
+
   it('submitting a new comment calls createComment without parentId and adds it locally', async () => {
     const { createComment } = await import('../lib/lemmy');
     render(
