@@ -32,10 +32,6 @@ interface Props {
   onSave: () => void;
 }
 
-function communityInitial(name: string): string {
-  return name.charAt(0).toUpperCase();
-}
-
 export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
@@ -104,17 +100,16 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
   const handleShare = () => share(p.name, getShareUrl(auth.instance, p.id));
 
-  const handleReplySubmit = async (content: string, target: CommentView) => {
-    const parentApId = target.comment.ap_id;
-    const parentId =
-      await resolveCommentId(auth.instance, auth.token, parentApId).catch(() => null)
-      ?? target.comment.id;
+  const handleCommentCreate = async (content: string, parentComment?: CommentView) => {
+    const parentId = parentComment
+      ? await resolveCommentId(auth.instance, auth.token, parentComment.comment.ap_id).catch(() => null) ?? parentComment.comment.id
+      : undefined;
     const newComment = await createComment(auth.instance, auth.token, p.id, content, parentId);
-    const remapped = {
+    const pathPrefix = parentComment?.comment.path ?? '0';
+    setLocalReplies(prev => [...prev, {
       ...newComment,
-      comment: { ...newComment.comment, path: target.comment.path + '.' + newComment.comment.id },
-    };
-    setLocalReplies((prev) => [...prev, remapped]);
+      comment: { ...newComment.comment, path: pathPrefix + '.' + newComment.comment.id },
+    }]);
   };
 
   const handleEditSubmit = async (content: string, target: CommentView) => {
@@ -125,23 +120,14 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     setLocalEdits((prev) => ({ ...prev, [target.comment.id]: content }));
   };
 
-  const handleNewCommentSubmit = async (content: string) => {
-    const newComment = await createComment(auth.instance, auth.token, p.id, content, undefined);
-    const remapped = {
-      ...newComment,
-      comment: { ...newComment.comment, path: '0.' + newComment.comment.id },
-    };
-    setLocalReplies((prev) => [...prev, remapped]);
-  };
-
   const handleSubmit = async (content: string) => {
     if (!sheetState) return;
     if (sheetState.mode === 'reply') {
-      await handleReplySubmit(content, sheetState.target);
+      await handleCommentCreate(content, sheetState.target);
     } else if (sheetState.mode === 'edit') {
       await handleEditSubmit(content, sheetState.target);
     } else {
-      await handleNewCommentSubmit(content);
+      await handleCommentCreate(content);
     }
     // Only reached on success — errors re-throw to ReplySheet's catch block, keeping the sheet open.
     setSheetState(null);
@@ -183,7 +169,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         }}
       >
         <div className={styles.meta}>
-          <div className={styles.communityIcon}>{communityInitial(community.name)}</div>
+          <div className={styles.communityIcon}>{community.name.charAt(0).toUpperCase()}</div>
           <div>
             <div
               className={styles.communityName}
