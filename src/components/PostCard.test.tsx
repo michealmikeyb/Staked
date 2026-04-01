@@ -12,6 +12,11 @@ vi.mock('../lib/lemmy', () => ({
     creator: { name: 'me', display_name: null },
     counts: { score: 1 },
   }),
+  editComment: vi.fn().mockResolvedValue({
+    comment: { id: 1, content: 'Edited', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
+    creator: { name: 'alice', display_name: null },
+    counts: { score: 1 },
+  }),
   savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -173,6 +178,58 @@ describe('PostCard', () => {
     fireEvent.click(screen.getByTestId('share-button'));
     expect(writeTextMock).toHaveBeenCalledWith('https://stakswipe.com/#/post/lemmy.world/1');
   });
+
+  it('renders a Comment button in the footer', () => {
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('comment-button')).toBeInTheDocument();
+  });
+
+  it('clicking Comment button shows Commenting on post header in sheet', async () => {
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('comment-button'));
+    expect(screen.getByText(/commenting on post/i)).toBeInTheDocument();
+  });
+
+  it('submitting a new comment calls createComment without parentId and adds it locally', async () => {
+    const { createComment } = await import('../lib/lemmy');
+    render(
+      <PostCard
+        post={MOCK_POST}
+        auth={AUTH}
+        zIndex={1}
+        scale={1}
+        onSwipeRight={vi.fn()}
+        onSwipeLeft={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('comment-button'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Top level comment' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /send/i }));
+    });
+    expect(createComment).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Top level comment', undefined);
+  });
 });
 
 describe('PostCard gestures', () => {
@@ -300,7 +357,7 @@ describe('PostCard reply submission', () => {
     await waitFor(() => screen.getByText('Original comment'));
 
     fireEvent.click(screen.getByRole('button', { name: /reply/i }));
-    fireEvent.change(screen.getByPlaceholderText(/write a reply/i), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'My reply' },
     });
     await act(async () => {

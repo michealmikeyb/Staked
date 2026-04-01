@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import { useNavigate } from 'react-router-dom';
-import { resolveCommentId, createComment, type PostView, type CommentView } from '../lib/lemmy';
+import { resolveCommentId, createComment, editComment, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
@@ -15,6 +15,12 @@ import Toast from './Toast';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
+
+type SheetState =
+  | { mode: 'reply'; target: CommentView }
+  | { mode: 'edit';  target: CommentView }
+  | { mode: 'new' }
+  | null;
 
 interface Props {
   post: PostView;
@@ -30,20 +36,21 @@ function communityInitial(name: string): string {
   return name.charAt(0).toUpperCase();
 }
 
-
 export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const { comments, commentsLoaded } = useCommentLoader(p, community, auth);
-  const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
+  const [sheetState, setSheetState] = useState<SheetState>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
+  const [localEdits, setLocalEdits] = useState<Record<number, string>>({});
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
   const navigate = useNavigate();
 
+  // Raise card when keyboard appears
   useEffect(() => {
-    if (!replyTarget || !window.visualViewport) return;
+    if (!sheetState || !window.visualViewport) return;
     const vv = window.visualViewport;
     const handler = () => {
       setKeyboardOffset(window.innerHeight - vv.height - vv.offsetTop);
@@ -54,17 +61,24 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
       vv.removeEventListener('resize', handler);
       setKeyboardOffset(0);
     };
-  }, [replyTarget]);
+  }, [sheetState]);
+
+  // Scroll parent comment into view when replying
+  useEffect(() => {
+    if (sheetState?.mode !== 'reply') return;
+    const el = scrollRef.current?.querySelector(
+      `[data-comment-id="${sheetState.target.comment.id}"]`,
+    );
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  }, [sheetState]);
 
   const x = useMotionValue(0);
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const [pullDelta, setPullDelta] = useState(0);
 
-  // Right swipe rotates CCW ("lifting"), left swipe CW ("sinking") — opposite of standard Tinder.
+  // Right swipe rotates CCW ("lifting"), left swipe CW ("sinking")
   const rotate = useTransform(x, [-150, 0, 150], [12, 0, -12]);
-
   const overlayColor = useTransform(x, (v) => {
     const opacity = Math.min(Math.abs(v) / 120, 1) * 0.45;
     return v > 0 ? `rgba(255,107,53,${opacity})` : `rgba(80,80,80,${opacity})`;
@@ -90,18 +104,52 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
 
   const handleShare = () => share(p.name, getShareUrl(auth.instance, p.id));
 
-  const handleReplySubmit = async (content: string) => {
-    const parentApId = replyTarget!.comment.ap_id;
-    const parentId = await resolveCommentId(auth.instance, auth.token, parentApId).catch(() => null)
-      ?? replyTarget!.comment.id;
+  const handleReplySubmit = async (content: string, target: CommentView) => {
+    const parentApId = target.comment.ap_id;
+    const parentId =
+      await resolveCommentId(auth.instance, auth.token, parentApId).catch(() => null)
+      ?? target.comment.id;
     const newComment = await createComment(auth.instance, auth.token, p.id, content, parentId);
     const remapped = {
       ...newComment,
-      comment: { ...newComment.comment, path: replyTarget!.comment.path + '.' + newComment.comment.id },
+      comment: { ...newComment.comment, path: target.comment.path + '.' + newComment.comment.id },
     };
     setLocalReplies((prev) => [...prev, remapped]);
-    setReplyTarget(null);
   };
+
+  const handleEditSubmit = async (content: string, target: CommentView) => {
+    const localId =
+      await resolveCommentId(auth.instance, auth.token, target.comment.ap_id).catch(() => null)
+      ?? target.comment.id;
+    await editComment(auth.instance, auth.token, localId, content);
+    setLocalEdits((prev) => ({ ...prev, [target.comment.id]: content }));
+  };
+
+  const handleNewCommentSubmit = async (content: string) => {
+    const newComment = await createComment(auth.instance, auth.token, p.id, content, undefined);
+    const remapped = {
+      ...newComment,
+      comment: { ...newComment.comment, path: '0.' + newComment.comment.id },
+    };
+    setLocalReplies((prev) => [...prev, remapped]);
+  };
+
+  const handleSubmit = async (content: string) => {
+    if (!sheetState) return;
+    if (sheetState.mode === 'reply') {
+      await handleReplySubmit(content, sheetState.target);
+    } else if (sheetState.mode === 'edit') {
+      await handleEditSubmit(content, sheetState.target);
+    } else {
+      await handleNewCommentSubmit(content);
+    }
+    setSheetState(null);
+  };
+
+  const initialEditContent =
+    sheetState?.mode === 'edit'
+      ? (localEdits[sheetState.target.comment.id] ?? sheetState.target.comment.content)
+      : undefined;
 
   return (
     <motion.div
@@ -191,6 +239,13 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           >
             Share ↗
           </button>
+          <button
+            data-testid="comment-button"
+            className={styles.shareButton}
+            onClick={(e) => { e.stopPropagation(); setSheetState({ mode: 'new' }); }}
+          >
+            💬 Comment
+          </button>
         </div>
 
         <div className={styles.commentsSection}>
@@ -208,7 +263,9 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
             comments={comments}
             localReplies={localReplies}
             auth={auth}
-            onSetReplyTarget={setReplyTarget}
+            onSetReplyTarget={(cv) => setSheetState({ mode: 'reply', target: cv })}
+            onEdit={(cv) => setSheetState({ mode: 'edit', target: cv })}
+            localEdits={localEdits}
           />
         </div>
       </div>
@@ -217,10 +274,11 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}
       >
         <ReplySheet
-          mode={replyTarget ? 'reply' : null}
-          target={replyTarget ?? undefined}
-          onSubmit={handleReplySubmit}
-          onClose={() => setReplyTarget(null)}
+          mode={sheetState?.mode ?? null}
+          target={sheetState && sheetState.mode !== 'new' ? sheetState.target : undefined}
+          initialContent={initialEditContent}
+          onSubmit={handleSubmit}
+          onClose={() => setSheetState(null)}
         />
       </div>
       <Toast message="Link copied" visible={toastVisible} onHide={() => setToastVisible(false)} />
