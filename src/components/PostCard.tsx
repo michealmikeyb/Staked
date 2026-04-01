@@ -29,10 +29,11 @@ interface Props {
   scale: number;
   onSwipeRight: () => void;
   onSwipeLeft: () => void;
+  onUndo: () => void;
   onSave: () => void;
 }
 
-export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onSave }: Props) {
+export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onUndo, onSave }: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const { comments, commentsLoaded } = useCommentLoader(p, community, auth);
@@ -42,6 +43,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
+  const [saveToastVisible, setSaveToastVisible] = useState(false);
   const navigate = useNavigate();
 
   // Raise card when keyboard appears
@@ -164,7 +166,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
           }
         }}
         onTouchEnd={() => {
-          if (pullDelta >= 80) onSave();
+          if (pullDelta >= 80) onUndo();
           setPullDelta(0);
         }}
       >
@@ -189,6 +191,10 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
               <CreatorAvatar name={creator.name} avatar={creator.avatar} size={16} />
               {creator.display_name ?? creator.name}
             </button>
+          </div>
+          <div className={styles.metaStats}>
+            <span data-testid="meta-score">▲ {counts.score}</span>
+            <span data-testid="meta-comments">💬 {counts.comments}</span>
           </div>
         </div>
 
@@ -217,18 +223,23 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         {p.body && <div className={styles.excerpt}>{p.body}</div>}
 
         <div className={styles.footer}>
-          <span>▲ {counts.score}</span>
-          <span>💬 {counts.comments}</span>
+          <button
+            data-testid="save-button"
+            className={styles.footerAction}
+            onClick={(e) => { e.stopPropagation(); onSave(); setSaveToastVisible(true); }}
+          >
+            🔖 Save
+          </button>
           <button
             data-testid="share-button"
-            className={styles.shareButton}
+            className={styles.footerAction}
             onClick={handleShare}
           >
             Share ↗
           </button>
           <button
             data-testid="comment-button"
-            className={styles.shareButton}
+            className={styles.footerAction}
             onClick={(e) => { e.stopPropagation(); setSheetState({ mode: 'new' }); }}
           >
             💬 Comment
@@ -269,6 +280,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         />
       </div>
       <Toast message="Link copied" visible={toastVisible} onHide={() => setToastVisible(false)} />
+      <Toast message="Saved" visible={saveToastVisible} onHide={() => setSaveToastVisible(false)} />
     </motion.div>
   );
 }

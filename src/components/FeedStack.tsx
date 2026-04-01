@@ -190,9 +190,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
                 await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
                 dismissTop(post.post.id);
               } : () => {}}
+              onUndo={() => {}}
               onSave={isTop ? () => {
                 savePost(auth.instance, auth.token, post.post.id).catch(() => {});
-                dismissTop(post.post.id);
               } : () => {}}
             />
           );
