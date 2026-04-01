@@ -15,6 +15,7 @@ import Toast from './Toast';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
+const EMPTY_MOTION_PROPS = {};
 
 type SheetState =
   | { mode: 'reply'; target: CommentView }
@@ -153,7 +154,7 @@ export default function PostCard({
         animate: { y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } },
         onAnimationComplete: onReturnAnimationComplete,
       }
-    : {};
+    : EMPTY_MOTION_PROPS;
 
   return (
     <motion.div

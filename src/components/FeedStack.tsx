@@ -88,7 +88,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     const topPost = posts[0];
     if (topPost) setUndoStack((stack) => [...stack, topPost]);
     setPosts((prev) => prev.slice(1));
-    setReturningPostId(null);
+    if (returningPostId !== null) setReturningPostId(null);
     if (!community) addSeen(postId);
     seenRef.current.add(postId);
   }
