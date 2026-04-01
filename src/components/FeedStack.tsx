@@ -21,6 +21,7 @@ const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'colu
 export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<PostView[]>([]);
+  const [undoStack, setUndoStack] = useState<PostView[]>([]);
   const [page, setPage] = useState(1);
   const seenRef = useRef<Set<number>>(community ? new Set() : loadSeen());
   const [loading, setLoading] = useState(true);
@@ -83,9 +84,18 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   }
 
   function dismissTop(postId: number) {
+    const topPost = posts[0];
+    if (topPost) setUndoStack((stack) => [...stack, topPost]);
+    setPosts((prev) => prev.slice(1));
     if (!community) addSeen(postId);
     seenRef.current.add(postId);
-    setPosts((prev) => prev.slice(1));
+  }
+
+  function handleUndo() {
+    if (undoStack.length === 0) return;
+    const post = undoStack[undoStack.length - 1];
+    setUndoStack(undoStack.slice(0, -1));
+    setPosts((prev) => [post, ...prev]);
   }
 
   useEffect(() => {
@@ -100,8 +110,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
         downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowDown') {
-        savePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
-        dismissTop(topPost.post.id);
+        handleUndo();
       }
     }
 
@@ -190,7 +199,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
                 await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
                 dismissTop(post.post.id);
               } : () => {}}
-              onUndo={() => {}}
+              onUndo={isTop ? handleUndo : () => {}}
               onSave={isTop ? () => {
                 savePost(auth.instance, auth.token, post.post.id).catch(() => {});
               } : () => {}}

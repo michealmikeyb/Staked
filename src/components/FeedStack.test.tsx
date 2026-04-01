@@ -155,8 +155,10 @@ describe('FeedStack keyboard shortcuts', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.clear();
-    const { fetchPosts } = await import('../lib/lemmy');
-    // Return the post on page 1, then empty so pagination stops and avoids infinite loop.
+  });
+
+  it('ArrowDown with empty undo stack does nothing', async () => {
+    const { fetchPosts, savePost } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce([
         {
@@ -167,20 +169,82 @@ describe('FeedStack keyboard shortcuts', () => {
         },
       ])
       .mockResolvedValue([]);
-  });
-
-  it('calls savePost and dismisses the top post when ArrowDown is pressed', async () => {
-    const { savePost } = await import('../lib/lemmy');
 
     render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
 
     fireEvent.keyDown(window, { key: 'ArrowDown' });
 
-    expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
-    await waitFor(() => {
-      expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
-    });
+    expect(screen.getByText('Test Post Title')).toBeInTheDocument();
+    expect(savePost).not.toHaveBeenCalled();
+  });
+
+  it('ArrowDown restores the last dismissed post', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'First Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 10, comments: 0 },
+        },
+        {
+          post: { id: 2, name: 'Second Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 5, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('First Post');
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.queryByText('First Post')).not.toBeInTheDocument());
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    await waitFor(() => expect(screen.getByText('First Post')).toBeInTheDocument());
+  });
+
+  it('ArrowDown can undo multiple times', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'First Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 10, comments: 0 },
+        },
+        {
+          post: { id: 2, name: 'Second Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 5, comments: 0 },
+        },
+        {
+          post: { id: 3, name: 'Third Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/3' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 3, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('First Post');
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.queryByText('First Post')).not.toBeInTheDocument());
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.queryByText('Second Post')).not.toBeInTheDocument());
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    await waitFor(() => expect(screen.getByText('Second Post')).toBeInTheDocument());
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    await waitFor(() => expect(screen.getByText('First Post')).toBeInTheDocument());
   });
 });
 
