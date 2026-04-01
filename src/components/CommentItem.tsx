@@ -28,7 +28,7 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
 
   const isOwnComment =
     cv.creator.name === auth.username &&
-    cv.creator.actor_id.includes(auth.instance);
+    !!cv.creator.actor_id?.includes(auth.instance);
 
   const handleClick = () => {
     const now = Date.now();
