@@ -69,11 +69,30 @@
   font-size: 0.72rem;
   padding: 4px 0 0;
   cursor: pointer;
-  display: block;
 }
 
 .replyButton:hover {
   color: var(--accent);
+}
+
+.commentActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.editButton {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.72rem;
+  padding: 4px 0 0;
+  cursor: pointer;
+  display: block;
+}
+
+.editButton:hover {
+  opacity: 0.8;
 }
 
 .creatorName {

@@ -13,17 +13,22 @@ interface Props {
   auth: AuthState;
   depth: number;
   onReply: (cv: CommentView) => void;
+  onEdit?: (cv: CommentView) => void;
+  overrideContent?: string;
   isHighlighted?: boolean;
 }
 
-export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }: Props) {
+export default function CommentItem({ cv, auth, depth, onReply, onEdit, overrideContent, isHighlighted }: Props) {
   const navigate = useNavigate();
   const [liked, setLiked] = useState(false);
   const [score, setScore] = useState(cv.counts.score);
   const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
   const lastTapRef = useRef<number>(0);
-  // Cache the resolved local comment ID on auth.instance to avoid re-resolving on every like.
   const resolvedIdRef = useRef<number | null>(null);
+
+  const isOwnComment =
+    cv.creator.name === auth.username &&
+    cv.creator.actor_id.includes(auth.instance);
 
   const handleClick = () => {
     const now = Date.now();
@@ -35,8 +40,6 @@ export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }:
       setScore((s) => s + delta);
       setFlash((f) => ({ key: f.key + 1, delta: delta as 1 | -1 }));
       const doLike = async () => {
-        // cv.comment.id may be a local ID from a different (source) instance.
-        // Resolve the ID on auth.instance so the like API call targets the right comment.
         if (resolvedIdRef.current === null) {
           const resolved = await resolveCommentId(auth.instance, auth.token, cv.comment.ap_id).catch(() => null);
           resolvedIdRef.current = resolved ?? cv.comment.id;
@@ -82,14 +85,26 @@ export default function CommentItem({ cv, auth, depth, onReply, isHighlighted }:
         )}
       </div>
       <div className={styles.body}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cv.comment.content}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {overrideContent ?? cv.comment.content}
+        </ReactMarkdown>
       </div>
-      <button
-        className={styles.replyButton}
-        onClick={(e) => { e.stopPropagation(); onReply(cv); }}
-      >
-        ↩ Reply
-      </button>
+      <div className={styles.commentActions}>
+        <button
+          className={styles.replyButton}
+          onClick={(e) => { e.stopPropagation(); onReply(cv); }}
+        >
+          ↩ Reply
+        </button>
+        {isOwnComment && onEdit && (
+          <button
+            className={styles.editButton}
+            onClick={(e) => { e.stopPropagation(); onEdit(cv); }}
+          >
+            ✏ Edit
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -133,4 +133,50 @@ describe('CommentItem', () => {
     });
     expect(likeComment).not.toHaveBeenCalled();
   });
+
+  it('shows edit button for own comments', () => {
+    const ownCv = {
+      ...mockCv,
+      creator: { name: 'me', actor_id: 'https://lemmy.world/u/me', avatar: undefined },
+    };
+    render(
+      <CommentItem cv={ownCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} onEdit={vi.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
+  });
+
+  it('hides edit button for other users comments', () => {
+    // mockCv creator is 'alice' on beehaw.org; mockAuth.username is 'me' on lemmy.world
+    render(
+      <CommentItem cv={mockCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} onEdit={vi.fn()} />,
+    );
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
+  });
+
+  it('clicking edit button calls onEdit with the comment view', () => {
+    const onEdit = vi.fn();
+    const ownCv = {
+      ...mockCv,
+      creator: { name: 'me', actor_id: 'https://lemmy.world/u/me', avatar: undefined },
+    };
+    render(
+      <CommentItem cv={ownCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} onEdit={onEdit} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    expect(onEdit).toHaveBeenCalledWith(ownCv);
+  });
+
+  it('displays overrideContent instead of original comment content', () => {
+    render(
+      <CommentItem
+        cv={mockCv as never}
+        auth={mockAuth}
+        depth={1}
+        onReply={vi.fn()}
+        overrideContent="Updated text"
+      />,
+    );
+    expect(screen.getByText('Updated text')).toBeInTheDocument();
+    expect(screen.queryByText(/Bold/)).not.toBeInTheDocument();
+  });
 });
