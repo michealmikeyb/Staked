@@ -56,7 +56,8 @@ function Wrapper({ onSubmit = vi.fn() }: { onSubmit?: (content: string) => Promi
         onSetReplyTarget={setReplyTarget}
       />
       <ReplySheet
-        target={replyTarget}
+        mode={replyTarget ? 'reply' : null}
+        target={replyTarget ?? undefined}
         onSubmit={onSubmit}
         onClose={() => setReplyTarget(null)}
       />
@@ -85,7 +86,7 @@ describe('CommentList', () => {
     render(<Wrapper onSubmit={onSubmit} />);
     const replyButtons = screen.getAllByRole('button', { name: /reply/i });
     fireEvent.click(replyButtons[0]);
-    fireEvent.change(screen.getByPlaceholderText(/write a reply/i), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'My reply' },
     });
     await act(async () => {

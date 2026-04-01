@@ -217,7 +217,8 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
         style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}
       >
         <ReplySheet
-          target={replyTarget}
+          mode={replyTarget ? 'reply' : null}
+          target={replyTarget ?? undefined}
           onSubmit={handleReplySubmit}
           onClose={() => setReplyTarget(null)}
         />

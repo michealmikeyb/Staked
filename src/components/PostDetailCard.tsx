@@ -190,7 +190,8 @@ export default function PostDetailCard({
       {auth && (
         <div data-testid="reply-wrapper" style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}>
           <ReplySheet
-            target={replyTarget}
+            mode={replyTarget ? 'reply' : null}
+            target={replyTarget ?? undefined}
             onSubmit={handleReplySubmit}
             onClose={() => setReplyTarget(null)}
           />
