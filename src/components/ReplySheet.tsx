@@ -39,7 +39,7 @@ export default function ReplySheet({ mode, target, initialContent, onSubmit, onC
 
   const header =
     mode === 'reply'
-      ? `↩ Replying to @${target?.creator.display_name ?? target?.creator.name}`
+      ? `↩ Replying to @${target?.creator.display_name ?? target?.creator.name ?? ''}`
       : mode === 'edit'
       ? '✏ Editing your comment'
       : '💬 Commenting on post';
