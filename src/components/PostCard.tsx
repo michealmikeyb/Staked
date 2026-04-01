@@ -143,6 +143,7 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
     } else {
       await handleNewCommentSubmit(content);
     }
+    // Only reached on success — errors re-throw to ReplySheet's catch block, keeping the sheet open.
     setSheetState(null);
   };
 

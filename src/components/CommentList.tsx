@@ -7,9 +7,9 @@ interface Props {
   comments: CommentView[];
   localReplies: CommentView[];
   auth: AuthState;
-  onSetReplyTarget: (cv: CommentView | null) => void;
-  onEdit: (cv: CommentView) => void;
-  localEdits: Record<number, string>;
+  onSetReplyTarget: (cv: CommentView) => void;
+  onEdit?: (cv: CommentView) => void;
+  localEdits?: Record<number, string>;
   highlightCommentId?: number;
 }
 
@@ -49,7 +49,7 @@ export default function CommentList({ comments, localReplies, auth, onSetReplyTa
             depth={depth}
             onReply={onSetReplyTarget}
             onEdit={onEdit}
-            overrideContent={localEdits[cv.comment.id]}
+            overrideContent={localEdits?.[cv.comment.id]}
             isHighlighted={cv.comment.id === highlightCommentId}
           />
         );
