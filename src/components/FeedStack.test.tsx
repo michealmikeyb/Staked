@@ -246,6 +246,37 @@ describe('FeedStack keyboard shortcuts', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     await waitFor(() => expect(screen.getByText('First Post')).toBeInTheDocument());
   });
+
+  it('restored card is marked isReturning (rendered with entrance animation props)', async () => {
+    // We verify this indirectly: after undo the card is visible.
+    // The entrance animation is visual-only and cannot be asserted in jsdom —
+    // this test guards that the undo render completes without error.
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'Animated Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 10, comments: 0 },
+        },
+        {
+          post: { id: 2, name: 'Second Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
+          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+          creator: { name: 'alice' },
+          counts: { score: 5, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+
+    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('Animated Post');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.queryByText('Animated Post')).not.toBeInTheDocument());
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    await waitFor(() => expect(screen.getByText('Animated Post')).toBeInTheDocument());
+    // No error thrown — animation props accepted by framer-motion without crashing.
+  });
 });
 
 describe('FeedStack menu drawer', () => {

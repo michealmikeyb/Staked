@@ -31,9 +31,16 @@ interface Props {
   onSwipeLeft: () => void;
   onUndo: () => void;
   onSave: () => void;
+  isReturning?: boolean;
+  onReturnAnimationComplete?: () => void;
 }
 
-export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSwipeLeft, onUndo, onSave }: Props) {
+export default function PostCard({
+  post, auth, zIndex, scale,
+  onSwipeRight, onSwipeLeft, onUndo, onSave,
+  isReturning = false,
+  onReturnAnimationComplete,
+}: Props) {
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const { comments, commentsLoaded } = useCommentLoader(p, community, auth);
@@ -140,10 +147,19 @@ export default function PostCard({ post, auth, zIndex, scale, onSwipeRight, onSw
       ? (localEdits[sheetState.target.comment.id] ?? sheetState.target.comment.content)
       : undefined;
 
+  const returningMotionProps = isReturning
+    ? {
+        initial: { y: '-110vh' },
+        animate: { y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } },
+        onAnimationComplete: onReturnAnimationComplete,
+      }
+    : {};
+
   return (
     <motion.div
       className={styles.card}
       style={{ zIndex, x, rotate, scale }}
+      {...returningMotionProps}
       {...(bind() as object)}
     >
       <motion.div className={styles.overlay} style={{ backgroundColor: overlayColor }} />

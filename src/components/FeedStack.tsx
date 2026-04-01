@@ -22,6 +22,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const navigate = useNavigate();
   const [posts, setPosts] = useState<PostView[]>([]);
   const [undoStack, setUndoStack] = useState<PostView[]>([]);
+  const [returningPostId, setReturningPostId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const seenRef = useRef<Set<number>>(community ? new Set() : loadSeen());
   const [loading, setLoading] = useState(true);
@@ -87,6 +88,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     const topPost = posts[0];
     if (topPost) setUndoStack((stack) => [...stack, topPost]);
     setPosts((prev) => prev.slice(1));
+    setReturningPostId(null);
     if (!community) addSeen(postId);
     seenRef.current.add(postId);
   }
@@ -96,6 +98,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     const post = undoStack[undoStack.length - 1];
     setUndoStack(undoStack.slice(0, -1));
     setPosts((prev) => [post, ...prev]);
+    setReturningPostId(post.post.id);
   }
 
   useEffect(() => {
@@ -203,6 +206,12 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
               onSave={isTop ? () => {
                 savePost(auth.instance, auth.token, post.post.id).catch(() => {});
               } : () => {}}
+              isReturning={isTop && post.post.id === returningPostId}
+              onReturnAnimationComplete={
+                isTop && post.post.id === returningPostId
+                  ? () => setReturningPostId(null)
+                  : undefined
+              }
             />
           );
         })}
