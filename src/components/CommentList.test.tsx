@@ -54,6 +54,8 @@ function Wrapper({ onSubmit = vi.fn() }: { onSubmit?: (content: string) => Promi
         localReplies={localReplies}
         auth={mockAuth}
         onSetReplyTarget={setReplyTarget}
+        onEdit={vi.fn()}
+        localEdits={{}}
       />
       <ReplySheet
         mode={replyTarget ? 'reply' : null}
@@ -115,6 +117,8 @@ describe('CommentList', () => {
         localReplies={[]}
         auth={mockAuth}
         onSetReplyTarget={() => {}}
+        onEdit={vi.fn()}
+        localEdits={{}}
         highlightCommentId={2}
       />,
     );
@@ -124,5 +128,41 @@ describe('CommentList', () => {
     const item2 = items.find(el => el.getAttribute('data-comment-id') === '2')!;
     expect(item1).not.toHaveStyle({ border: '2px solid #ff6b35' });
     expect(item2).toHaveStyle({ border: '2px solid #ff6b35' });
+  });
+
+  it('passes onEdit down to CommentItems', () => {
+    const onEdit = vi.fn();
+    const ownComment = {
+      comment: { id: 3, content: 'My comment', path: '0.3', ap_id: 'https://lemmy.world/comment/3' },
+      creator: { name: 'me', actor_id: 'https://lemmy.world/u/me' },
+      counts: { score: 1 },
+    } as unknown as CommentView;
+    render(
+      <CommentList
+        comments={[...mockComments, ownComment]}
+        localReplies={[]}
+        auth={mockAuth}
+        onSetReplyTarget={() => {}}
+        onEdit={onEdit}
+        localEdits={{}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    expect(onEdit).toHaveBeenCalledWith(ownComment);
+  });
+
+  it('passes overrideContent from localEdits to the matching CommentItem', () => {
+    render(
+      <CommentList
+        comments={mockComments}
+        localReplies={[]}
+        auth={mockAuth}
+        onSetReplyTarget={() => {}}
+        onEdit={vi.fn()}
+        localEdits={{ 1: 'Edited first comment' }}
+      />,
+    );
+    expect(screen.getByText('Edited first comment')).toBeInTheDocument();
+    expect(screen.queryByText('First comment')).not.toBeInTheDocument();
   });
 });
