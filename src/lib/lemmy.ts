@@ -138,6 +138,19 @@ export async function createComment(
   return res.comment_view;
 }
 
+export async function editComment(
+  instance: string,
+  token: string,
+  commentId: number,
+  content: string,
+): Promise<CommentView> {
+  const res = await client(instance, token).editComment({
+    comment_id: commentId,
+    content,
+  });
+  return res.comment_view;
+}
+
 export async function fetchUnreadCount(instance: string, token: string): Promise<number> {
   const res = await client(instance, token).getUnreadCount();
   // private_messages excluded — not surfaced in this inbox UI

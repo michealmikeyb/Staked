@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, fetchPersonDetails, fetchPost } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -15,6 +15,13 @@ vi.mock('lemmy-js-client', () => {
         comment: { id: 99, content: 'A reply', path: '0.1.99' },
         creator: { name: 'bob' },
         counts: { score: 1 },
+      },
+    }),
+    editComment: vi.fn().mockResolvedValue({
+      comment_view: {
+        comment: { id: 7, content: 'Edited content', path: '0.7', ap_id: 'https://lemmy.world/comment/7' },
+        creator: { name: 'alice' },
+        counts: { score: 3 },
       },
     }),
     getUnreadCount: vi.fn().mockResolvedValue({ replies: 3, mentions: 1, private_messages: 0 }),
@@ -284,5 +291,23 @@ describe('fetchCommunityPosts', () => {
     const posts = await fetchCommunityPosts('lemmy.world', 'tok', 'asklemmy@lemmy.world', 1, 'Active');
     expect(posts).toHaveLength(1);
     expect(posts[0].post.id).toBe(1);
+  });
+});
+
+describe('editComment', () => {
+  it('returns the updated comment_view', async () => {
+    const cv = await editComment('lemmy.world', 'tok', 7, 'Edited content');
+    expect(cv.comment.id).toBe(7);
+    expect(cv.comment.content).toBe('Edited content');
+  });
+
+  it('calls client.editComment with comment_id and content', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await editComment('lemmy.world', 'tok', 7, 'Edited content');
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
+    expect(mockInstance.editComment).toHaveBeenCalledWith({
+      comment_id: 7,
+      content: 'Edited content',
+    });
   });
 });
