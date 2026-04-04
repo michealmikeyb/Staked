@@ -7,6 +7,7 @@ vi.mock('./lib/store', () => ({
   clearAuth: vi.fn(),
   loadSettings: vi.fn().mockReturnValue({ leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour' }),
   saveSettings: vi.fn(),
+  DEFAULT_SETTINGS: { leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour' },
 }));
 
 vi.mock('./lib/lemmy', () => ({

@@ -62,7 +62,7 @@ export interface AppSettings {
 
 const SETTINGS_KEY = 'stakswipe_settings';
 
-const DEFAULT_SETTINGS: AppSettings = {
+export const DEFAULT_SETTINGS: AppSettings = {
   leftSwipe: 'downvote',
   blurNsfw: true,
   defaultSort: 'TopTwelveHour',

@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from 'react';
-import { loadSettings, saveSettings, type AppSettings } from './store';
+import { createContext, useContext, useMemo, useState } from 'react';
+import { loadSettings, saveSettings, type AppSettings, DEFAULT_SETTINGS } from './store';
 
 interface SettingsContextValue {
   settings: AppSettings;
@@ -7,7 +7,7 @@ interface SettingsContextValue {
 }
 
 const DEFAULT_VALUE: SettingsContextValue = {
-  settings: { leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour' },
+  settings: DEFAULT_SETTINGS,
   updateSetting: () => {},
 };
 
@@ -24,8 +24,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  const value = useMemo(() => ({ settings, updateSetting }), [settings]);
+
   return (
-    <SettingsContext.Provider value={{ settings, updateSetting }}>
+    <SettingsContext.Provider value={value}>
       {children}
     </SettingsContext.Provider>
   );
