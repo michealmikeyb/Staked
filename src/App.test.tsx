@@ -5,6 +5,8 @@ import App from './App';
 vi.mock('./lib/store', () => ({
   loadAuth: vi.fn().mockReturnValue(null),
   clearAuth: vi.fn(),
+  loadSettings: vi.fn().mockReturnValue({ leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour' }),
+  saveSettings: vi.fn(),
 }));
 
 vi.mock('./lib/lemmy', () => ({
@@ -50,6 +52,10 @@ vi.mock('./components/ProfilePostDetailPage', () => ({
 
 vi.mock('./components/SharedPostPage', () => ({
   default: () => <div>Shared Post</div>,
+}));
+
+vi.mock('./components/SettingsPage', () => ({
+  default: () => <div>SettingsPage</div>,
 }));
 
 describe('App routing', () => {

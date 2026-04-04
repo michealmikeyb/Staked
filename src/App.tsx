@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { HashRouter, Routes, Route, useParams } from 'react-router-dom';
 import { loadAuth, clearAuth, type AuthState } from './lib/store';
+import { SettingsProvider } from './lib/SettingsContext';
 import LoginPage from './components/LoginPage';
 import FeedStack from './components/FeedStack';
 import InboxPage from './components/InboxPage';
@@ -9,6 +10,7 @@ import SavedPage from './components/SavedPage';
 import SavedPostDetailPage from './components/SavedPostDetailPage';
 import ProfilePage from './components/ProfilePage';
 import ProfilePostDetailPage from './components/ProfilePostDetailPage';
+import SettingsPage from './components/SettingsPage';
 import SharedPostPage from './components/SharedPostPage';
 
 function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
@@ -62,6 +64,7 @@ function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () =>
       <Route path="/saved/:postId" element={<SavedPostDetailPage auth={auth} />} />
       <Route path="/profile" element={<ProfilePage auth={auth} />} />
       <Route path="/profile/:postId" element={<ProfilePostDetailPage auth={auth} />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route
         path="/community/:instance/:name"
         element={
@@ -84,7 +87,11 @@ function AuthGate({ auth, onLogin, onLogout }: {
   onLogout: () => void;
 }) {
   if (!auth) return <LoginPage onLogin={onLogin} />;
-  return <AuthenticatedApp auth={auth} onLogout={onLogout} />;
+  return (
+    <SettingsProvider>
+      <AuthenticatedApp auth={auth} onLogout={onLogout} />
+    </SettingsProvider>
+  );
 }
 
 export default function App() {
