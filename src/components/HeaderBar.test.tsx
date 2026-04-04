@@ -88,7 +88,7 @@ describe('onLogoClick prop', () => {
   it('calls onLogoClick when logo is clicked', () => {
     const spy = vi.fn();
     render(<HeaderBar onMenuOpen={() => {}} onLogoClick={spy} />);
-    fireEvent.click(screen.getByText('S'));
+    fireEvent.click(screen.getByRole('button', { name: /stakswipe home/i }));
     expect(spy).toHaveBeenCalledTimes(1);
   });
 });
