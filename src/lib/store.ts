@@ -1,3 +1,5 @@
+import { type SortType } from './lemmy';
+
 const KEYS = {
   TOKEN: 'stakswipe_token',
   INSTANCE: 'stakswipe_instance',
@@ -50,4 +52,32 @@ export function addSeen(id: number): void {
 
 export function clearSeen(): void {
   localStorage.removeItem(SEEN_KEY);
+}
+
+export interface AppSettings {
+  leftSwipe: 'downvote' | 'dismiss';
+  blurNsfw: boolean;
+  defaultSort: SortType;
+}
+
+const SETTINGS_KEY = 'stakswipe_settings';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  leftSwipe: 'downvote',
+  blurNsfw: true,
+  defaultSort: 'TopTwelveHour',
+};
+
+export function loadSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export function saveSettings(settings: AppSettings): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }

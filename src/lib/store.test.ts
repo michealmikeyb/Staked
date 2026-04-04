@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { saveAuth, loadAuth, clearAuth, loadSeen, addSeen, clearSeen, type AuthState } from './store';
+import { saveAuth, loadAuth, clearAuth, loadSeen, addSeen, clearSeen, type AuthState, loadSettings, saveSettings } from './store';
 
 const VALID_AUTH: AuthState = {
   token: 'test-jwt-token',
@@ -99,5 +99,38 @@ describe('clearSeen', () => {
     addSeen(20);
     clearSeen();
     expect(loadSeen()).toEqual(new Set());
+  });
+});
+
+describe('loadSettings', () => {
+  it('returns defaults when nothing is stored', () => {
+    expect(loadSettings()).toEqual({
+      leftSwipe: 'downvote',
+      blurNsfw: true,
+      defaultSort: 'TopTwelveHour',
+    });
+  });
+
+  it('round-trips settings through localStorage', () => {
+    const s = { leftSwipe: 'dismiss' as const, blurNsfw: false, defaultSort: 'Hot' as const };
+    saveSettings(s);
+    expect(loadSettings()).toEqual(s);
+  });
+
+  it('merges stored partial object with defaults (handles missing keys)', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({ blurNsfw: false }));
+    const s = loadSettings();
+    expect(s.blurNsfw).toBe(false);
+    expect(s.leftSwipe).toBe('downvote');
+    expect(s.defaultSort).toBe('TopTwelveHour');
+  });
+
+  it('returns defaults when stored value is invalid JSON', () => {
+    localStorage.setItem('stakswipe_settings', 'not-json');
+    expect(loadSettings()).toEqual({
+      leftSwipe: 'downvote',
+      blurNsfw: true,
+      defaultSort: 'TopTwelveHour',
+    });
   });
 });
