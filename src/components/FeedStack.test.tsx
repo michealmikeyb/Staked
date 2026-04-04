@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import FeedStack from './FeedStack';
 import { addSeen } from '../lib/store';
+import { SettingsProvider } from '../lib/SettingsContext';
 
 vi.mock('../lib/lemmy', () => ({
   fetchPosts: vi.fn().mockResolvedValue([
@@ -392,6 +393,73 @@ describe('drawer navigation', () => {
     fireEvent.click(screen.getByLabelText('Menu'));
     fireEvent.click(screen.getByText('Saved'));
     expect(mockNavigate).toHaveBeenCalledWith('/saved');
+  });
+});
+
+describe('FeedStack settings — defaultSort', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('uses defaultSort from settings for initial fetch', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'Hot',
+    }));
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Hot Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
+    await screen.findByText('Hot Post');
+    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot');
+  });
+});
+
+describe('FeedStack settings — leftSwipe', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('calls downvotePost on ArrowLeft when leftSwipe is downvote (default)', async () => {
+    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      {
+        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]).mockResolvedValue([]);
+    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
+    await screen.findByText('Test Post');
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(downvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+  });
+
+  it('does not call downvotePost on ArrowLeft when leftSwipe is dismiss', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      leftSwipe: 'dismiss', blurNsfw: true, defaultSort: 'TopTwelveHour',
+    }));
+    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      {
+        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]).mockResolvedValue([]);
+    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
+    await screen.findByText('Test Post');
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(downvotePost).not.toHaveBeenCalled();
   });
 });
 

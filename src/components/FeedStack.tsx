@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
+import { useSettings } from '../lib/SettingsContext';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
@@ -20,6 +21,7 @@ const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'colu
 
 export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const [posts, setPosts] = useState<PostView[]>([]);
   const [undoStack, setUndoStack] = useState<PostView[]>([]);
   const [returningPostId, setReturningPostId] = useState<number | null>(null);
@@ -28,7 +30,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
-  const [sortType, setSortType] = useState<SortType>(community ? 'Active' : 'TopTwelveHour');
+  const [sortType, setSortType] = useState<SortType>(community ? 'Active' : settings.defaultSort);
 
   useEffect(() => {
     if (community) return;
@@ -110,7 +112,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
         upvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowLeft') {
-        downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        if (settings.leftSwipe === 'downvote') {
+          downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        }
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowDown') {
         handleUndo();
@@ -119,7 +123,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [posts, auth]);
+  }, [posts, auth, settings]);
 
   if (loading && posts.length === 0) {
     return (
@@ -199,7 +203,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
                 dismissTop(post.post.id);
               } : () => {}}
               onSwipeLeft={isTop ? async () => {
-                await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                if (settings.leftSwipe === 'downvote') {
+                  await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                }
                 dismissTop(post.post.id);
               } : () => {}}
               onUndo={isTop ? handleUndo : () => {}}
