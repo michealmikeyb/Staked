@@ -60,7 +60,7 @@ export default function MenuDrawer({
             background: '#1a1d24', borderBottom: '1px solid #2a2d35',
             zIndex: 40, padding: 16,
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
               <button
                 onClick={() => handleNavigate('/saved')}
                 aria-label="Saved"
@@ -99,6 +99,14 @@ export default function MenuDrawer({
                 )}
                 <span style={iconStyle}>📬</span>
                 Inbox
+              </button>
+              <button
+                onClick={() => handleNavigate('/settings')}
+                aria-label="Settings"
+                style={drawerButtonStyle}
+              >
+                <span style={iconStyle}>⚙️</span>
+                Settings
               </button>
             </div>
           </div>
