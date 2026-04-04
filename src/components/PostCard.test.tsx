@@ -667,6 +667,10 @@ function renderCard(post = MOCK_POST) {
 }
 
 describe('PostCard NSFW blur', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('shows blur overlay on image when post is nsfw and blurNsfw is true (default)', () => {
     renderCard(NSFW_POST);
     expect(screen.getByTestId('nsfw-blur-overlay')).toBeInTheDocument();
@@ -682,6 +686,13 @@ describe('PostCard NSFW blur', () => {
   it('removes overlay and shows image when tapped', () => {
     renderCard(NSFW_POST);
     fireEvent.click(screen.getByTestId('nsfw-blur-overlay'));
+    expect(screen.queryByTestId('nsfw-blur-overlay')).not.toBeInTheDocument();
+    expect(screen.getByRole('img')).toBeInTheDocument();
+  });
+
+  it('reveals image when Enter key is pressed on overlay', () => {
+    renderCard(NSFW_POST);
+    fireEvent.keyDown(screen.getByTestId('nsfw-blur-overlay'), { key: 'Enter' });
     expect(screen.queryByTestId('nsfw-blur-overlay')).not.toBeInTheDocument();
     expect(screen.getByRole('img')).toBeInTheDocument();
   });

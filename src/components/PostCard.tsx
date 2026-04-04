@@ -245,7 +245,11 @@ export default function PostCard({
           showNsfwBlur ? (
             <div
               data-testid="nsfw-blur-overlay"
+              role="button"
+              tabIndex={0}
+              aria-label="Tap to reveal NSFW image"
               onClick={() => setNsfwRevealed(true)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setNsfwRevealed(true); }}
               style={{
                 position: 'relative', cursor: 'pointer',
                 borderRadius: 8, overflow: 'hidden',
