@@ -12,6 +12,7 @@ import { useShare } from '../hooks/useShare';
 import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import CreatorAvatar from './CreatorAvatar';
 import Toast from './Toast';
+import { useSettings } from '../lib/SettingsContext';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
@@ -45,6 +46,8 @@ export default function PostCard({
   const { post: p, community, creator, counts } = post;
   const instance = useMemo(() => instanceFromActorId(community.actor_id), [community.actor_id]);
   const { comments, commentsLoaded } = useCommentLoader(p, community, auth);
+  const { settings } = useSettings();
+  const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [sheetState, setSheetState] = useState<SheetState>(null);
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<number, string>>({});
@@ -107,6 +110,7 @@ export default function PostCard({
   const isImage = !!p.url && isImageUrl(p.url);
   const imageSrc = isImage ? p.url : p.thumbnail_url;
   const showLinkBanner = !!p.url && !isImage;
+  const showNsfwBlur = p.nsfw && settings.blurNsfw && !nsfwRevealed;
 
   const handleShare = () => share(p.name, getShareUrl(auth.instance, p.id));
 
@@ -237,7 +241,35 @@ export default function PostCard({
           </div>
         )}
 
-        {imageSrc && <img className={styles.image} src={imageSrc} alt="" loading="lazy" />}
+        {imageSrc && (
+          showNsfwBlur ? (
+            <div
+              data-testid="nsfw-blur-overlay"
+              onClick={() => setNsfwRevealed(true)}
+              style={{
+                position: 'relative', cursor: 'pointer',
+                borderRadius: 8, overflow: 'hidden',
+                background: '#2a2d35', height: 180,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(135deg,#3a2d35,#2a2d3a)',
+                filter: 'blur(20px)', transform: 'scale(1.1)',
+              }} />
+              <div style={{
+                position: 'relative', zIndex: 1,
+                background: '#2a2d35', border: '1px solid #3a3d45',
+                borderRadius: 10, padding: '8px 18px', textAlign: 'center',
+              }}>
+                <div style={{ color: '#f5f5f5', fontSize: 13, fontWeight: 600 }}>Tap to reveal NSFW</div>
+              </div>
+            </div>
+          ) : (
+            <img className={styles.image} src={imageSrc} alt="" loading="lazy" />
+          )
+        )}
 
         {p.body && <div className={styles.excerpt}>{p.body}</div>}
 

@@ -62,6 +62,7 @@ vi.mock('framer-motion', async (importOriginal) => {
 
 import PostCard from './PostCard';
 import { type PostView } from '../lib/lemmy';
+import { SettingsProvider } from '../lib/SettingsContext';
 
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 
@@ -640,5 +641,76 @@ describe('PostCard link banner', () => {
       '_blank',
       'noopener,noreferrer'
     );
+  });
+});
+
+const NSFW_POST = {
+  post: { id: 2, name: 'NSFW Post', body: null, url: null, thumbnail_url: 'https://example.com/thumb.jpg', nsfw: true },
+  community: { name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
+  creator: { name: 'bob', actor_id: 'https://lemmy.world/u/bob', avatar: undefined },
+  counts: { score: 5, comments: 0 },
+} as unknown as PostView;
+
+function renderCard(post = MOCK_POST) {
+  return render(
+    <PostCard
+      post={post}
+      auth={AUTH}
+      zIndex={1}
+      scale={1}
+      onSwipeRight={vi.fn()}
+      onSwipeLeft={vi.fn()}
+      onUndo={vi.fn()}
+      onSave={vi.fn()}
+    />
+  );
+}
+
+describe('PostCard NSFW blur', () => {
+  it('shows blur overlay on image when post is nsfw and blurNsfw is true (default)', () => {
+    renderCard(NSFW_POST);
+    expect(screen.getByTestId('nsfw-blur-overlay')).toBeInTheDocument();
+    expect(screen.getByText(/tap to reveal nsfw/i)).toBeInTheDocument();
+  });
+
+  it('hides image behind blur before reveal', () => {
+    renderCard(NSFW_POST);
+    // The img should not be directly visible — it should be under the overlay
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('removes overlay and shows image when tapped', () => {
+    renderCard(NSFW_POST);
+    fireEvent.click(screen.getByTestId('nsfw-blur-overlay'));
+    expect(screen.queryByTestId('nsfw-blur-overlay')).not.toBeInTheDocument();
+    expect(screen.getByRole('img')).toBeInTheDocument();
+  });
+
+  it('does not show blur overlay on non-nsfw posts', () => {
+    renderCard(MOCK_POST);
+    // MOCK_POST has url but no nsfw flag — no overlay
+    expect(screen.queryByTestId('nsfw-blur-overlay')).not.toBeInTheDocument();
+  });
+
+  it('does not show blur overlay when blurNsfw setting is off', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      leftSwipe: 'downvote', blurNsfw: false, defaultSort: 'TopTwelveHour',
+    }));
+    render(
+      <SettingsProvider>
+        <PostCard
+          post={NSFW_POST}
+          auth={AUTH}
+          zIndex={1}
+          scale={1}
+          onSwipeRight={vi.fn()}
+          onSwipeLeft={vi.fn()}
+          onUndo={vi.fn()}
+          onSave={vi.fn()}
+        />
+      </SettingsProvider>
+    );
+    expect(screen.queryByTestId('nsfw-blur-overlay')).not.toBeInTheDocument();
+    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 });
