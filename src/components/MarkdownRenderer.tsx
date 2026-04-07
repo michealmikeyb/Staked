@@ -25,6 +25,8 @@ function remarkLemmySpoiler() {
   };
 }
 
+const REMARK_PLUGINS = [remarkGfm, remarkDirective, remarkLemmySpoiler] as const;
+
 interface Props {
   content: string;
   className?: string;
@@ -37,7 +39,7 @@ export default function MarkdownRenderer({ content, className }: Props) {
   return (
     <div className={wrapperClass}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkDirective, remarkLemmySpoiler]}
+        remarkPlugins={REMARK_PLUGINS}
         components={{
           a: ({ href, children }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">
