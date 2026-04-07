@@ -1,7 +1,9 @@
+import { useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkDirective from 'remark-directive';
 import { visit } from 'unist-util-visit';
+import type { Components } from 'react-markdown';
 import styles from './MarkdownRenderer.module.css';
 
 // Lemmy posts use `:::spoiler title` (space) but remark-directive expects `:::name[label]`
@@ -27,37 +29,35 @@ function remarkLemmySpoiler() {
 
 const REMARK_PLUGINS = [remarkGfm, remarkDirective, remarkLemmySpoiler] as const;
 
+const imgStyle = { maxWidth: '100%', height: 'auto', borderRadius: 6, display: 'block', marginTop: 6 } as const;
+
+const MARKDOWN_COMPONENTS: Partial<Components> = {
+  a: ({ href, children }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+  img: ({ src, alt }) => (
+    <img src={src} alt={alt ?? ''} loading="lazy" style={imgStyle} />
+  ),
+};
+
 interface Props {
   content: string;
   className?: string;
 }
 
-export default function MarkdownRenderer({ content, className }: Props) {
-  const processed = preprocessSpoilers(content);
-  const wrapperClass = [styles.markdown, className].filter(Boolean).join(' ');
+function MarkdownRenderer({ content, className }: Props) {
+  const processed = useMemo(() => preprocessSpoilers(content), [content]);
+  const wrapperClass = className ? `${styles.markdown} ${className}` : styles.markdown;
 
   return (
     <div className={wrapperClass}>
-      <ReactMarkdown
-        remarkPlugins={REMARK_PLUGINS}
-        components={{
-          a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {children}
-            </a>
-          ),
-          img: ({ src, alt }) => (
-            <img
-              src={src}
-              alt={alt ?? ''}
-              loading="lazy"
-              style={{ maxWidth: '100%', height: 'auto', borderRadius: 6, display: 'block', marginTop: 6 }}
-            />
-          ),
-        }}
-      >
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
         {processed}
       </ReactMarkdown>
     </div>
   );
 }
+
+export default memo(MarkdownRenderer);
