@@ -642,6 +642,23 @@ describe('PostCard link banner', () => {
       'noopener,noreferrer'
     );
   });
+
+  it('renders a link in the post body as an anchor tag', () => {
+    const MARKDOWN_POST = {
+      post: { id: 5, name: 'Markdown post', body: 'Visit [example](https://example.com)', url: null, thumbnail_url: null },
+      community: { name: 'general', actor_id: 'https://lemmy.world/c/general' },
+      creator: { name: 'frank', actor_id: 'https://lemmy.world/u/frank', avatar: undefined },
+      counts: { score: 1, comments: 0 },
+    } as unknown as PostView;
+
+    render(
+      <PostCard post={MARKDOWN_POST} auth={AUTH} zIndex={1} scale={1}
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />,
+    );
+    const link = screen.getByRole('link', { name: 'example' });
+    expect(link).toHaveAttribute('href', 'https://example.com');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
 });
 
 const NSFW_POST = {

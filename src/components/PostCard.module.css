@@ -9,7 +9,6 @@
   flex-direction: column;
   overflow: hidden;
   cursor: grab;
-  user-select: none;
   /* pan-y: browser handles vertical scroll natively; horizontal drag handled by useDrag */
   touch-action: pan-y;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -107,8 +106,9 @@
 .excerpt {
   padding: 10px 16px;
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   line-height: 1.5;
+  user-select: text;
 }
 
 .footer {

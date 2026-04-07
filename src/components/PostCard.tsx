@@ -13,6 +13,7 @@ import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import CreatorAvatar from './CreatorAvatar';
 import Toast from './Toast';
 import { useSettings } from '../lib/SettingsContext';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 0.5;
@@ -275,7 +276,7 @@ export default function PostCard({
           )
         )}
 
-        {p.body && <div className={styles.excerpt}>{p.body}</div>}
+        {p.body && <MarkdownRenderer content={p.body} className={styles.excerpt} />}
 
         <div className={styles.footer}>
           <button
