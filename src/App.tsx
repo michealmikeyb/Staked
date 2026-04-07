@@ -11,6 +11,7 @@ import SavedPostDetailPage from './components/SavedPostDetailPage';
 import ProfilePage from './components/ProfilePage';
 import ProfilePostDetailPage from './components/ProfilePostDetailPage';
 import SettingsPage from './components/SettingsPage';
+import CreatePostPage from './components/CreatePostPage';
 import SharedPostPage from './components/SharedPostPage';
 
 function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
@@ -65,6 +66,7 @@ function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () =>
       <Route path="/profile" element={<ProfilePage auth={auth} />} />
       <Route path="/profile/:postId" element={<ProfilePostDetailPage auth={auth} />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/create-post" element={<CreatePostPage auth={auth} />} />
       <Route
         path="/community/:instance/:name"
         element={

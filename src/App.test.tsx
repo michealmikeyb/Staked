@@ -59,6 +59,10 @@ vi.mock('./components/SettingsPage', () => ({
   default: () => <div>SettingsPage</div>,
 }));
 
+vi.mock('./components/CreatePostPage', () => ({
+  default: () => <div>CreatePostPage</div>,
+}));
+
 describe('App routing', () => {
   beforeEach(() => {
     window.location.hash = '';
@@ -99,5 +103,13 @@ describe('App routing', () => {
     window.location.hash = '#/user/beehaw.org/bob';
     render(<App />);
     await waitFor(() => expect(screen.getByText('ProfilePage')).toBeInTheDocument());
+  });
+
+  it('renders CreatePostPage at /create-post when authenticated', async () => {
+    const { loadAuth } = await import('./lib/store');
+    vi.mocked(loadAuth).mockReturnValue({ token: 'tok', instance: 'lemmy.world', username: 'alice' });
+    window.location.hash = '#/create-post';
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('CreatePostPage')).toBeInTheDocument());
   });
 });
