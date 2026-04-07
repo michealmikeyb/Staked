@@ -205,3 +205,38 @@ export async function fetchPersonDetails(
   });
   return { posts: res.posts, comments: res.comments };
 }
+
+export async function resolveCommunityId(
+  instance: string,
+  token: string,
+  communityRef: string,
+): Promise<number> {
+  const res = await client(instance, token).getCommunity({ name: communityRef });
+  return res.community_view.community.id;
+}
+
+export async function createPost(
+  instance: string,
+  token: string,
+  params: { name: string; community_id: number; url?: string; body?: string },
+): Promise<void> {
+  await client(instance, token).createPost(params);
+}
+
+export async function uploadImage(
+  instance: string,
+  token: string,
+  file: File,
+): Promise<string> {
+  const formData = new FormData();
+  formData.append('images[]', file);
+  const res = await fetch(`https://${instance}/pictrs/image`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  const data = await res.json();
+  if (!data.files?.[0]?.file) throw new Error('Upload failed: no file returned');
+  return `https://${instance}/pictrs/image/${data.files[0].file}`;
+}

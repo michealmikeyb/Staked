@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -64,6 +64,10 @@ vi.mock('lemmy-js-client', () => {
         counts: { score: 55, comments: 3 },
       },
     }),
+    getCommunity: vi.fn().mockResolvedValue({
+      community_view: { community: { id: 42 } },
+    }),
+    createPost: vi.fn().mockResolvedValue({ post_view: { post: { id: 99 } } }),
   }));
   return { LemmyHttp: MockLemmyHttp };
 });
@@ -309,5 +313,76 @@ describe('editComment', () => {
       comment_id: 7,
       content: 'Edited content',
     });
+  });
+});
+
+describe('resolveCommunityId', () => {
+  it('returns the community id', async () => {
+    const id = await resolveCommunityId('lemmy.world', 'tok', 'programming@lemmy.world');
+    expect(id).toBe(42);
+  });
+
+  it('calls getCommunity with the community ref', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await resolveCommunityId('lemmy.world', 'tok', 'programming@lemmy.world');
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
+    expect(mockInstance.getCommunity).toHaveBeenCalledWith({ name: 'programming@lemmy.world' });
+  });
+});
+
+describe('createPost', () => {
+  it('calls LemmyHttp.createPost with the right params', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await createPost('lemmy.world', 'tok', { name: 'Test post', community_id: 42, url: 'https://example.com' });
+    const mockInstance = vi.mocked(LemmyHttp).mock.results[vi.mocked(LemmyHttp).mock.results.length - 1]!.value;
+    expect(mockInstance.createPost).toHaveBeenCalledWith({
+      name: 'Test post',
+      community_id: 42,
+      url: 'https://example.com',
+    });
+  });
+
+  it('resolves without throwing', async () => {
+    await expect(
+      createPost('lemmy.world', 'tok', { name: 'Hello', community_id: 1 }),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('uploadImage', () => {
+  it('returns the full image url on success', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ files: [{ file: 'abc123.jpg' }] }),
+    } as unknown as Response);
+    const url = await uploadImage('lemmy.world', 'tok', new File([''], 'test.jpg'));
+    expect(url).toBe('https://lemmy.world/pictrs/image/abc123.jpg');
+  });
+
+  it('sends Authorization header', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ files: [{ file: 'x.png' }] }),
+    } as unknown as Response);
+    await uploadImage('lemmy.world', 'tok', new File([''], 'test.png'));
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://lemmy.world/pictrs/image',
+      expect.objectContaining({ headers: { Authorization: 'Bearer tok' } }),
+    );
+  });
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 413 } as unknown as Response);
+    await expect(uploadImage('lemmy.world', 'tok', new File([''], 'big.jpg')))
+      .rejects.toThrow('Upload failed: 413');
+  });
+
+  it('throws when files array is empty', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ files: [] }),
+    } as unknown as Response);
+    await expect(uploadImage('lemmy.world', 'tok', new File([''], 'test.jpg')))
+      .rejects.toThrow('Upload failed: no file returned');
   });
 });
