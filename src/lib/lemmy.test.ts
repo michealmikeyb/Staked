@@ -351,37 +351,38 @@ describe('createPost', () => {
 
 describe('uploadImage', () => {
   it('returns the full image url on success', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ files: [{ file: 'abc123.jpg' }] }),
-    } as unknown as Response);
+    } as unknown as Response));
     const url = await uploadImage('lemmy.world', 'tok', new File([''], 'test.jpg'));
     expect(url).toBe('https://lemmy.world/pictrs/image/abc123.jpg');
   });
 
   it('sends Authorization header', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ files: [{ file: 'x.png' }] }),
     } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
     await uploadImage('lemmy.world', 'tok', new File([''], 'test.png'));
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       'https://lemmy.world/pictrs/image',
       expect.objectContaining({ headers: { Authorization: 'Bearer tok' } }),
     );
   });
 
   it('throws on non-ok response', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 413 } as unknown as Response);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 413 } as unknown as Response));
     await expect(uploadImage('lemmy.world', 'tok', new File([''], 'big.jpg')))
       .rejects.toThrow('Upload failed: 413');
   });
 
   it('throws when files array is empty', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ files: [] }),
-    } as unknown as Response);
+    } as unknown as Response));
     await expect(uploadImage('lemmy.world', 'tok', new File([''], 'test.jpg')))
       .rejects.toThrow('Upload failed: no file returned');
   });

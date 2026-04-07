@@ -565,4 +565,31 @@ describe('FeedStack community mode', () => {
       expect(screen.queryByRole('button', { name: /reset seen history/i })).not.toBeInTheDocument();
     });
   });
+
+  it('navigates to /create-post with community state when compose button is clicked in community mode', async () => {
+    const { fetchCommunityPosts } = await import('../lib/lemmy');
+    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
+        community: { name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
+        creator: { name: 'bob' },
+        counts: { score: 10, comments: 2 },
+      },
+    ]);
+
+    render(
+      <FeedStack
+        auth={AUTH}
+        onLogout={vi.fn()}
+        unreadCount={0}
+        setUnreadCount={vi.fn()}
+        community={{ name: 'programming', instance: 'lemmy.world' }}
+      />
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /compose/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /compose/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/create-post', {
+      state: { community: 'programming@lemmy.world' },
+    });
+  });
 });
