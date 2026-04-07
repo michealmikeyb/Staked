@@ -176,6 +176,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           sortType={sortType}
           onSortChange={handleSortChange}
           onBack={() => navigate(-1)}
+          onCompose={() => navigate('/create-post', { state: { community: `${community.name}@${community.instance}` } })}
         />
       ) : (
         <MenuDrawer

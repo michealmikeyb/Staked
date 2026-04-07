@@ -7,9 +7,10 @@ interface Props {
   sortType: SortType;
   onSortChange: (sort: SortType) => void;
   onBack: () => void;
+  onCompose?: () => void;
 }
 
-export default function CommunityHeader({ name, sortType, onSortChange, onBack }: Props) {
+export default function CommunityHeader({ name, sortType, onSortChange, onBack, onCompose }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
   const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType;
 
@@ -38,6 +39,18 @@ export default function CommunityHeader({ name, sortType, onSortChange, onBack }
         <div style={{ flex: 1, textAlign: 'center', color: '#f5f5f5', fontWeight: 600, fontSize: 15 }}>
           c/{name}
         </div>
+        {onCompose && (
+          <button
+            aria-label="Compose"
+            onClick={onCompose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#f5f5f5', fontSize: 18, padding: '0 4px 0 8px', lineHeight: 1,
+            }}
+          >
+            ✏️
+          </button>
+        )}
         <button
           aria-label={`${currentLabel} ▾`}
           onClick={() => setShowDropdown((v) => !v)}

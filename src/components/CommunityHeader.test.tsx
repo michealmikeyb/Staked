@@ -43,4 +43,31 @@ describe('CommunityHeader', () => {
     fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
     expect(onSortChange).toHaveBeenCalledWith('Hot');
   });
+
+  it('calls onCompose when compose button is clicked', () => {
+    const onCompose = vi.fn();
+    render(
+      <CommunityHeader
+        name="programming"
+        sortType="Active"
+        onSortChange={vi.fn()}
+        onBack={vi.fn()}
+        onCompose={onCompose}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /compose/i }));
+    expect(onCompose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render compose button when onCompose is not provided', () => {
+    render(
+      <CommunityHeader
+        name="programming"
+        sortType="Active"
+        onSortChange={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /compose/i })).not.toBeInTheDocument();
+  });
 });
