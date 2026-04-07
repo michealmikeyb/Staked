@@ -113,4 +113,18 @@ describe('MenuDrawer', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/settings');
     expect(screen.queryByRole('button', { name: /settings/i })).not.toBeInTheDocument();
   });
+
+  it('renders Post button when drawer is open', () => {
+    renderDrawer();
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.getByRole('button', { name: /^post$/i })).toBeInTheDocument();
+  });
+
+  it('calls onNavigate with /create-post and closes drawer when Post is clicked', () => {
+    renderDrawer();
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/create-post');
+    expect(screen.queryByRole('button', { name: /^post$/i })).not.toBeInTheDocument();
+  });
 });
