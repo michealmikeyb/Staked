@@ -9,6 +9,7 @@ import { useShare } from '../hooks/useShare';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import Toast from './Toast';
+import MarkdownRenderer from './MarkdownRenderer';
 import styles from './PostCard.module.css';
 
 interface Post {
@@ -153,7 +154,7 @@ export default function PostDetailCard({
 
         {imageSrc && <img className={styles.image} src={imageSrc} alt="" loading="lazy" />}
 
-        {post.body && <div className={styles.excerpt}>{post.body}</div>}
+        {post.body && <MarkdownRenderer content={post.body} className={styles.excerpt} />}
 
         <div className={styles.footer}>
           <span>▲ {counts.score}</span>
@@ -183,6 +184,8 @@ export default function PostDetailCard({
             localReplies={localReplies}
             auth={auth ?? anonAuth}
             onSetReplyTarget={setReplyTarget}
+            onEdit={() => {}}
+            localEdits={{}}
             highlightCommentId={highlightCommentId}
           />
         </div>
