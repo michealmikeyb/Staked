@@ -7,6 +7,17 @@ interface Props {
   auth: AuthState;
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box',
+  background: '#2a2d35', border: '1px solid #3a3d45',
+  borderRadius: 8, padding: '10px 12px',
+  color: '#f5f5f5', fontSize: 14, fontFamily: 'inherit',
+};
+const labelStyle: React.CSSProperties = {
+  fontSize: 11, color: '#888', textTransform: 'uppercase',
+  letterSpacing: '0.08em', marginBottom: 6, display: 'block',
+};
+
 export default function CreatePostPage({ auth }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,17 +69,6 @@ export default function CreatePostPage({ auth }: Props) {
       setSubmitting(false);
     }
   }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box',
-    background: '#2a2d35', border: '1px solid #3a3d45',
-    borderRadius: 8, padding: '10px 12px',
-    color: '#f5f5f5', fontSize: 14, fontFamily: 'inherit',
-  };
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11, color: '#888', textTransform: 'uppercase',
-    letterSpacing: '0.08em', marginBottom: 6, display: 'block',
-  };
 
   return (
     <div style={{ background: '#1a1d24', minHeight: '100dvh', color: '#f5f5f5' }}>

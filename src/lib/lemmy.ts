@@ -236,7 +236,7 @@ export async function uploadImage(
     body: formData,
   });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  const data = await res.json();
+  const data = await res.json() as { files?: { file: string }[] };
   if (!data.files?.[0]?.file) throw new Error('Upload failed: no file returned');
   return `https://${instance}/pictrs/image/${data.files[0].file}`;
 }
