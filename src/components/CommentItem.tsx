@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownRenderer from './MarkdownRenderer';
 import { likeComment, resolveCommentId, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { instanceFromActorId } from '../lib/urlUtils';
@@ -84,11 +83,10 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
           </span>
         )}
       </div>
-      <div className={styles.body}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {overrideContent ?? cv.comment.content}
-        </ReactMarkdown>
-      </div>
+      <MarkdownRenderer
+        content={overrideContent ?? cv.comment.content}
+        className={styles.body}
+      />
       <div className={styles.commentActions}>
         <button
           className={styles.replyButton}

@@ -44,6 +44,7 @@
   font-size: 0.88rem;
   color: var(--text-primary);
   line-height: 1.5;
+  user-select: text;
 }
 
 .body img {
