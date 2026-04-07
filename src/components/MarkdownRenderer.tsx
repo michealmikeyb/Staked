@@ -27,7 +27,7 @@ function remarkLemmySpoiler() {
   };
 }
 
-const REMARK_PLUGINS = [remarkGfm, remarkDirective, remarkLemmySpoiler] as const;
+const REMARK_PLUGINS = [remarkGfm, remarkDirective, remarkLemmySpoiler];
 
 const imgStyle = { maxWidth: '100%', height: 'auto', borderRadius: 6, display: 'block', marginTop: 6 } as const;
 
