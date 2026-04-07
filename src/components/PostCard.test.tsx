@@ -658,6 +658,7 @@ describe('PostCard link banner', () => {
     const link = screen.getByRole('link', { name: 'example' });
     expect(link).toHaveAttribute('href', 'https://example.com');
     expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });
 
