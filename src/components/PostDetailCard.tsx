@@ -11,6 +11,7 @@ interface Post {
   url?: string | null;
   body?: string | null;
   thumbnail_url?: string | null;
+  nsfw?: boolean;
 }
 
 interface Community {
