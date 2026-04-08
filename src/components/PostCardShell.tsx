@@ -27,6 +27,7 @@ interface Post {
 interface Community {
   name: string;
   actor_id: string;
+  icon?: string | null;
 }
 
 interface Creator {
@@ -166,7 +167,17 @@ export default function PostCardShell({
         onTouchEnd={onTouchEnd}
       >
         <div className={styles.meta}>
-          <div className={styles.communityIcon}>{community.name.charAt(0).toUpperCase()}</div>
+          <div className={styles.communityIcon}>
+            {community.icon
+              ? <img
+                  data-testid="community-icon-img"
+                  src={community.icon}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                />
+              : community.name.charAt(0).toUpperCase()
+            }
+          </div>
           <div>
             <div
               className={styles.communityName}

@@ -165,4 +165,23 @@ describe('PostCardShell', () => {
     renderShell({ auth: undefined });
     expect(screen.queryByTestId('reply-wrapper')).not.toBeInTheDocument();
   });
+
+  it('renders community icon image when community.icon is provided', () => {
+    renderShell({
+      community: {
+        name: 'linux',
+        actor_id: 'https://lemmy.world/c/linux',
+        icon: 'https://lemmy.world/pictrs/image/icon.png',
+      },
+    });
+    const img = document.querySelector('[data-testid="community-icon-img"]') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(img.src).toBe('https://lemmy.world/pictrs/image/icon.png');
+  });
+
+  it('renders first-letter fallback when community.icon is absent', () => {
+    renderShell({ community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' } });
+    expect(screen.getByText('L')).toBeInTheDocument();
+    expect(document.querySelector('[data-testid="community-icon-img"]')).toBeNull();
+  });
 });
