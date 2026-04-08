@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType, type StakType } from '../lib/lemmy';
+import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, type PostView, type SortType, type StakType } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
 import PostCard from './PostCard';
@@ -236,9 +236,6 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
                 dismissTop(post.post.id);
               } : () => {}}
               onUndo={isTop ? handleUndo : () => {}}
-              onSave={isTop ? () => {
-                savePost(auth.instance, auth.token, post.post.id).catch(() => {});
-              } : () => {}}
               isReturning={isTop && post.post.id === returningPostId}
               onReturnAnimationComplete={
                 isTop && post.post.id === returningPostId

@@ -116,8 +116,12 @@ export default function PostCardShell({
 
   const handleSave = async () => {
     if (!auth) return;
-    await savePost(auth.instance, auth.token, post.id);
-    setSaveToastVisible(true);
+    try {
+      await savePost(auth.instance, auth.token, post.id);
+      setSaveToastVisible(true);
+    } catch {
+      // suppress errors silently
+    }
   };
 
   const handleCommentCreate = async (content: string, parentComment?: CommentView) => {
@@ -255,7 +259,7 @@ export default function PostCardShell({
             <button
               data-testid="save-button"
               className={styles.footerAction}
-              onClick={handleSave}
+              onClick={(e) => { e.stopPropagation(); handleSave(); }}
             >
               🔖 Save
             </button>

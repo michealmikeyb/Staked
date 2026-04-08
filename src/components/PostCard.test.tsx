@@ -61,7 +61,7 @@ vi.mock('framer-motion', async (importOriginal) => {
 });
 
 import PostCard from './PostCard';
-import { type PostView } from '../lib/lemmy';
+import { type PostView, savePost } from '../lib/lemmy';
 import { SettingsProvider } from '../lib/SettingsContext';
 
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
@@ -84,7 +84,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
     expect(screen.getByText('Rust post')).toBeInTheDocument();
@@ -100,7 +99,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
     expect(screen.getByText(/programming/i)).toBeInTheDocument();
@@ -116,7 +114,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
     fireEvent.click(screen.getByText('bob'));
@@ -133,7 +130,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
     fireEvent.click(screen.getByText('c/programming'));
@@ -153,7 +149,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
 
@@ -178,7 +173,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
 
@@ -196,7 +190,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     expect(screen.getByTestId('comment-button')).toBeInTheDocument();
@@ -212,7 +205,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByTestId('comment-button'));
@@ -237,7 +229,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     await waitFor(() => expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument());
@@ -261,7 +252,6 @@ describe('PostCard', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByTestId('comment-button'));
@@ -289,7 +279,6 @@ describe('PostCard gestures', () => {
         onSwipeRight={onSwipeRight}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
     const card = container.firstChild as HTMLElement;
@@ -313,7 +302,6 @@ describe('PostCard gestures', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={onSwipeLeft}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
     const card = container.firstChild as HTMLElement;
@@ -337,7 +325,6 @@ describe('PostCard gestures', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={onUndo}
-        onSave={vi.fn()}
       />
     );
     const scrollContent = getByTestId('scroll-content');
@@ -358,7 +345,6 @@ describe('PostCard gestures', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={onUndo}
-        onSave={vi.fn()}
       />
     );
     const scrollContent = getByTestId('scroll-content');
@@ -380,28 +366,27 @@ describe('PostCard save button', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
   });
 
-  it('calls onSave when the save button is tapped', () => {
-    const onSave = vi.fn();
+  it('clicking save button calls savePost API', async () => {
     render(
-      <PostCard
-        post={MOCK_POST}
-        auth={AUTH}
-        zIndex={1}
-        scale={1}
-        onSwipeRight={vi.fn()}
-        onSwipeLeft={vi.fn()}
-        onUndo={vi.fn()}
-        onSave={onSave}
-      />,
+      <SettingsProvider>
+        <PostCard
+          post={MOCK_POST}
+          auth={AUTH}
+          zIndex={1}
+          scale={1}
+          onSwipeRight={vi.fn()}
+          onSwipeLeft={vi.fn()}
+          onUndo={vi.fn()}
+        />
+      </SettingsProvider>,
     );
     fireEvent.click(screen.getByTestId('save-button'));
-    expect(onSave).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1));
   });
 
   it('shows Saved toast after save button is tapped', async () => {
@@ -414,7 +399,6 @@ describe('PostCard save button', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByTestId('save-button'));
@@ -433,7 +417,6 @@ describe('PostCard header stats', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     expect(screen.getByTestId('meta-score')).toHaveTextContent('▲ 200');
@@ -449,7 +432,6 @@ describe('PostCard header stats', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />,
     );
     expect(screen.getByTestId('meta-comments')).toHaveTextContent('💬 15');
@@ -479,7 +461,6 @@ describe('PostCard reply submission', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
 
@@ -547,7 +528,6 @@ describe('PostCard reply keyboard offset', () => {
         onSwipeRight={vi.fn()}
         onSwipeLeft={vi.fn()}
         onUndo={vi.fn()}
-        onSave={vi.fn()}
       />
     );
 
@@ -601,7 +581,7 @@ describe('PostCard link banner', () => {
   it('renders the link banner for a link post', () => {
     render(
       <PostCard post={LINK_POST} auth={AUTH} zIndex={1} scale={1}
-        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} />
     );
     expect(screen.getByTestId('link-banner')).toBeInTheDocument();
   });
@@ -609,7 +589,7 @@ describe('PostCard link banner', () => {
   it('shows the extracted domain in the banner', () => {
     render(
       <PostCard post={LINK_POST} auth={AUTH} zIndex={1} scale={1}
-        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} />
     );
     expect(screen.getByText('techcrunch.com')).toBeInTheDocument();
   });
@@ -617,7 +597,7 @@ describe('PostCard link banner', () => {
   it('does not render the banner for an image URL post', () => {
     render(
       <PostCard post={IMAGE_POST} auth={AUTH} zIndex={1} scale={1}
-        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} />
     );
     expect(screen.queryByTestId('link-banner')).not.toBeInTheDocument();
   });
@@ -625,7 +605,7 @@ describe('PostCard link banner', () => {
   it('does not render the banner for a text post', () => {
     render(
       <PostCard post={TEXT_POST} auth={AUTH} zIndex={1} scale={1}
-        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} />
     );
     expect(screen.queryByTestId('link-banner')).not.toBeInTheDocument();
   });
@@ -633,7 +613,7 @@ describe('PostCard link banner', () => {
   it('opens the link in a new tab when the banner is clicked', () => {
     render(
       <PostCard post={LINK_POST} auth={AUTH} zIndex={1} scale={1}
-        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} />
     );
     fireEvent.click(screen.getByTestId('link-banner'));
     expect(window.open).toHaveBeenCalledWith(
@@ -653,7 +633,7 @@ describe('PostCard link banner', () => {
 
     render(
       <PostCard post={MARKDOWN_POST} auth={AUTH} zIndex={1} scale={1}
-        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} onSave={vi.fn()} />,
+        onSwipeRight={vi.fn()} onSwipeLeft={vi.fn()} onUndo={vi.fn()} />,
     );
     const link = screen.getByRole('link', { name: 'example' });
     expect(link).toHaveAttribute('href', 'https://example.com');
@@ -679,7 +659,6 @@ function renderCard(post = MOCK_POST) {
       onSwipeRight={vi.fn()}
       onSwipeLeft={vi.fn()}
       onUndo={vi.fn()}
-      onSave={vi.fn()}
     />
   );
 }
@@ -735,7 +714,6 @@ describe('PostCard NSFW blur', () => {
           onSwipeRight={vi.fn()}
           onSwipeLeft={vi.fn()}
           onUndo={vi.fn()}
-          onSave={vi.fn()}
         />
       </SettingsProvider>
     );
