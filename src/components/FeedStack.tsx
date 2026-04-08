@@ -90,6 +90,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   function handleStakChange(newStak: StakType) {
     updateSetting('activeStak', newStak);
     setStak(newStak);
+    seenRef.current = new Set();
     setPosts([]);
     setPage(1);
     setCanLoadMore(true);
