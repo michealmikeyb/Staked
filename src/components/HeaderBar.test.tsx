@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import HeaderBar from './HeaderBar';
-import { type StakType } from '../lib/lemmy';
 
 const defaultProps = {
   sortType: 'TopTwelveHour' as const,

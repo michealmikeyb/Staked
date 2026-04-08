@@ -78,7 +78,7 @@ export default function HeaderBar({
           {onStakChange ? (
             <button
               onClick={() => setShowStakDropdown((v) => !v)}
-              aria-label={`Switch stak, currently ${activeStak ?? 'All'}`}
+              aria-label={`Switch stak, currently ${activeStak ?? STAKS[0].stak}`}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -86,7 +86,7 @@ export default function HeaderBar({
             >
               <Logo variant="mark" size={32} />
               <span style={{ color: '#f5f5f5', fontWeight: 700, fontSize: 14 }}>
-                {activeStak ?? 'All'}
+                {activeStak ?? STAKS[0].stak}
               </span>
               <span style={{ color: '#888', fontSize: 11 }}>▾</span>
             </button>

@@ -76,26 +76,27 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
       setPage(nextPage);
       loadMore(nextPage, sortType, stak);
     }
-  }, [posts.length, loading, page, loadMore, canLoadMore, sortType, stak]);
+  // stak excluded: handleStakChange already calls loadMore directly on stak change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts.length, loading, page, loadMore, canLoadMore, sortType]);
 
-  function handleSortChange(newSort: SortType) {
-    setSortType(newSort);
+  function resetAndLoad(sort: SortType, newStak: StakType) {
     setPosts([]);
     setPage(1);
     setCanLoadMore(true);
-    setLoading(true);
-    loadMore(1, newSort, stak);
+    loadMore(1, sort, newStak);
+  }
+
+  function handleSortChange(newSort: SortType) {
+    setSortType(newSort);
+    resetAndLoad(newSort, stak);
   }
 
   function handleStakChange(newStak: StakType) {
     updateSetting('activeStak', newStak);
     setStak(newStak);
     seenRef.current = new Set();
-    setPosts([]);
-    setPage(1);
-    setCanLoadMore(true);
-    setLoading(true);
-    loadMore(1, sortType, newStak);
+    resetAndLoad(sortType, newStak);
   }
 
   function dismissTop(postId: number) {
