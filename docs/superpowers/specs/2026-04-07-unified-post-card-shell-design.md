@@ -51,13 +51,6 @@ interface PostCardShellProps {
   commentsLoaded: boolean;
   highlightCommentId?: number;
 
-  // Called after a successful savePost API call (PostCard uses this to notify FeedStack)
-  onSaveComplete?: () => void;
-
-  // Navigation (optional — omitted on SharedPostPage)
-  onCommunityClick?: () => void;
-  onCreatorClick?: () => void;
-
   // Scroll ref forwarded from parent (PostCard needs it for pull-to-undo)
   scrollRef?: React.RefObject<HTMLDivElement>;
 
@@ -73,7 +66,7 @@ interface PostCardShellProps {
 
 ### Creator interface unification
 
-`PostDetailCard` currently uses a minimal `Creator` type with no `avatar` or `actor_id`. The shell accepts both optional. When `onCreatorClick` is provided the creator renders as a tappable `creatorLink` button (with `CreatorAvatar` if `avatar` is present); otherwise it renders as plain `instanceName` text.
+`PostDetailCard` currently uses a minimal `Creator` type with no `avatar` or `actor_id`. The shell accepts both optional. The shell calls `useNavigate()` internally for community and creator navigation. Creator renders as a tappable `creatorLink` button (with `CreatorAvatar` if `avatar` is present) when `actor_id` is available; otherwise plain `instanceName` text. Community name is always tappable.
 
 ### Footer logic (inside shell)
 
@@ -103,8 +96,6 @@ Passes to shell:
 - `comments`, `commentsLoaded` (still loaded in PostCard via `useCommentLoader`)
 - `scrollRef`, touch handlers
 - `blurNsfw={settings.blurNsfw}`
-- `onCommunityClick`, `onCreatorClick` (navigate calls)
-- `onSaveComplete={onSave}` — PostCard's `onSave` prop from FeedStack (marks the card saved in local UI) is forwarded as `onSaveComplete` so the shell can invoke it after the API call succeeds
 
 ## Updated: `PostDetailCard`
 
@@ -117,9 +108,7 @@ Passes to shell:
 - `auth` (present for SavedPostDetailPage, absent for SharedPostPage)
 - `comments`, `commentsLoaded`
 - `highlightCommentId`
-- `onCommunityClick`, `onCreatorClick` omitted for now
 - No `blurNsfw` (shell defaults to true)
-- No `onSaveComplete` (no FeedStack to notify)
 
 ## File layout
 
@@ -142,6 +131,5 @@ CSS: `PostCardShell` imports `PostCard.module.css` unchanged. No new CSS classes
 
 ## Out of scope
 
-- Navigation links from the detail pages to community/user profiles
 - Saved page list card design (the thumbnail list in `SavedPage.tsx`)
 - Profile post detail page (`ProfilePostDetailPage`)
