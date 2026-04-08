@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType } from '../lib/lemmy';
+import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, savePost, type PostView, type SortType, type StakType } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
 import PostCard from './PostCard';
@@ -21,7 +21,7 @@ const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'colu
 
 export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const [posts, setPosts] = useState<PostView[]>([]);
   const [undoStack, setUndoStack] = useState<PostView[]>([]);
   const [returningPostId, setReturningPostId] = useState<number | null>(null);
@@ -31,6 +31,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [sortType, setSortType] = useState<SortType>(community ? 'Active' : settings.defaultSort);
+  const [stak, setStak] = useState<StakType>(settings.activeStak);
 
   useEffect(() => {
     if (community) return;
@@ -39,12 +40,12 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
       .catch(() => {});
   }, [auth, setUnreadCount, community]);
 
-  const loadMore = useCallback(async (nextPage: number, sort: SortType) => {
+  const loadMore = useCallback(async (nextPage: number, sort: SortType, currentStak: StakType) => {
     setLoading(true);
     try {
       const newPosts = community
         ? await fetchCommunityPosts(auth.instance, auth.token, `${community.name}@${community.instance}`, nextPage, sort)
-        : await fetchPosts(auth.instance, auth.token, nextPage, sort);
+        : await fetchPosts(auth.instance, auth.token, nextPage, sort, currentStak);
       if (newPosts.length === 0) {
         setCanLoadMore(false);
       } else {
@@ -65,7 +66,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   }, [auth, community?.name, community?.instance]);
 
   useEffect(() => {
-    loadMore(1, sortType);
+    loadMore(1, sortType, stak);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadMore]);
 
@@ -73,9 +74,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     if (posts.length <= 3 && !loading && canLoadMore) {
       const nextPage = page + 1;
       setPage(nextPage);
-      loadMore(nextPage, sortType);
+      loadMore(nextPage, sortType, stak);
     }
-  }, [posts.length, loading, page, loadMore, canLoadMore, sortType]);
+  }, [posts.length, loading, page, loadMore, canLoadMore, sortType, stak]);
 
   function handleSortChange(newSort: SortType) {
     setSortType(newSort);
@@ -83,7 +84,17 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     setPage(1);
     setCanLoadMore(true);
     setLoading(true);
-    loadMore(1, newSort);
+    loadMore(1, newSort, stak);
+  }
+
+  function handleStakChange(newStak: StakType) {
+    updateSetting('activeStak', newStak);
+    setStak(newStak);
+    setPosts([]);
+    setPage(1);
+    setCanLoadMore(true);
+    setLoading(true);
+    loadMore(1, sortType, newStak);
   }
 
   function dismissTop(postId: number) {
@@ -147,14 +158,25 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   if (posts.length === 0 && !loading && !canLoadMore) {
     return (
       <div style={screenStyle}>
-        <div style={{ color: 'var(--text-secondary)' }}>You've seen everything!</div>
-        {!community && (
-          <button
-            onClick={() => { clearSeen(); window.location.reload(); }}
-            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
-          >
-            Reset seen history
-          </button>
+        {stak === 'Subscribed' ? (
+          <>
+            <div style={{ fontSize: 32 }}>⭐</div>
+            <div style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 280, padding: '0 16px' }}>
+              No subscriptions yet. Browse communities and subscribe to see their posts here.
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ color: 'var(--text-secondary)' }}>You've seen everything!</div>
+            {!community && (
+              <button
+                onClick={() => { clearSeen(); window.location.reload(); }}
+                style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
+              >
+                Reset seen history
+              </button>
+            )}
+          </>
         )}
         <button
           onClick={onLogout}
@@ -185,6 +207,8 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           onNavigate={navigate}
           onLogoClick={() => navigate('/')}
           unreadCount={unreadCount}
+          activeStak={stak}
+          onStakChange={handleStakChange}
         />
       )}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>

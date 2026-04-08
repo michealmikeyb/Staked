@@ -125,7 +125,7 @@ describe('FeedStack header and sort', () => {
     const { fetchPosts } = await import('../lib/lemmy');
     render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
     await screen.findByText('Test Post Title');
-    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour');
+    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour', 'All');
   });
 
   it('resets the feed and re-fetches when sort changes', async () => {
@@ -147,7 +147,7 @@ describe('FeedStack header and sort', () => {
     fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
 
     await waitFor(() => {
-      expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot');
+      expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot', 'All');
     });
   });
 });
@@ -417,7 +417,7 @@ describe('FeedStack settings — defaultSort', () => {
     ]);
     render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
     await screen.findByText('Hot Post');
-    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot');
+    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot', 'All');
   });
 });
 
@@ -590,6 +590,90 @@ describe('FeedStack community mode', () => {
     fireEvent.click(screen.getByRole('button', { name: /compose/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/create-post', {
       state: { community: 'programming@lemmy.world' },
+    });
+  });
+});
+
+describe('FeedStack settings — activeStak', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('calls fetchPosts with activeStak All by default', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+    render(
+      <SettingsProvider>
+        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await screen.findByText('Post');
+    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour', 'All');
+  });
+
+  it('calls fetchPosts with activeStak from persisted settings', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Local',
+    }));
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Local Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+    render(
+      <SettingsProvider>
+        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await screen.findByText('Local Post');
+    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour', 'Local');
+  });
+});
+
+describe('FeedStack subscribed empty state', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('shows subscribed empty state when Subscribed stak returns no posts', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Subscribed',
+    }));
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    render(
+      <SettingsProvider>
+        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/no subscriptions yet/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows generic empty state for All stak', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    render(
+      <SettingsProvider>
+        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
     });
   });
 });
