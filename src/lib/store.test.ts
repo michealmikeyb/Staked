@@ -108,11 +108,17 @@ describe('loadSettings', () => {
       leftSwipe: 'downvote',
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
+      activeStak: 'All',
     });
   });
 
   it('round-trips settings through localStorage', () => {
-    const s = { leftSwipe: 'dismiss' as const, blurNsfw: false, defaultSort: 'Hot' as const };
+    const s = {
+      leftSwipe: 'dismiss' as const,
+      blurNsfw: false,
+      defaultSort: 'Hot' as const,
+      activeStak: 'Local' as const,
+    };
     saveSettings(s);
     expect(loadSettings()).toEqual(s);
   });
@@ -123,6 +129,7 @@ describe('loadSettings', () => {
     expect(s.blurNsfw).toBe(false);
     expect(s.leftSwipe).toBe('downvote');
     expect(s.defaultSort).toBe('TopTwelveHour');
+    expect(s.activeStak).toBe('All');
   });
 
   it('returns defaults when stored value is invalid JSON', () => {
@@ -131,6 +138,17 @@ describe('loadSettings', () => {
       leftSwipe: 'downvote',
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
+      activeStak: 'All',
     });
+  });
+
+  it('persists and reloads activeStak: Subscribed', () => {
+    saveSettings({
+      leftSwipe: 'downvote',
+      blurNsfw: true,
+      defaultSort: 'TopTwelveHour',
+      activeStak: 'Subscribed',
+    });
+    expect(loadSettings().activeStak).toBe('Subscribed');
   });
 });

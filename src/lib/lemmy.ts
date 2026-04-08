@@ -2,6 +2,8 @@ import { LemmyHttp, type PostView, type CommentView, type SortType, type Comment
 
 export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView };
 
+export type StakType = 'All' | 'Local' | 'Subscribed';
+
 export type NotifItem =
   | { type: 'reply'; data: CommentReplyView }
   | { type: 'mention'; data: PersonMentionView };
@@ -26,9 +28,10 @@ export async function fetchPosts(
   token: string,
   page: number,
   sort: SortType = 'TopTwelveHour',
+  stak: StakType = 'All',
 ): Promise<PostView[]> {
   const res = await client(instance, token).getPosts({
-    type_: 'All',
+    type_: stak,
     sort,
     page,
     limit: 10,

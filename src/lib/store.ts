@@ -1,4 +1,4 @@
-import { type SortType } from './lemmy';
+import { type SortType, type StakType } from './lemmy';
 
 const KEYS = {
   TOKEN: 'stakswipe_token',
@@ -58,6 +58,7 @@ export interface AppSettings {
   leftSwipe: 'downvote' | 'dismiss';
   blurNsfw: boolean;
   defaultSort: SortType;
+  activeStak: StakType;
 }
 
 const SETTINGS_KEY = 'stakswipe_settings';
@@ -66,6 +67,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   leftSwipe: 'downvote',
   blurNsfw: true,
   defaultSort: 'TopTwelveHour',
+  activeStak: 'All',
 };
 
 export function loadSettings(): AppSettings {
