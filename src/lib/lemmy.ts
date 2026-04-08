@@ -4,6 +4,15 @@ export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionVi
 
 export type StakType = 'All' | 'Local' | 'Subscribed';
 
+export interface CommunityInfo {
+  id: number;
+  icon?: string;
+  banner?: string;
+  description?: string;
+  counts: { subscribers: number; posts: number; comments: number };
+  subscribed: 'Subscribed' | 'NotSubscribed' | 'Pending';
+}
+
 export type NotifItem =
   | { type: 'reply'; data: CommentReplyView }
   | { type: 'mention'; data: PersonMentionView };
@@ -242,4 +251,34 @@ export async function uploadImage(
   const data = await res.json() as { files?: { file: string }[] };
   if (!data.files?.[0]?.file) throw new Error('Upload failed: no file returned');
   return `https://${instance}/pictrs/image/${data.files[0].file}`;
+}
+
+export async function fetchCommunityInfo(
+  instance: string,
+  token: string,
+  communityRef: string,
+): Promise<CommunityInfo> {
+  const res = await client(instance, token).getCommunity({ name: communityRef });
+  const { community, counts } = res.community_view;
+  return {
+    id: community.id,
+    icon: community.icon ?? undefined,
+    banner: community.banner ?? undefined,
+    description: community.description ?? undefined,
+    counts: {
+      subscribers: counts.subscribers,
+      posts: counts.posts,
+      comments: counts.comments,
+    },
+    subscribed: res.community_view.subscribed as 'Subscribed' | 'NotSubscribed' | 'Pending',
+  };
+}
+
+export async function followCommunity(
+  instance: string,
+  token: string,
+  communityId: number,
+  follow: boolean,
+): Promise<void> {
+  await client(instance, token).followCommunity({ community_id: communityId, follow });
 }
