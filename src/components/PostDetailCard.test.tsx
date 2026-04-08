@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../lib/lemmy', () => ({
@@ -11,7 +11,19 @@ vi.mock('../lib/lemmy', () => ({
     creator: { name: 'me', display_name: null },
     counts: { score: 1 },
   }),
+  editComment: vi.fn().mockResolvedValue({
+    comment: { id: 1, content: 'Edited', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
+    creator: { name: 'alice', display_name: null },
+    counts: { score: 1 },
+  }),
+  savePost: vi.fn().mockResolvedValue(undefined),
 }));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
 
 vi.mock('../hooks/useCommentLoader', () => ({
   useCommentLoader: () => ({ comments: [], commentsLoaded: true, resolvedInstanceRef: { current: '' }, resolvedTokenRef: { current: '' } }),
@@ -150,5 +162,23 @@ describe('PostDetailCard', () => {
     fireEvent.click(screen.getByTestId('share-button'));
 
     expect(writeTextMock).toHaveBeenCalledWith('https://stakswipe.com/#/post/lemmy.world/1');
+  });
+
+  it('does not show Save or Comment buttons without auth', () => {
+    render(<MemoryRouter><PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} /></MemoryRouter>);
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('comment-button')).not.toBeInTheDocument();
+  });
+
+  it('shows Save and Comment buttons with auth', () => {
+    render(<MemoryRouter><PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} /></MemoryRouter>);
+    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+    expect(screen.getByTestId('comment-button')).toBeInTheDocument();
+  });
+
+  it('score and comment count are in metaStats (top), not a footer span', () => {
+    renderCard();
+    expect(screen.getByTestId('meta-score')).toHaveTextContent('▲ 42');
+    expect(screen.getByTestId('meta-comments')).toHaveTextContent('💬 7');
   });
 });
