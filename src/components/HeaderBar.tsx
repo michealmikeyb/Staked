@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type SortType } from '../lib/lemmy';
+import { type SortType, type StakType } from '../lib/lemmy';
 import Logo from './Logo';
 
 export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
@@ -11,6 +11,12 @@ export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
   { sort: 'TopDay', label: 'Top Day' },
 ];
 
+export const STAKS: { stak: StakType; label: string; icon: string }[] = [
+  { stak: 'All', label: 'All', icon: '🌐' },
+  { stak: 'Local', label: 'Local', icon: '🏠' },
+  { stak: 'Subscribed', label: 'Subscribed', icon: '⭐' },
+];
+
 interface Props {
   sortType?: SortType;
   onSortChange?: (sort: SortType) => void;
@@ -18,21 +24,38 @@ interface Props {
   centerContent?: React.ReactNode;
   onLogoClick?: () => void;
   leftContent?: React.ReactNode;
+  activeStak?: StakType;
+  onStakChange?: (stak: StakType) => void;
 }
 
-export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerContent, onLogoClick, leftContent }: Props) {
-  const [showDropdown, setShowDropdown] = useState(false);
+export default function HeaderBar({
+  sortType,
+  onSortChange,
+  onMenuOpen,
+  centerContent,
+  onLogoClick,
+  leftContent,
+  activeStak,
+  onStakChange,
+}: Props) {
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showStakDropdown, setShowStakDropdown] = useState(false);
   const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType ?? '';
 
   function handleSortSelect(sort: SortType) {
-    setShowDropdown(false);
+    setShowSortDropdown(false);
     onSortChange?.(sort);
+  }
+
+  function handleStakSelect(stak: StakType) {
+    setShowStakDropdown(false);
+    onStakChange?.(stak);
   }
 
   const centerEl = centerContent ?? (sortType && onSortChange ? (
     <button
-      onClick={() => setShowDropdown((v) => !v)}
-      aria-label={showDropdown ? currentLabel : `${currentLabel} ▾`}
+      onClick={() => setShowSortDropdown((v) => !v)}
+      aria-label={showSortDropdown ? currentLabel : `${currentLabel} ▾`}
       style={{
         background: 'none', border: 'none', cursor: 'pointer', padding: 0,
         color: '#f5f5f5', fontSize: 13, fontWeight: 600,
@@ -52,7 +75,24 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerCo
         background: '#1a1d24', borderBottom: '1px solid #2a2d35',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Logo variant="mark" size={32} onClick={onLogoClick} />
+          {onStakChange ? (
+            <button
+              onClick={() => setShowStakDropdown((v) => !v)}
+              aria-label={`Switch stak, currently ${activeStak ?? 'All'}`}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <Logo variant="mark" size={32} />
+              <span style={{ color: '#f5f5f5', fontWeight: 700, fontSize: 14 }}>
+                {activeStak ?? 'All'}
+              </span>
+              <span style={{ color: '#888', fontSize: 11 }}>▾</span>
+            </button>
+          ) : (
+            <Logo variant="mark" size={32} onClick={onLogoClick} />
+          )}
           {leftContent}
         </div>
         {centerEl}
@@ -71,10 +111,10 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerCo
         </button>
       </div>
 
-      {showDropdown && sortType && onSortChange && (
+      {showSortDropdown && sortType && onSortChange && (
         <>
           <div
-            onClick={() => setShowDropdown(false)}
+            onClick={() => setShowSortDropdown(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 29 }}
           />
           <div style={{
@@ -98,6 +138,41 @@ export default function HeaderBar({ sortType, onSortChange, onMenuOpen, centerCo
                 <span style={{ width: 16, fontSize: 13 }}>
                   {sort === sortType ? '✓' : ''}
                 </span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {showStakDropdown && onStakChange && (
+        <>
+          <div
+            onClick={() => setShowStakDropdown(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 29 }}
+          />
+          <div style={{
+            position: 'fixed', top: 48, left: 0, right: 0,
+            background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30,
+          }}>
+            {STAKS.map(({ stak, label, icon }) => (
+              <button
+                key={stak}
+                onClick={() => handleStakSelect(stak)}
+                aria-label={label}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '12px 16px',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  borderBottom: '1px solid #1e2128', textAlign: 'left',
+                  color: stak === activeStak ? '#ff6b35' : '#f5f5f5',
+                  fontWeight: stak === activeStak ? 600 : 400, fontSize: 14,
+                }}
+              >
+                <span style={{ width: 16, fontSize: 13 }}>
+                  {stak === activeStak ? '✓' : ''}
+                </span>
+                <span>{icon}</span>
                 {label}
               </button>
             ))}

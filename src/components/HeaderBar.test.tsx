@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import HeaderBar from './HeaderBar';
+import { type StakType } from '../lib/lemmy';
 
 const defaultProps = {
   sortType: 'TopTwelveHour' as const,
@@ -90,5 +91,76 @@ describe('onLogoClick prop', () => {
     render(<HeaderBar onMenuOpen={() => {}} onLogoClick={spy} />);
     fireEvent.click(screen.getByRole('button', { name: /stakswipe home/i }));
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('stak picker', () => {
+  it('does not render stak picker when onStakChange is not provided', () => {
+    render(<HeaderBar onMenuOpen={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /switch stak/i })).not.toBeInTheDocument();
+  });
+
+  it('renders stak picker button showing active stak when onStakChange is provided', () => {
+    render(
+      <HeaderBar
+        onMenuOpen={vi.fn()}
+        activeStak="All"
+        onStakChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /switch stak.*all/i })).toBeInTheDocument();
+  });
+
+  it('opens stak dropdown when stak button is clicked', () => {
+    render(
+      <HeaderBar
+        onMenuOpen={vi.fn()}
+        activeStak="All"
+        onStakChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
+    expect(screen.getByRole('button', { name: /^local$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^subscribed$/i })).toBeInTheDocument();
+  });
+
+  it('calls onStakChange with selected stak', () => {
+    const onStakChange = vi.fn();
+    render(
+      <HeaderBar
+        onMenuOpen={vi.fn()}
+        activeStak="All"
+        onStakChange={onStakChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^local$/i }));
+    expect(onStakChange).toHaveBeenCalledWith('Local');
+  });
+
+  it('closes dropdown after selecting a stak', () => {
+    render(
+      <HeaderBar
+        onMenuOpen={vi.fn()}
+        activeStak="All"
+        onStakChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^local$/i }));
+    expect(screen.queryByRole('button', { name: /^subscribed$/i })).not.toBeInTheDocument();
+  });
+
+  it('marks the active stak with a checkmark', () => {
+    render(
+      <HeaderBar
+        onMenuOpen={vi.fn()}
+        activeStak="Local"
+        onStakChange={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
+    const localButton = screen.getByRole('button', { name: /^local$/i });
+    expect(localButton).toHaveTextContent('✓');
   });
 });
