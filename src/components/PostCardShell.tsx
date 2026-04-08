@@ -79,7 +79,6 @@ export default function PostCardShell({
   const [localEdits, setLocalEdits] = useState<Record<number, string>>({});
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [saveToastVisible, setSaveToastVisible] = useState(false);
-  const [isLinkBannerPressed, setIsLinkBannerPressed] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
 
   const instance = instanceFromActorId(community.actor_id);
@@ -203,10 +202,7 @@ export default function PostCardShell({
         {showLinkBanner && (
           <div
             data-testid="link-banner"
-            className={isLinkBannerPressed ? `${styles.linkBanner} ${styles.linkBannerPressed}` : styles.linkBanner}
-            onPointerDown={() => setIsLinkBannerPressed(true)}
-            onPointerUp={() => setIsLinkBannerPressed(false)}
-            onPointerLeave={() => setIsLinkBannerPressed(false)}
+            className={styles.linkBanner}
             onClick={() => window.open(post.url!, '_blank', 'noopener,noreferrer')}
           >
             <span className={styles.linkBannerIcon}>🔗</span>

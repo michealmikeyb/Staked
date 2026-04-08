@@ -157,12 +157,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.linkBannerPressed {
+.linkBannerPressed,
+.linkBanner:active {
   background: rgba(255, 107, 53, 0.12);
   border-color: rgba(255, 107, 53, 0.4);
 }
 
-.linkBannerPressed .linkBannerDomain {
+.linkBannerPressed .linkBannerDomain,
+.linkBanner:active .linkBannerDomain {
   color: var(--accent);
 }
 
