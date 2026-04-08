@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { type PostView } from '../lib/lemmy';
+import { fetchPost, type PostView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import MenuDrawer from './MenuDrawer';
 import PostDetailCard from './PostDetailCard';
@@ -13,15 +14,20 @@ interface Props {
 export default function ProfilePostDetailPage({ auth }: Props) {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const postView = state?.post as PostView | undefined;
   const commentApId = state?.commentApId as string | undefined;
+  const [postView, setPostView] = useState<PostView | undefined>(state?.post as PostView | undefined);
+
+  useEffect(() => {
+    if (postView || !state?.postId) return;
+    fetchPost(auth.instance, state.postId).then(setPostView).catch(() => {});
+  }, [auth.instance, state?.postId, postView]);
 
   if (!postView) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
         <MenuDrawer onNavigate={navigate} onLogoClick={() => navigate('/')} />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
-          Navigate to Profile to view this post.
+          {state?.postId ? 'Loading…' : 'Navigate to Profile to view this post.'}
         </div>
       </div>
     );

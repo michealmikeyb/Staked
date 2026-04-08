@@ -171,7 +171,7 @@ export default function ProfilePage({ auth, target }: Props) {
               key={`comment-${comment.id}`}
               onClick={() => navigate(`/profile/${post.id}`, {
                 state: {
-                  post: { post, community, creator: item.data.creator, counts: { score: 0, comments: 0 } },
+                  postId: post.id,
                   commentApId: comment.ap_id,
                 },
               })}

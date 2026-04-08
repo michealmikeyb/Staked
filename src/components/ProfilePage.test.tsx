@@ -96,12 +96,7 @@ describe('ProfilePage', () => {
     fireEvent.click(screen.getByText('Great post!'));
     expect(mockNavigate).toHaveBeenCalledWith('/profile/2', {
       state: {
-        post: {
-          post: mockComment.post,
-          community: mockComment.community,
-          creator: mockComment.creator,
-          counts: { score: 0, comments: 0 },
-        },
+        postId: mockComment.post.id,
         commentApId: 'https://lemmy.world/comment/5',
       },
     });
