@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type SortType } from '../lib/lemmy';
+import { type SortType, type StakType } from '../lib/lemmy';
 import HeaderBar from './HeaderBar';
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   sortType?: SortType;
   onSortChange?: (sort: SortType) => void;
   unreadCount?: number;
+  activeStak?: StakType;
+  onStakChange?: (stak: StakType) => void;
 }
 
 export default function MenuDrawer({
@@ -20,6 +22,8 @@ export default function MenuDrawer({
   sortType,
   onSortChange,
   unreadCount = 0,
+  activeStak,
+  onStakChange,
 }: Props) {
   const [showDrawer, setShowDrawer] = useState(false);
 
@@ -47,6 +51,8 @@ export default function MenuDrawer({
         onLogoClick={onLogoClick}
         centerContent={centerContent}
         leftContent={leftContent}
+        activeStak={activeStak}
+        onStakChange={onStakChange}
       />
       {showDrawer && (
         <>
