@@ -39,9 +39,9 @@ Two tabs: **Communities** and **Posts**. Default: Communities.
 
 ### Data Fetching
 
-Single call to a new `searchLemmy()` function with `type_: 'All'`. Results are split client-side into `communities` and `posts` arrays. This avoids two round trips.
+Two parallel calls on submit — one with `type_: 'Communities'` and one with `type_: 'Posts'`. Each gets its own 20-result page, so neither tab is starved of results by the other type dominating the response.
 
-Pagination: load page 1 on submit. A "Load more" button (not infinite scroll) appends additional pages to the active type's results. Page resets to 1 on new search.
+Pagination: each tab tracks its own page independently. A "Load more" button appends the next page for the active tab only. Both pages reset to 1 on new search.
 
 ### Community Results
 
@@ -73,17 +73,26 @@ Tap → navigate to `/saved/:postId` with `{ state: { post: pv } }` (reuses `Sav
 
 ## API Addition — `lemmy.ts`
 
+Two separate functions, one per type:
+
 ```ts
-export async function searchLemmy(
+export async function searchCommunities(
   instance: string,
   token: string,
   query: string,
   page: number,
-): Promise<{ communities: CommunityView[]; posts: PostView[] }>
+): Promise<CommunityView[]>
+
+export async function searchPosts(
+  instance: string,
+  token: string,
+  query: string,
+  page: number,
+): Promise<PostView[]>
 ```
 
-- Calls `client(instance, token).search({ q: query, type_: 'All', sort: 'TopAll', page, limit: 20 })`
-- Returns `{ communities: res.communities, posts: res.posts }`
+- Each calls `client(instance, token).search({ q: query, type_: 'Communities'/'Posts', sort: 'TopAll', page, limit: 20 })`
+- `SearchPage` calls both in parallel (`Promise.all`) on submit for the initial load, then calls only the relevant one on "Load more"
 - Export `CommunityView` from `lemmy.ts` so `SearchPage` can type its state
 
 ## Types to Export
