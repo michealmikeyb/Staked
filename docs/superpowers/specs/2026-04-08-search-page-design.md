@@ -57,10 +57,7 @@ The instance is extracted from the community's `actor_id` URL (e.g. `https://lem
 
 ### Post Results
 
-Each result shows:
-- Community name in orange
-- Post title (2-line clamp)
-- Score and comment count
+Same card style as `SavedPage`: thumbnail/image banner (120px tall) or colored placeholder, community name in orange, post title (2-line clamp), score and comment count.
 
 Tap → navigate to `/saved/:postId` with `{ state: { post: pv } }` (reuses `SavedPostDetailPage`, same pattern as `SavedPage`).
 
