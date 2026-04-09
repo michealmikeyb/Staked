@@ -3,14 +3,15 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { fetchCommunityInfo, type CommunityInfo } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import MarkdownRenderer from './MarkdownRenderer';
+import type { Components } from 'react-markdown';
 
 interface Props {
   auth: AuthState;
 }
 
-const ABOUT_MARKDOWN_COMPONENTS = {
-  strong: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  em: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+const ABOUT_MARKDOWN_COMPONENTS: Partial<Components> = {
+  strong: ({ children }) => <>{children}</>,
+  em: ({ children }) => <>{children}</>,
 };
 
 export default function CommunityAboutPage({ auth }: Props) {
