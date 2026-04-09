@@ -45,15 +45,19 @@ const MARKDOWN_COMPONENTS: Partial<Components> = {
 interface Props {
   content: string;
   className?: string;
+  components?: Partial<Components>;
 }
 
-function MarkdownRenderer({ content, className }: Props) {
+function MarkdownRenderer({ content, className, components }: Props) {
   const processed = useMemo(() => preprocessSpoilers(content), [content]);
   const wrapperClass = className ? `${styles.markdown} ${className}` : styles.markdown;
+  const mergedComponents = components
+    ? { ...MARKDOWN_COMPONENTS, ...components }
+    : MARKDOWN_COMPONENTS;
 
   return (
     <div className={wrapperClass}>
-      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={mergedComponents}>
         {processed}
       </ReactMarkdown>
     </div>
