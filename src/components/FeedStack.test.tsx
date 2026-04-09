@@ -27,6 +27,15 @@ vi.mock('../lib/lemmy', () => ({
       counts: { score: 10, comments: 2 },
     },
   ]),
+  fetchCommunityInfo: vi.fn().mockResolvedValue({
+    id: 99,
+    icon: undefined,
+    banner: undefined,
+    description: 'A rust community',
+    counts: { subscribers: 5000, posts: 200, comments: 800 },
+    subscribed: 'NotSubscribed',
+  }),
+  followCommunity: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockNavigate = vi.fn();
@@ -493,7 +502,7 @@ describe('FeedStack community mode', () => {
     );
     await screen.findByText('Community Post');
     expect(screen.getAllByText('c/rust')).toHaveLength(2);
-    expect(screen.queryByRole('button', { name: /menu/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^menu$/i })).not.toBeInTheDocument();
   });
 
   it('calls fetchCommunityPosts with the correct communityRef', async () => {
@@ -566,7 +575,7 @@ describe('FeedStack community mode', () => {
     });
   });
 
-  it('navigates to /create-post with community state when compose button is clicked in community mode', async () => {
+  it('navigates to /create-post with community state when post button is clicked in community menu', async () => {
     const { fetchCommunityPosts } = await import('../lib/lemmy');
     (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
@@ -578,18 +587,41 @@ describe('FeedStack community mode', () => {
     ]);
 
     render(
-      <FeedStack
-        auth={AUTH}
-        onLogout={vi.fn()}
-        unreadCount={0}
-        setUnreadCount={vi.fn()}
-        community={{ name: 'programming', instance: 'lemmy.world' }}
-      />
+      <SettingsProvider>
+        <FeedStack
+          auth={AUTH}
+          onLogout={vi.fn()}
+          unreadCount={0}
+          setUnreadCount={vi.fn()}
+          community={{ name: 'programming', instance: 'lemmy.world' }}
+        />
+      </SettingsProvider>
     );
-    await waitFor(() => expect(screen.getByRole('button', { name: /compose/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /compose/i }));
+    await screen.findByText('Community Post');
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/create-post', {
       state: { community: 'programming@lemmy.world' },
+    });
+  });
+
+  it('calls fetchCommunityInfo on mount in community mode', async () => {
+    const { fetchCommunityInfo } = await import('../lib/lemmy');
+    render(
+      <SettingsProvider>
+        <FeedStack
+          auth={AUTH}
+          onLogout={vi.fn()}
+          unreadCount={0}
+          setUnreadCount={vi.fn()}
+          community={{ name: 'rust', instance: 'lemmy.world' }}
+        />
+      </SettingsProvider>,
+    );
+    await waitFor(() => {
+      expect(fetchCommunityInfo).toHaveBeenCalledWith(
+        'lemmy.world', AUTH.token, 'rust@lemmy.world',
+      );
     });
   });
 });

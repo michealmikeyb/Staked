@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, type PostView, type SortType, type StakType } from '../lib/lemmy';
+import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, fetchCommunityInfo, followCommunity, type PostView, type SortType, type StakType, type CommunityInfo } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
 import PostCard from './PostCard';
@@ -32,6 +32,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [sortType, setSortType] = useState<SortType>(community ? 'Active' : settings.defaultSort);
   const [stak, setStak] = useState<StakType>(settings.activeStak);
+  const [communityInfo, setCommunityInfo] = useState<CommunityInfo | null>(null);
 
   useEffect(() => {
     if (community) return;
@@ -39,6 +40,14 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
       .then(setUnreadCount)
       .catch(() => {});
   }, [auth, setUnreadCount, community]);
+
+  useEffect(() => {
+    if (!community) return;
+    fetchCommunityInfo(auth.instance, auth.token, `${community.name}@${community.instance}`)
+      .then(setCommunityInfo)
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType, currentStak: StakType) => {
     setLoading(true);
@@ -85,6 +94,18 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     setPage(1);
     setCanLoadMore(true);
     loadMore(1, sort, newStak);
+  }
+
+  async function handleSubscribeToggle() {
+    if (!communityInfo) return;
+    const follow = communityInfo.subscribed !== 'Subscribed';
+    const previous = communityInfo;
+    setCommunityInfo({ ...communityInfo, subscribed: follow ? 'Subscribed' : 'NotSubscribed' });
+    try {
+      await followCommunity(auth.instance, auth.token, communityInfo.id, follow);
+    } catch {
+      setCommunityInfo(previous);
+    }
   }
 
   function handleSortChange(newSort: SortType) {
@@ -197,10 +218,12 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
       {community ? (
         <CommunityHeader
           name={community.name}
+          instance={community.instance}
           sortType={sortType}
           onSortChange={handleSortChange}
           onBack={() => navigate(-1)}
-          onCompose={() => navigate('/create-post', { state: { community: `${community.name}@${community.instance}` } })}
+          communityInfo={communityInfo}
+          onSubscribeToggle={handleSubscribeToggle}
         />
       ) : (
         <MenuDrawer
