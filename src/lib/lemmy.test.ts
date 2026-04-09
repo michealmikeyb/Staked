@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -68,6 +68,26 @@ vi.mock('lemmy-js-client', () => {
       community_view: { community: { id: 42 } },
     }),
     createPost: vi.fn().mockResolvedValue({ post_view: { post: { id: 99 } } }),
+    search: vi.fn().mockResolvedValue({
+      type_: 'All',
+      communities: [
+        {
+          community: {
+            id: 10,
+            name: 'rust',
+            actor_id: 'https://lemmy.world/c/rust',
+            icon: undefined,
+            description: 'The Rust programming language',
+          },
+          counts: { subscribers: 5000 },
+        },
+      ],
+      posts: [
+        { post: { id: 99, name: 'Rust is great', ap_id: 'https://lemmy.world/post/99' }, counts: { score: 50, comments: 10 } },
+      ],
+      comments: [],
+      users: [],
+    }),
   }));
   return { LemmyHttp: MockLemmyHttp };
 });
@@ -385,5 +405,21 @@ describe('uploadImage', () => {
     } as unknown as Response));
     await expect(uploadImage('lemmy.world', 'tok', new File([''], 'test.jpg')))
       .rejects.toThrow('Upload failed: no file returned');
+  });
+});
+
+describe('searchCommunities', () => {
+  it('calls search with Communities type and returns communities array', async () => {
+    const result = await searchCommunities('lemmy.world', 'tok', 'rust', 1);
+    expect(result).toHaveLength(1);
+    expect(result[0].community.name).toBe('rust');
+  });
+});
+
+describe('searchPosts', () => {
+  it('calls search with Posts type and returns posts array', async () => {
+    const result = await searchPosts('lemmy.world', 'tok', 'rust', 1);
+    expect(result).toHaveLength(1);
+    expect(result[0].post.name).toBe('Rust is great');
   });
 });

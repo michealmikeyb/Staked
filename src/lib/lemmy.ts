@@ -1,6 +1,6 @@
-import { LemmyHttp, type PostView, type CommentView, type SortType, type CommentReplyView, type PersonMentionView } from 'lemmy-js-client';
+import { LemmyHttp, type PostView, type CommentView, type SortType, type CommentReplyView, type PersonMentionView, type CommunityView } from 'lemmy-js-client';
 
-export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView };
+export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView, CommunityView };
 
 export type StakType = 'All' | 'Local' | 'Subscribed';
 
@@ -281,4 +281,36 @@ export async function followCommunity(
   follow: boolean,
 ): Promise<void> {
   await client(instance, token).followCommunity({ community_id: communityId, follow });
+}
+
+export async function searchCommunities(
+  instance: string,
+  token: string,
+  query: string,
+  page: number,
+): Promise<CommunityView[]> {
+  const res = await client(instance, token).search({
+    q: query,
+    type_: 'Communities',
+    sort: 'TopAll',
+    page,
+    limit: 20,
+  });
+  return res.communities;
+}
+
+export async function searchPosts(
+  instance: string,
+  token: string,
+  query: string,
+  page: number,
+): Promise<PostView[]> {
+  const res = await client(instance, token).search({
+    q: query,
+    type_: 'Posts',
+    sort: 'TopAll',
+    page,
+    limit: 20,
+  });
+  return res.posts;
 }
