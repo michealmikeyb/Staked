@@ -12,11 +12,12 @@ Add a Search page accessible from the main menu drawer. The menu expands from 5 
 - New 🔍 Search button added, navigates to `/search`
 - Button order (reading left-to-right, top-to-bottom): Saved, Profile, Inbox, Settings, Post, Search
 
-## Route
+## Routes
 
-`/search` → `<SearchPage auth={auth} />`
+- `/search` → `<SearchPage auth={auth} />` — the search UI
+- `/view/:instance/:postId` → `<PostViewPage auth={auth} />` — authenticated post detail, same URL structure as share links
 
-Added to `AuthenticatedApp` in `App.tsx`.
+Both added to `AuthenticatedApp` in `App.tsx`.
 
 ## SearchPage Component
 
@@ -59,7 +60,7 @@ The instance is extracted from the community's `actor_id` URL (e.g. `https://lem
 
 Same card style as `SavedPage`: thumbnail/image banner (120px tall) or colored placeholder, community name in orange, post title (2-line clamp), score and comment count.
 
-Tap → navigate to `/saved/:postId` with `{ state: { post: pv } }` (reuses `SavedPostDetailPage`, same pattern as `SavedPage`).
+Tap → navigate to `/view/:instance/:postId` where `instance` is parsed from `post.ap_id` and `postId` is the source post's numeric ID (also from `ap_id`, e.g. `https://lemmy.world/post/123` → instance `lemmy.world`, id `123`).
 
 ### States
 
@@ -67,6 +68,18 @@ Tap → navigate to `/saved/:postId` with `{ state: { post: pv } }` (reuses `Sav
 - **Loading:** "Loading…" centered (same style as `SavedPage`)
 - **Error:** error message in red
 - **Empty:** "No results for \[query\]"
+
+## PostViewPage Component
+
+**File:** `src/components/PostViewPage.tsx`
+
+Authenticated post detail view reached from search results. Mirrors `SharedPostPage` layout but inside the auth gate.
+
+- Reads `instance` and `postId` from URL params
+- Calls `fetchPost(instance, parseInt(postId))` on mount
+- Renders `MenuDrawer` + `PostDetailCard` with `auth` prop (enabling comments, voting, etc.)
+- Loading/error states same as `SharedPostPage`
+- Back navigation: `← Search` button on iOS (same pattern as `PostDetailPage` using `← Inbox`)
 
 ## API Addition — `lemmy.ts`
 
