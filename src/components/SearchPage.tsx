@@ -33,6 +33,7 @@ export default function SearchPage({ auth }: Props) {
     if (!query.trim()) return;
     setLoading(true);
     setError('');
+    setSearched(false);
     setCommunities([]);
     setPosts([]);
     setCommunityPage(1);
