@@ -127,4 +127,18 @@ describe('MenuDrawer', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/create-post');
     expect(screen.queryByRole('button', { name: /^post$/i })).not.toBeInTheDocument();
   });
+
+  it('renders Search button when drawer is open', () => {
+    renderDrawer();
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+  });
+
+  it('calls onNavigate with /search and closes drawer when Search is clicked', () => {
+    renderDrawer();
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /search/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/search');
+    expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
+  });
 });
