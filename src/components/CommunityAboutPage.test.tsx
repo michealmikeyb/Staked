@@ -20,7 +20,7 @@ const INFO = {
   id: 42,
   icon: undefined,
   banner: undefined,
-  description: '**Hello** community',
+  description: 'Hello community',
   counts: { subscribers: 12400, posts: 3200, comments: 8900 },
   subscribed: 'NotSubscribed' as const,
 };

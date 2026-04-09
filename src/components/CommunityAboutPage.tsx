@@ -3,16 +3,10 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { fetchCommunityInfo, type CommunityInfo } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import MarkdownRenderer from './MarkdownRenderer';
-import type { Components } from 'react-markdown';
 
 interface Props {
   auth: AuthState;
 }
-
-const ABOUT_MARKDOWN_COMPONENTS: Partial<Components> = {
-  strong: ({ children }) => <>{children}</>,
-  em: ({ children }) => <>{children}</>,
-};
 
 export default function CommunityAboutPage({ auth }: Props) {
   const { instance, name } = useParams<{ instance: string; name: string }>();
@@ -94,10 +88,7 @@ export default function CommunityAboutPage({ auth }: Props) {
             </div>
             <div style={{ borderTop: '1px solid #2a2d35', paddingTop: 16 }}>
               {info.description
-                ? <MarkdownRenderer
-                    content={info.description}
-                    components={ABOUT_MARKDOWN_COMPONENTS}
-                  />
+                ? <MarkdownRenderer content={info.description} />
                 : <div style={{ color: '#888', fontSize: 14 }}>No description.</div>
               }
             </div>

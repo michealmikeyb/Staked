@@ -47,7 +47,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
       .then(setCommunityInfo)
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // mount-only: community and auth are stable for the lifetime of this route
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType, currentStak: StakType) => {
     setLoading(true);
