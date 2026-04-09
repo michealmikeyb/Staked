@@ -18,7 +18,7 @@ beforeEach(() => { vi.clearAllMocks(); });
 describe('LoginPage', () => {
   it('renders the Stakswipe title', () => {
     render(<LoginPage onLogin={mockOnLogin} />);
-    expect(screen.getByText('Stakswipe')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /stakswipe/i })).toBeInTheDocument();
   });
 
   it('shows the instance dropdown with popular instances', () => {

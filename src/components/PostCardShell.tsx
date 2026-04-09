@@ -12,6 +12,7 @@ import ReplySheet from './ReplySheet';
 import Toast from './Toast';
 import MarkdownRenderer from './MarkdownRenderer';
 import CreatorAvatar from './CreatorAvatar';
+import CommunityAvatar from './CommunityAvatar';
 import styles from './PostCard.module.css';
 
 interface Post {
@@ -167,17 +168,7 @@ export default function PostCardShell({
         onTouchEnd={onTouchEnd}
       >
         <div className={styles.meta}>
-          <div className={styles.communityIcon}>
-            {community.icon
-              ? <img
-                  data-testid="community-icon-img"
-                  src={community.icon}
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                />
-              : community.name.charAt(0).toUpperCase()
-            }
-          </div>
+          <CommunityAvatar name={community.name} icon={community.icon} size={32} />
           <div>
             <div
               className={styles.communityName}

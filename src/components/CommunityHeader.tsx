@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type SortType, type CommunityInfo } from '../lib/lemmy';
 import { SORT_OPTIONS } from './HeaderBar';
+import CommunityAvatar from './CommunityAvatar';
 
 interface Props {
   name: string;
@@ -59,22 +60,7 @@ export default function CommunityHeader({
         >
           ←
         </button>
-        <div style={{
-          width: 24, height: 24, borderRadius: '50%', overflow: 'hidden',
-          marginRight: 6, flexShrink: 0, background: '#2a2d35',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: '#f5f5f5',
-        }}>
-          {communityInfo?.icon
-            ? <img
-                data-testid="header-community-icon"
-                src={communityInfo.icon}
-                alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-              />
-            : name.charAt(0).toUpperCase()
-          }
-        </div>
+        <CommunityAvatar name={name} icon={communityInfo?.icon} size={24} style={{ marginRight: 6 }} />
         <div style={{ flex: 1, textAlign: 'center', color: '#f5f5f5', fontWeight: 600, fontSize: 15 }}>
           c/{name}
         </div>

@@ -174,7 +174,7 @@ describe('PostCardShell', () => {
         icon: 'https://lemmy.world/pictrs/image/icon.png',
       },
     });
-    const img = document.querySelector('[data-testid="community-icon-img"]') as HTMLImageElement;
+    const img = document.querySelector('[data-testid="community-avatar-img"]') as HTMLImageElement;
     expect(img).not.toBeNull();
     expect(img.src).toBe('https://lemmy.world/pictrs/image/icon.png');
   });
@@ -182,6 +182,6 @@ describe('PostCardShell', () => {
   it('renders first-letter fallback when community.icon is absent', () => {
     renderShell({ community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' } });
     expect(screen.getByText('L')).toBeInTheDocument();
-    expect(document.querySelector('[data-testid="community-icon-img"]')).toBeNull();
+    expect(document.querySelector('[data-testid="community-avatar-img"]')).toBeNull();
   });
 });

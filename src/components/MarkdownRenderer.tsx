@@ -51,9 +51,10 @@ interface Props {
 function MarkdownRenderer({ content, className, components }: Props) {
   const processed = useMemo(() => preprocessSpoilers(content), [content]);
   const wrapperClass = className ? `${styles.markdown} ${className}` : styles.markdown;
-  const mergedComponents = components
-    ? { ...MARKDOWN_COMPONENTS, ...components }
-    : MARKDOWN_COMPONENTS;
+  const mergedComponents = useMemo(
+    () => components ? { ...MARKDOWN_COMPONENTS, ...components } : MARKDOWN_COMPONENTS,
+    [components],
+  );
 
   return (
     <div className={wrapperClass}>

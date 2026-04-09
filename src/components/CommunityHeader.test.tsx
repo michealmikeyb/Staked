@@ -115,7 +115,7 @@ describe('CommunityHeader', () => {
       subscribed: 'NotSubscribed' as const,
     };
     render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
-    const img = document.querySelector('[data-testid="header-community-icon"]') as HTMLImageElement;
+    const img = document.querySelector('[data-testid="community-avatar-img"]') as HTMLImageElement;
     expect(img).not.toBeNull();
     expect(img.src).toBe('https://lemmy.world/icon.png');
   });

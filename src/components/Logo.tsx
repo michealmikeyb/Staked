@@ -70,6 +70,7 @@ export default function Logo({ variant = 'mark', layout = 'horizontal', size = 3
 
   const wordmark = (
     <span
+      role="img"
       aria-label="Stakswipe"
       style={{
         fontFamily: "'Syne', system-ui, sans-serif",

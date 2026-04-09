@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { fetchCommunityInfo, type CommunityInfo } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import MarkdownRenderer from './MarkdownRenderer';
+import CommunityAvatar from './CommunityAvatar';
 
 interface Props {
   auth: AuthState;
@@ -64,21 +65,7 @@ export default function CommunityAboutPage({ auth }: Props) {
           )}
           <div style={{ padding: '16px 16px 32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              {info.icon ? (
-                <img
-                  src={info.icon}
-                  alt=""
-                  style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #2a2d35', flexShrink: 0 }}
-                />
-              ) : (
-                <div style={{
-                  width: 40, height: 40, borderRadius: '50%', background: '#2a2d35',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: 18, color: '#f5f5f5', flexShrink: 0,
-                }}>
-                  {name!.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <CommunityAvatar name={name!} icon={info.icon} size={40} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{name}</div>
                 <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
