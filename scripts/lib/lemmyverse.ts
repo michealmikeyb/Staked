@@ -1,7 +1,7 @@
 export interface LemmyverseInstance {
   baseurl: string;
-  users: { month: number };
-  isSuspicious: boolean;
+  usage?: { users?: { activeMonth?: number } };
+  isSuspicious?: boolean;
 }
 
 export function filterTopInstances(
@@ -9,8 +9,8 @@ export function filterTopInstances(
   n: number,
 ): string[] {
   return instances
-    .filter((i) => !i.isSuspicious && i.users.month > 0)
-    .sort((a, b) => b.users.month - a.users.month)
+    .filter((i) => !i.isSuspicious && (i.usage?.users?.activeMonth ?? 0) > 0)
+    .sort((a, b) => (b.usage?.users?.activeMonth ?? 0) - (a.usage?.users?.activeMonth ?? 0))
     .slice(0, n)
     .map((i) => i.baseurl);
 }
@@ -19,7 +19,7 @@ export async function fetchTopInstances(n: number): Promise<string[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch('https://lemmyverse.net/data/lemmy.min.json', {
+    const res = await fetch('https://lemmyverse.net/data/instance.full.json', {
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`lemmyverse.net returned ${res.status}`);

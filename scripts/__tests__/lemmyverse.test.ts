@@ -3,7 +3,7 @@ import { filterTopInstances } from '../lib/lemmyverse.js';
 
 const makeInstance = (baseurl: string, month: number, isSuspicious = false) => ({
   baseurl,
-  users: { month },
+  usage: { users: { activeMonth: month } },
   isSuspicious,
 });
 
