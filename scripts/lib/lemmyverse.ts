@@ -16,8 +16,17 @@ export function filterTopInstances(
 }
 
 export async function fetchTopInstances(n: number): Promise<string[]> {
-  const res = await fetch('https://lemmyverse.net/data/lemmy.min.json');
-  if (!res.ok) throw new Error(`lemmyverse.net returned ${res.status}`);
-  const data = (await res.json()) as LemmyverseInstance[];
-  return filterTopInstances(data, n);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch('https://lemmyverse.net/data/lemmy.min.json', {
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`lemmyverse.net returned ${res.status}`);
+    const data: unknown = await res.json();
+    if (!Array.isArray(data)) throw new Error('lemmyverse.net response is not an array');
+    return filterTopInstances(data as LemmyverseInstance[], n);
+  } finally {
+    clearTimeout(timer);
+  }
 }
