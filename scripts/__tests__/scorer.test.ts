@@ -33,18 +33,18 @@ describe('scoreInstances', () => {
   });
 
   it('applies weights: posts 40%, comments 35%, postVotes 15%, commentVotes 10%', () => {
+    // a: 1 post in universe, no comments
+    // b: no posts, 1 comment with 100 upvotes
+    // a.score = 0.40*(1/1) + 0.35*(0/1) + 0.15*(0/1) + 0.10*(0/100) = 0.40
+    // b.score = 0.40*(0/1) + 0.35*(1/1) + 0.15*(0/1) + 0.10*(100/100) = 0.45
     const universe = new Set(['p1']);
     const a = makeRaw('a', [{ ap_id: 'p1', upvotes: 0, downvotes: 0 }], []);
     const b = makeRaw('b', [], [100]);
-    // a: postsVisible=1 (max), all others 0
-    // b: postsVisible=0, commentVotes=100 (max)
-    // a.score = 0.40*1 + 0.35*0 + 0.15*0 + 0.10*0 = 0.40
-    // b.score = 0.40*0 + 0.35*0 + 0.15*0 + 0.10*1 = 0.10
     const scores = scoreInstances([a, b], universe);
     const aScore = scores.find((s) => s.instance === 'a')!.score;
     const bScore = scores.find((s) => s.instance === 'b')!.score;
     expect(aScore).toBeCloseTo(0.40);
-    expect(bScore).toBeCloseTo(0.10);
+    expect(bScore).toBeCloseTo(0.45);
   });
 
   it('returns instances sorted descending by score', () => {
