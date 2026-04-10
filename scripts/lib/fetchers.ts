@@ -29,11 +29,13 @@ export async function fetchPostsPage(
       }),
       TIMEOUT_MS
     );
-    const posts: RawPost[] = res.posts.map((pv) => ({
-      ap_id: pv.post.ap_id,
-      upvotes: pv.counts.upvotes,
-      downvotes: pv.counts.downvotes,
-    }));
+    const posts: RawPost[] = res.posts
+      .filter((pv) => pv.post?.ap_id != null && pv.counts != null)
+      .map((pv) => ({
+        ap_id: pv.post.ap_id,
+        upvotes: pv.counts.upvotes ?? 0,
+        downvotes: pv.counts.downvotes ?? 0,
+      }));
     return { posts };
   } catch (err) {
     return { posts: [], error: err instanceof Error ? err.message : String(err) };
@@ -54,11 +56,13 @@ export async function fetchPostComments(
       }),
       TIMEOUT_MS
     );
-    const comments: RawComment[] = res.comments.map((cv) => ({
-      postApId,
-      upvotes: cv.counts.upvotes,
-      downvotes: cv.counts.downvotes,
-    }));
+    const comments: RawComment[] = res.comments
+      .filter((cv) => cv.counts != null)
+      .map((cv) => ({
+        postApId,
+        upvotes: cv.counts.upvotes ?? 0,
+        downvotes: cv.counts.downvotes ?? 0,
+      }));
     return { comments };
   } catch (err) {
     return { comments: [], error: err instanceof Error ? err.message : String(err) };
