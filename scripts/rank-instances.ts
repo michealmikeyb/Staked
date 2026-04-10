@@ -42,9 +42,12 @@ async function collectInstanceSortData(
     }
   }
 
+  // Deduplicate posts by ap_id (same post can appear on multiple pages in active feeds)
+  const uniquePosts = [...new Map(posts.map((p) => [p.ap_id, p])).values()];
+
   // Fetch comments for all posts found — parallel within per-instance semaphore
   await Promise.all(
-    posts.map(async (post) => {
+    uniquePosts.map(async (post) => {
       const result = await instanceSem.run(() =>
         globalSem.run(() => fetchPostComments(instance, post.id, post.ap_id))
       );
@@ -67,7 +70,7 @@ async function collectInstanceSortData(
   const status = misses.some((m) => m.type === 'page-fetch') && posts.length === 0 ? '✗' : '✓';
   console.log(`${status} ${instance.padEnd(30)} ${sort.padEnd(16)} [${completed.count}/${completed.total}]`);
 
-  return { instance, sortType: sort, posts, comments, misses };
+  return { instance, sortType: sort, posts: uniquePosts, comments, misses };
 }
 
 async function main() {
