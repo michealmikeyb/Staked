@@ -2,7 +2,11 @@ import { writeFileSync } from 'fs';
 import type { Rankings, MissRecord } from './types.js';
 
 export function writeJson(rankings: Rankings, outPath: string): void {
-  writeFileSync(outPath, JSON.stringify(rankings, null, 2));
+  try {
+    writeFileSync(outPath, JSON.stringify(rankings, null, 2));
+  } catch (err) {
+    throw new Error(`Failed to write rankings to ${outPath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 export function printConsoleReport(rankings: Rankings): void {
