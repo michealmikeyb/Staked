@@ -6,7 +6,7 @@ import type { SortType, InstanceRawData, MissRecord, Rankings } from './lib/type
 import { SORT_TYPES } from './lib/types.js';
 import { fetchTopInstances } from './lib/lemmyverse.js';
 import { Semaphore } from './lib/semaphore.js';
-import { fetchPostsPage, fetchPostComments, resolveLocalPostId } from './lib/fetchers.js';
+import { fetchPostsPage, fetchPostComments } from './lib/fetchers.js';
 import { buildUniverse } from './lib/universe.js';
 import { scoreInstances } from './lib/scorer.js';
 import { writeJson, printConsoleReport } from './lib/output.js';
@@ -45,24 +45,8 @@ async function collectInstanceSortData(
   // Fetch comments for all posts found — parallel within per-instance semaphore
   await Promise.all(
     posts.map(async (post) => {
-      // Need local post ID to fetch comments — resolve it
-      const localId = await instanceSem.run(() =>
-        globalSem.run(() => resolveLocalPostId(instance, post.ap_id))
-      );
-
-      if (localId === null) {
-        misses.push({
-          instance,
-          sortType: sort,
-          type: 'comment-fetch',
-          postApId: post.ap_id,
-          error: 'Could not resolve local post ID',
-        });
-        return;
-      }
-
       const result = await instanceSem.run(() =>
-        globalSem.run(() => fetchPostComments(instance, localId, post.ap_id))
+        globalSem.run(() => fetchPostComments(instance, post.id, post.ap_id))
       );
 
       if (result.error) {

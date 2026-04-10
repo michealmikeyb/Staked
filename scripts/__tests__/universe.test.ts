@@ -5,7 +5,7 @@ import type { InstanceRawData } from '../lib/types.js';
 const makeRaw = (instance: string, apIds: string[]): InstanceRawData => ({
   instance,
   sortType: 'Active',
-  posts: apIds.map((ap_id) => ({ ap_id, upvotes: 10, downvotes: 2 })),
+  posts: apIds.map((ap_id, i) => ({ id: i + 1, ap_id, upvotes: 10, downvotes: 2 })),
   comments: [],
   misses: [],
 });

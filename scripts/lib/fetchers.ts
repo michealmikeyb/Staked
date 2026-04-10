@@ -32,6 +32,7 @@ export async function fetchPostsPage(
     const posts: RawPost[] = res.posts
       .filter((pv) => pv.post?.ap_id != null && pv.counts != null)
       .map((pv) => ({
+        id: pv.post.id,
         ap_id: pv.post.ap_id,
         upvotes: pv.counts.upvotes ?? 0,
         downvotes: pv.counts.downvotes ?? 0,

@@ -3,6 +3,7 @@ export type SortType = 'Active' | 'Hot' | 'New' | 'TopSixHour' | 'TopTwelveHour'
 export const SORT_TYPES: SortType[] = ['Active', 'Hot', 'New', 'TopSixHour', 'TopTwelveHour', 'TopDay'];
 
 export interface RawPost {
+  id: number;
   ap_id: string;
   upvotes: number;
   downvotes: number;

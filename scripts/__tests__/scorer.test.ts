@@ -4,7 +4,7 @@ import type { InstanceRawData } from '../lib/types.js';
 
 const makeRaw = (
   instance: string,
-  posts: Array<{ ap_id: string; upvotes: number; downvotes: number }>,
+  posts: Array<{ id: number; ap_id: string; upvotes: number; downvotes: number }>,
   commentVotes: number[],
 ): InstanceRawData => ({
   instance,
@@ -19,12 +19,12 @@ describe('scoreInstances', () => {
     const universe = new Set(['p1', 'p2', 'p3']);
     const data = [
       makeRaw('best', [
-        { ap_id: 'p1', upvotes: 100, downvotes: 10 },
-        { ap_id: 'p2', upvotes: 100, downvotes: 10 },
-        { ap_id: 'p3', upvotes: 100, downvotes: 10 },
+        { id: 1, ap_id: 'p1', upvotes: 100, downvotes: 10 },
+        { id: 2, ap_id: 'p2', upvotes: 100, downvotes: 10 },
+        { id: 3, ap_id: 'p3', upvotes: 100, downvotes: 10 },
       ], [50, 50]),
       makeRaw('worse', [
-        { ap_id: 'p1', upvotes: 10, downvotes: 1 },
+        { id: 1, ap_id: 'p1', upvotes: 10, downvotes: 1 },
       ], [5]),
     ];
     const scores = scoreInstances(data, universe);
@@ -38,7 +38,7 @@ describe('scoreInstances', () => {
     // a.score = 0.40*(1/1) + 0.35*(0/1) + 0.15*(0/1) + 0.10*(0/100) = 0.40
     // b.score = 0.40*(0/1) + 0.35*(1/1) + 0.15*(0/1) + 0.10*(100/100) = 0.45
     const universe = new Set(['p1']);
-    const a = makeRaw('a', [{ ap_id: 'p1', upvotes: 0, downvotes: 0 }], []);
+    const a = makeRaw('a', [{ id: 1, ap_id: 'p1', upvotes: 0, downvotes: 0 }], []);
     const b = makeRaw('b', [], [100]);
     const scores = scoreInstances([a, b], universe);
     const aScore = scores.find((s) => s.instance === 'a')!.score;
@@ -50,10 +50,10 @@ describe('scoreInstances', () => {
   it('returns instances sorted descending by score', () => {
     const universe = new Set(['p1', 'p2']);
     const data = [
-      makeRaw('low', [{ ap_id: 'p1', upvotes: 1, downvotes: 0 }], []),
+      makeRaw('low', [{ id: 1, ap_id: 'p1', upvotes: 1, downvotes: 0 }], []),
       makeRaw('high', [
-        { ap_id: 'p1', upvotes: 100, downvotes: 10 },
-        { ap_id: 'p2', upvotes: 100, downvotes: 10 },
+        { id: 1, ap_id: 'p1', upvotes: 100, downvotes: 10 },
+        { id: 2, ap_id: 'p2', upvotes: 100, downvotes: 10 },
       ], [50]),
     ];
     const scores = scoreInstances(data, universe);
