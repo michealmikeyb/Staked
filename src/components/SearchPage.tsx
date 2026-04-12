@@ -116,7 +116,7 @@ export default function SearchPage({ auth }: Props) {
             style={{
               padding: '10px 16px', borderRadius: 10, border: 'none',
               background: '#ff6b35', color: '#fff', fontWeight: 600, fontSize: 14,
-              cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
+              cursor: (loading || !!directPost) ? 'not-allowed' : 'pointer', opacity: (loading || !!directPost) ? 0.6 : 1,
             }}
           >
             Search
