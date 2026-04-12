@@ -135,4 +135,66 @@ describe('SearchPage', () => {
     fireEvent.click(screen.getByText('Rust is great'));
     expect(mockNavigate).toHaveBeenCalledWith('/view/lemmy.world/99');
   });
+
+  it('shows "Go to post" chip when a Lemmy post URL is typed', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'https://lemmy.world/post/2395953' },
+    });
+    expect(screen.getByText(/Go to post/)).toBeInTheDocument();
+  });
+
+  it('shows "Go to post" chip for a URL without protocol', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'lemmy.world/post/42' },
+    });
+    expect(screen.getByText(/Go to post/)).toBeInTheDocument();
+  });
+
+  it('shows "Go to post" chip for a Stakswipe share URL', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'https://stakswipe.com/#/post/lemmy.world/2395953' },
+    });
+    expect(screen.getByText(/Go to post/)).toBeInTheDocument();
+  });
+
+  it('does not show "Go to post" chip for a plain text query', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'rust programming' },
+    });
+    expect(screen.queryByText(/Go to post/)).not.toBeInTheDocument();
+  });
+
+  it('chip click navigates to /view/:instance/:postId', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'https://lemmy.world/post/2395953' },
+    });
+    fireEvent.click(screen.getByText(/Go to post/));
+    expect(mockNavigate).toHaveBeenCalledWith('/view/lemmy.world/2395953');
+  });
+
+  it('disables Search button when a URL is detected', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'https://lemmy.world/post/2395953' },
+    });
+    expect(screen.getByRole('button', { name: /search/i })).toBeDisabled();
+  });
+
+  it('hides chip and re-enables Search when input changes to non-URL', () => {
+    renderPage();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'https://lemmy.world/post/2395953' },
+    });
+    expect(screen.getByText(/Go to post/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'rust' },
+    });
+    expect(screen.queryByText(/Go to post/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).not.toBeDisabled();
+  });
 });

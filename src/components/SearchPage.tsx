@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchCommunities, searchPosts, type CommunityView, type PostView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
-import { instanceFromActorId, sourceFromApId, isImageUrl, placeholderColor } from '../lib/urlUtils';
+import { instanceFromActorId, sourceFromApId, isImageUrl, placeholderColor, parsePostUrl } from '../lib/urlUtils';
 import MenuDrawer from './MenuDrawer';
 import CommunityAvatar from './CommunityAvatar';
 
@@ -27,6 +27,7 @@ export default function SearchPage({ auth }: Props) {
   const [canLoadMoreCommunities, setCanLoadMoreCommunities] = useState(false);
   const [canLoadMorePosts, setCanLoadMorePosts] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
+  const [directPost, setDirectPost] = useState<{ instance: string; postId: number } | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +98,11 @@ export default function SearchPage({ auth }: Props) {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQuery(val);
+              setDirectPost(parsePostUrl(val));
+            }}
             placeholder="Search communities and posts…"
             style={{
               flex: 1, padding: '10px 12px', borderRadius: 10,
@@ -107,7 +112,7 @@ export default function SearchPage({ auth }: Props) {
           />
           <button
             type="submit"
-            disabled={loading || !query.trim()}
+            disabled={loading || !query.trim() || !!directPost}
             style={{
               padding: '10px 16px', borderRadius: 10, border: 'none',
               background: '#ff6b35', color: '#fff', fontWeight: 600, fontSize: 14,
@@ -117,6 +122,24 @@ export default function SearchPage({ auth }: Props) {
             Search
           </button>
         </form>
+
+        {directPost && (
+          <div style={{ padding: '8px 12px 0' }}>
+            <button
+              onClick={() => navigate(`/view/${directPost.instance}/${directPost.postId}`)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '12px 14px', borderRadius: 12,
+                border: '1px solid #2a2d35', background: '#1e2128',
+                color: '#ff6b35', fontWeight: 600, fontSize: 14,
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <span>🔗</span>
+              <span>Go to post →</span>
+            </button>
+          </div>
+        )}
 
         {searched && (
           <div style={{ display: 'flex', borderBottom: '1px solid #2a2d35', margin: '12px 0 0' }}>
