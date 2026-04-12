@@ -45,7 +45,6 @@ export function parsePostUrl(query: string): { instance: string; postId: number 
     const withProtocol = /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
     const url = new URL(withProtocol);
     const parts = url.pathname.split('/');
-    // pathname should be /post/<number>
     if (parts.length === 3 && parts[1] === 'post') {
       const postId = parseInt(parts[2], 10);
       return isNaN(postId) ? null : { instance: url.hostname, postId };
