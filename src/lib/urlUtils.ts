@@ -28,3 +28,31 @@ export function getShareUrl(instance: string, postId: number): string {
   const base = import.meta.env.VITE_BASE_URL ?? 'https://stakswipe.com';
   return `${base}/#/post/${instance}/${postId}`;
 }
+
+export function parsePostUrl(query: string): { instance: string; postId: number } | null {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  // Stakswipe share URL: https://stakswipe.com/#/post/lemmy.world/2395953
+  const stakswiperMatch = trimmed.match(/#\/post\/([^/]+)\/(\d+)/);
+  if (stakswiperMatch) {
+    const postId = parseInt(stakswiperMatch[2], 10);
+    return isNaN(postId) ? null : { instance: stakswiperMatch[1], postId };
+  }
+
+  // Lemmy post URL: https://lemmy.world/post/2395953 or lemmy.world/post/2395953
+  try {
+    const withProtocol = /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const url = new URL(withProtocol);
+    const parts = url.pathname.split('/');
+    // pathname should be /post/<number>
+    if (parts.length === 3 && parts[1] === 'post') {
+      const postId = parseInt(parts[2], 10);
+      return isNaN(postId) ? null : { instance: url.hostname, postId };
+    }
+  } catch {
+    // not a URL
+  }
+
+  return null;
+}
