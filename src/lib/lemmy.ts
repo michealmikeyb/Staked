@@ -2,7 +2,7 @@ import { LemmyHttp, type PostView, type CommentView, type SortType, type Comment
 
 export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView, CommunityView };
 
-export type StakType = 'All' | 'Local' | 'Subscribed';
+export type StakType = 'All' | 'Local' | 'Subscribed' | 'Anonymous';
 
 export interface CommunityInfo {
   id: number;

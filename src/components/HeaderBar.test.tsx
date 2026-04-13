@@ -121,6 +121,7 @@ describe('stak picker', () => {
     fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
     expect(screen.getByRole('button', { name: /^local$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^subscribed$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^anonymous$/i })).toBeInTheDocument();
   });
 
   it('calls onStakChange with selected stak', () => {

@@ -15,6 +15,7 @@ export const STAKS: { stak: StakType; label: string; icon: string }[] = [
   { stak: 'All', label: 'All', icon: '🌐' },
   { stak: 'Local', label: 'Local', icon: '🏠' },
   { stak: 'Subscribed', label: 'Subscribed', icon: '⭐' },
+  { stak: 'Anonymous', label: 'Anonymous', icon: '🕵️' },
 ];
 
 interface Props {
