@@ -109,6 +109,7 @@ describe('loadSettings', () => {
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
       activeStak: 'All',
+      anonInstance: '',
     });
   });
 
@@ -118,6 +119,7 @@ describe('loadSettings', () => {
       blurNsfw: false,
       defaultSort: 'Hot' as const,
       activeStak: 'Local' as const,
+      anonInstance: '',
     };
     saveSettings(s);
     expect(loadSettings()).toEqual(s);
@@ -139,6 +141,7 @@ describe('loadSettings', () => {
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
       activeStak: 'All',
+      anonInstance: '',
     });
   });
 
@@ -148,7 +151,26 @@ describe('loadSettings', () => {
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
       activeStak: 'Subscribed',
+      anonInstance: '',
     });
     expect(loadSettings().activeStak).toBe('Subscribed');
+  });
+
+  it('loadSettings returns anonInstance empty string by default', () => {
+    localStorage.clear();
+    const settings = loadSettings();
+    expect(settings.anonInstance).toBe('');
+  });
+
+  it('loadSettings merges anonInstance from stored JSON', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({ anonInstance: 'lemmy.ml' }));
+    const settings = loadSettings();
+    expect(settings.anonInstance).toBe('lemmy.ml');
+  });
+
+  it('loadSettings fills missing anonInstance from defaults when not in stored JSON', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({ leftSwipe: 'dismiss' }));
+    const settings = loadSettings();
+    expect(settings.anonInstance).toBe('');
   });
 });

@@ -59,6 +59,7 @@ export interface AppSettings {
   blurNsfw: boolean;
   defaultSort: SortType;
   activeStak: StakType;
+  anonInstance: string;
 }
 
 const SETTINGS_KEY = 'stakswipe_settings';
@@ -68,6 +69,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   blurNsfw: true,
   defaultSort: 'TopTwelveHour',
   activeStak: 'All',
+  anonInstance: '',
 };
 
 export function loadSettings(): AppSettings {
