@@ -1,6 +1,6 @@
 import type { SortType } from 'lemmy-js-client';
 
-const RANKINGS: Record<string, string> = {
+const RANKINGS: Partial<Record<SortType, string>> = {
   Active: 'reddthat.com',
   Hot: 'lemmy.blahaj.zone',
   New: 'reddthat.com',

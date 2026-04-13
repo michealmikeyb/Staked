@@ -16,4 +16,8 @@ describe('getAnonInstance', () => {
       expect(getAnonInstance(sort).length).toBeGreaterThan(0);
     }
   });
+
+  it('falls back to lemmy.world for an unmapped SortType', () => {
+    expect(getAnonInstance('Controversial')).toBe('lemmy.world');
+  });
 });
