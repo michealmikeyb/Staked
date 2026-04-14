@@ -142,3 +142,29 @@ describe('MenuDrawer', () => {
     expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
   });
 });
+
+describe('MenuDrawer unauthenticated mode', () => {
+  it('shows Login, Settings, Search when isAuthenticated is false', () => {
+    renderDrawer({ isAuthenticated: false });
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+  });
+
+  it('does not show Saved, Profile, Inbox, Post when isAuthenticated is false', () => {
+    renderDrawer({ isAuthenticated: false });
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    expect(screen.queryByRole('button', { name: /saved/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /profile/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /inbox/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^post$/i })).not.toBeInTheDocument();
+  });
+
+  it('navigates to /login when Login is clicked', () => {
+    renderDrawer({ isAuthenticated: false });
+    fireEvent.click(screen.getByRole('button', { name: /menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^login$/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
+  });
+});

@@ -12,6 +12,7 @@ interface Props {
   unreadCount?: number;
   activeStak?: StakType;
   onStakChange?: (stak: StakType) => void;
+  isAuthenticated?: boolean;
 }
 
 export default function MenuDrawer({
@@ -24,6 +25,7 @@ export default function MenuDrawer({
   unreadCount = 0,
   activeStak,
   onStakChange,
+  isAuthenticated = true,
 }: Props) {
   const [showDrawer, setShowDrawer] = useState(false);
 
@@ -67,69 +69,100 @@ export default function MenuDrawer({
             zIndex: 40, padding: 16,
           }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              <button
-                onClick={() => handleNavigate('/saved')}
-                aria-label="Saved"
-                style={drawerButtonStyle}
-              >
-                <span style={iconStyle}>🔖</span>
-                Saved
-              </button>
-              <button
-                onClick={() => handleNavigate('/profile')}
-                aria-label="Profile"
-                style={drawerButtonStyle}
-              >
-                <span style={iconStyle}>👤</span>
-                Profile
-              </button>
-              <button
-                onClick={() => handleNavigate('/inbox')}
-                aria-label="Inbox"
-                style={drawerButtonStyle}
-              >
-                {unreadCount > 0 && (
-                  <span
-                    data-testid="inbox-badge"
-                    style={{
-                      position: 'absolute', top: 8, right: 8,
-                      background: '#ff6b35', color: '#fff',
-                      borderRadius: '50%', minWidth: 18, height: 18,
-                      fontSize: 10, fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 4px',
-                    }}
+              {isAuthenticated ? (
+                <>
+                  <button
+                    onClick={() => handleNavigate('/saved')}
+                    aria-label="Saved"
+                    style={drawerButtonStyle}
                   >
-                    {unreadCount}
-                  </span>
-                )}
-                <span style={iconStyle}>📬</span>
-                Inbox
-              </button>
-              <button
-                onClick={() => handleNavigate('/settings')}
-                aria-label="Settings"
-                style={drawerButtonStyle}
-              >
-                <span style={iconStyle}>⚙️</span>
-                Settings
-              </button>
-              <button
-                onClick={() => handleNavigate('/create-post')}
-                aria-label="Post"
-                style={drawerButtonStyle}
-              >
-                <span style={iconStyle}>✏️</span>
-                Post
-              </button>
-              <button
-                onClick={() => handleNavigate('/search')}
-                aria-label="Search"
-                style={drawerButtonStyle}
-              >
-                <span style={iconStyle}>🔍</span>
-                Search
-              </button>
+                    <span style={iconStyle}>🔖</span>
+                    Saved
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/profile')}
+                    aria-label="Profile"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>👤</span>
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/inbox')}
+                    aria-label="Inbox"
+                    style={drawerButtonStyle}
+                  >
+                    {unreadCount > 0 && (
+                      <span
+                        data-testid="inbox-badge"
+                        style={{
+                          position: 'absolute', top: 8, right: 8,
+                          background: '#ff6b35', color: '#fff',
+                          borderRadius: '50%', minWidth: 18, height: 18,
+                          fontSize: 10, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '0 4px',
+                        }}
+                      >
+                        {unreadCount}
+                      </span>
+                    )}
+                    <span style={iconStyle}>📬</span>
+                    Inbox
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/settings')}
+                    aria-label="Settings"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>⚙️</span>
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/create-post')}
+                    aria-label="Post"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>✏️</span>
+                    Post
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/search')}
+                    aria-label="Search"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>🔍</span>
+                    Search
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleNavigate('/login')}
+                    aria-label="Login"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>🔑</span>
+                    Login
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/settings')}
+                    aria-label="Settings"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>⚙️</span>
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/search')}
+                    aria-label="Search"
+                    style={drawerButtonStyle}
+                  >
+                    <span style={iconStyle}>🔍</span>
+                    Search
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </>
