@@ -37,7 +37,7 @@ export async function fetchPosts(
   token: string,
   page: number,
   sort: SortType = 'TopTwelveHour',
-  stak: StakType = 'All',
+  stak: Exclude<StakType, 'Anonymous'> = 'All',
 ): Promise<PostView[]> {
   const res = await client(instance, token).getPosts({
     type_: stak,

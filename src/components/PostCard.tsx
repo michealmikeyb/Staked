@@ -103,7 +103,7 @@ export default function PostCard({
         community={community}
         creator={creator}
         counts={counts}
-        auth={auth}
+        auth={auth ?? undefined}
         comments={comments}
         commentsLoaded={commentsLoaded}
         scrollRef={scrollRef}
