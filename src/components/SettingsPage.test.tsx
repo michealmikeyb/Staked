@@ -66,4 +66,22 @@ describe('SettingsPage', () => {
     const topBtn = screen.getByRole('button', { name: /top 12h/i });
     expect(topBtn).toHaveStyle({ background: '#ff6b35' });
   });
+
+  it('renders the Anonymous Feed section', () => {
+    renderPage();
+    expect(screen.getByText('Anonymous Feed')).toBeInTheDocument();
+  });
+
+  it('anon instance input is empty by default', () => {
+    renderPage();
+    expect(screen.getByPlaceholderText('Auto (top-ranked per sort)')).toHaveValue('');
+  });
+
+  it('typing in anon instance input persists to settings', () => {
+    renderPage();
+    const input = screen.getByPlaceholderText('Auto (top-ranked per sort)');
+    fireEvent.change(input, { target: { value: 'lemmy.ml' } });
+    const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+    expect(stored.anonInstance).toBe('lemmy.ml');
+  });
 });

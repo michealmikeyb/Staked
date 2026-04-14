@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../lib/SettingsContext';
 import { SORT_OPTIONS } from './HeaderBar';
+import InstanceInput from './InstanceInput';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -86,6 +87,24 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div style={card}>
+          <div style={sectionLabel}>Anonymous Feed</div>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
+            Instance to use for anonymous browsing. Leave empty to use the top-ranked instance per sort.
+          </div>
+          <InstanceInput
+            placeholder="Auto (top-ranked per sort)"
+            value={settings.anonInstance}
+            onChange={(v) => updateSetting('anonInstance', v)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: '#1a1d24', border: '1px solid #3a3d45',
+              borderRadius: 8, padding: '10px 12px',
+              color: '#f5f5f5', fontSize: 14, fontFamily: 'inherit',
+            }}
+          />
         </div>
       </div>
     </div>
