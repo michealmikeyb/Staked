@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { type AuthState } from '../lib/store';
 import { resolveCommunityId, createPost, uploadImage } from '../lib/lemmy';
+import InstanceInput from './InstanceInput';
 
 interface Props {
   auth: AuthState;
@@ -104,11 +105,11 @@ export default function CreatePostPage({ auth }: Props) {
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
           <label style={labelStyle}>Community</label>
-          <input
+          <InstanceInput
             style={inputStyle}
             placeholder="communityname@instance.tld"
             value={community}
-            onChange={(e) => setCommunity(e.target.value)}
+            onChange={setCommunity}
           />
         </div>
 
