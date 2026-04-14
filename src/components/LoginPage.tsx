@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { login } from '../lib/lemmy';
 import { saveAuth, type AuthState } from '../lib/store';
 import styles from './LoginPage.module.css';
 import Logo from './Logo';
+import InstanceInput from './InstanceInput';
 
 const POPULAR_INSTANCES = [
   'lemmy.world',
@@ -18,6 +20,7 @@ interface Props {
 }
 
 export default function LoginPage({ onLogin }: Props) {
+  const navigate = useNavigate();
   const [selectedInstance, setSelectedInstance] = useState(POPULAR_INSTANCES[0]);
   const [customInstance, setCustomInstance] = useState('');
   const [username, setUsername] = useState('');
@@ -63,13 +66,11 @@ export default function LoginPage({ onLogin }: Props) {
           </select>
         </div>
         {selectedInstance === 'custom' && (
-          <input
+          <InstanceInput
             className={styles.input}
             placeholder="your.instance.com"
             value={customInstance}
-            onChange={(e) => setCustomInstance(e.target.value)}
-            autoCapitalize="none"
-            autoCorrect="off"
+            onChange={setCustomInstance}
           />
         )}
         <input
@@ -92,6 +93,12 @@ export default function LoginPage({ onLogin }: Props) {
           {loading ? 'Signing in\u2026' : 'Sign In'}
         </button>
       </form>
+      <button
+        onClick={() => navigate('/')}
+        style={{ marginTop: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 14 }}
+      >
+        Continue without account
+      </button>
     </div>
   );
 }
