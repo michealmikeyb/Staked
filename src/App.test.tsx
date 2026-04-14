@@ -2,13 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
-vi.mock('./lib/store', () => ({
-  loadAuth: vi.fn().mockReturnValue(null),
-  clearAuth: vi.fn(),
-  loadSettings: vi.fn().mockReturnValue({ leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour' }),
-  saveSettings: vi.fn(),
-  DEFAULT_SETTINGS: { leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour' },
-}));
+vi.mock('./lib/store', () => {
+  const DEFAULT_SETTINGS = { leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'All', anonInstance: '' };
+  return {
+    loadAuth: vi.fn().mockReturnValue(null),
+    clearAuth: vi.fn(),
+    loadSettings: vi.fn().mockReturnValue(DEFAULT_SETTINGS),
+    saveSettings: vi.fn(),
+    DEFAULT_SETTINGS,
+  };
+});
 
 vi.mock('./lib/lemmy', () => ({
   fetchPost: vi.fn().mockResolvedValue({
@@ -64,11 +67,19 @@ vi.mock('./components/CreatePostPage', () => ({
 }));
 
 describe('App routing', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     window.location.hash = '';
+    const { loadAuth } = await import('./lib/store');
+    vi.mocked(loadAuth).mockReturnValue(null);
   });
 
-  it('shows LoginPage when not authenticated', () => {
+  it('shows FeedStack at / when not authenticated', () => {
+    render(<App />);
+    expect(screen.getByText('FeedStack')).toBeInTheDocument();
+  });
+
+  it('shows LoginPage at /login route', () => {
+    window.location.hash = '#/login';
     render(<App />);
     expect(screen.getByText('LoginPage')).toBeInTheDocument();
   });
@@ -93,6 +104,12 @@ describe('App routing', () => {
     await waitFor(() => expect(screen.getByText('Shared Post')).toBeInTheDocument());
   });
 
+  it('does not render auth-gated page when unauthenticated', () => {
+    window.location.hash = '#/create-post';
+    render(<App />);
+    expect(screen.queryByText('CreatePostPage')).not.toBeInTheDocument();
+  });
+
   it('renders ProfilePage at /user/:instance/:username when authenticated', async () => {
     const { loadAuth } = await import('./lib/store');
     vi.mocked(loadAuth).mockReturnValue({
@@ -111,5 +128,11 @@ describe('App routing', () => {
     window.location.hash = '#/create-post';
     render(<App />);
     await waitFor(() => expect(screen.getByText('CreatePostPage')).toBeInTheDocument());
+  });
+
+  it('renders SettingsPage at /settings without auth', () => {
+    window.location.hash = '#/settings';
+    render(<App />);
+    expect(screen.getByText('SettingsPage')).toBeInTheDocument();
   });
 });

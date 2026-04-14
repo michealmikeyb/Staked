@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route, useParams } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { loadAuth, clearAuth, type AuthState } from './lib/store';
 import { SettingsProvider } from './lib/SettingsContext';
 import LoginPage from './components/LoginPage';
@@ -16,6 +16,11 @@ import SharedPostPage from './components/SharedPostPage';
 import CommunityAboutPage from './components/CommunityAboutPage';
 import SearchPage from './components/SearchPage';
 import PostViewPage from './components/PostViewPage';
+
+function RequireAuth({ auth, children }: { auth: AuthState | null; children: React.ReactNode }) {
+  if (!auth) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
 
 function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
   auth: AuthState;
@@ -40,76 +45,9 @@ function UserProfileRoute({ auth }: { auth: AuthState }) {
   return <ProfilePage auth={auth} target={{ instance: instance!, username: username! }} />;
 }
 
-function AuthenticatedApp({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) {
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <FeedStack
-            auth={auth}
-            onLogout={onLogout}
-            unreadCount={unreadCount}
-            setUnreadCount={setUnreadCount}
-          />
-        }
-      />
-      <Route
-        path="/inbox"
-        element={<InboxPage auth={auth} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />}
-      />
-      <Route
-        path="/inbox/:notifId"
-        element={<PostDetailPage auth={auth} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />}
-      />
-      <Route path="/saved" element={<SavedPage auth={auth} />} />
-      <Route path="/saved/:postId" element={<SavedPostDetailPage auth={auth} />} />
-      <Route path="/profile" element={<ProfilePage auth={auth} />} />
-      <Route path="/profile/:postId" element={<ProfilePostDetailPage auth={auth} />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/create-post" element={<CreatePostPage auth={auth} />} />
-      <Route
-        path="/community/:instance/:name"
-        element={
-          <CommunityFeedRoute
-            auth={auth}
-            onLogout={onLogout}
-            unreadCount={unreadCount}
-            setUnreadCount={setUnreadCount}
-          />
-        }
-      />
-      <Route
-        path="/community/:instance/:name/about"
-        element={<CommunityAboutPage auth={auth} />}
-      />
-      <Route path="/user/:instance/:username" element={<UserProfileRoute auth={auth} />} />
-      <Route path="/search" element={<SearchPage auth={auth} />} />
-      <Route
-        path="/view/:instance/:postId"
-        element={<PostViewPage auth={auth} />}
-      />
-    </Routes>
-  );
-}
-
-function AuthGate({ auth, onLogin, onLogout }: {
-  auth: AuthState | null;
-  onLogin: (a: AuthState) => void;
-  onLogout: () => void;
-}) {
-  if (!auth) return <LoginPage onLogin={onLogin} />;
-  return (
-    <SettingsProvider>
-      <AuthenticatedApp auth={auth} onLogout={onLogout} />
-    </SettingsProvider>
-  );
-}
-
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(() => loadAuth());
+  const [unreadCount, setUnreadCount] = useState(0);
 
   function handleLogin(newAuth: AuthState) {
     setAuth(newAuth);
@@ -122,13 +60,93 @@ export default function App() {
 
   return (
     <HashRouter>
-      <Routes>
-        <Route path="/post/:instance/:postId" element={<SharedPostPage />} />
-        <Route
-          path="/*"
-          element={<AuthGate auth={auth} onLogin={handleLogin} onLogout={handleLogout} />}
-        />
-      </Routes>
+      <SettingsProvider>
+        <Routes>
+          <Route path="/post/:instance/:postId" element={<SharedPostPage />} />
+          <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+          <Route
+            path="/"
+            element={
+              <FeedStack
+                auth={auth}
+                onLogout={handleLogout}
+                unreadCount={unreadCount}
+                setUnreadCount={setUnreadCount}
+              />
+            }
+          />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/inbox"
+            element={
+              <RequireAuth auth={auth}>
+                <InboxPage auth={auth!} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/inbox/:notifId"
+            element={
+              <RequireAuth auth={auth}>
+                <PostDetailPage auth={auth!} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/saved"
+            element={<RequireAuth auth={auth}><SavedPage auth={auth!} /></RequireAuth>}
+          />
+          <Route
+            path="/saved/:postId"
+            element={<RequireAuth auth={auth}><SavedPostDetailPage auth={auth!} /></RequireAuth>}
+          />
+          <Route
+            path="/profile"
+            element={<RequireAuth auth={auth}><ProfilePage auth={auth!} /></RequireAuth>}
+          />
+          <Route
+            path="/profile/:postId"
+            element={<RequireAuth auth={auth}><ProfilePostDetailPage auth={auth!} /></RequireAuth>}
+          />
+          <Route
+            path="/create-post"
+            element={<RequireAuth auth={auth}><CreatePostPage auth={auth!} /></RequireAuth>}
+          />
+          <Route
+            path="/community/:instance/:name"
+            element={
+              <RequireAuth auth={auth}>
+                <CommunityFeedRoute
+                  auth={auth!}
+                  onLogout={handleLogout}
+                  unreadCount={unreadCount}
+                  setUnreadCount={setUnreadCount}
+                />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/community/:instance/:name/about"
+            element={
+              <RequireAuth auth={auth}><CommunityAboutPage auth={auth!} /></RequireAuth>
+            }
+          />
+          <Route
+            path="/user/:instance/:username"
+            element={
+              <RequireAuth auth={auth}><UserProfileRoute auth={auth!} /></RequireAuth>
+            }
+          />
+          <Route
+            path="/search"
+            element={<RequireAuth auth={auth}><SearchPage auth={auth!} /></RequireAuth>}
+          />
+          <Route
+            path="/view/:instance/:postId"
+            element={<RequireAuth auth={auth}><PostViewPage auth={auth!} /></RequireAuth>}
+          />
+        </Routes>
+      </SettingsProvider>
     </HashRouter>
   );
 }
