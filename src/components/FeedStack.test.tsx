@@ -626,6 +626,109 @@ describe('FeedStack community mode', () => {
   });
 });
 
+describe('FeedStack anonymous mode (auth=null)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('calls fetchPosts with anonymous instance and empty token when auth is null', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
+        community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+    render(
+      <SettingsProvider>
+        <FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await screen.findByText('Anon Post');
+    // TopTwelveHour maps to reddthat.com, token is empty string
+    expect(fetchPosts).toHaveBeenCalledWith('reddthat.com', '', 1, 'TopTwelveHour', 'All');
+  });
+
+  it('does not call fetchUnreadCount when auth is null', async () => {
+    const { fetchPosts, fetchUnreadCount } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
+        community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('Anon Post');
+    expect(fetchUnreadCount).not.toHaveBeenCalled();
+  });
+
+  it('does not call upvotePost on ArrowRight when auth is null', async () => {
+    const { fetchPosts, upvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
+          community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
+          creator: { name: 'alice' },
+          counts: { score: 10, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('Anon Post');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(upvotePost).not.toHaveBeenCalled();
+  });
+
+  it('does not call downvotePost on ArrowLeft when auth is null', async () => {
+    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        {
+          post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
+          community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
+          creator: { name: 'alice' },
+          counts: { score: 10, comments: 0 },
+        },
+      ])
+      .mockResolvedValue([]);
+    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('Anon Post');
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(downvotePost).not.toHaveBeenCalled();
+  });
+
+  it('shows Log in button in empty state when auth is null', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('does not render stak selector when auth is null', async () => {
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
+        community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]);
+    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
+    await screen.findByText('Anon Post');
+    expect(screen.queryByRole('button', { name: /switch stak/i })).not.toBeInTheDocument();
+  });
+});
+
 describe('FeedStack settings — activeStak', () => {
   beforeEach(() => {
     vi.clearAllMocks();

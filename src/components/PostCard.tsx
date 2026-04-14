@@ -14,7 +14,7 @@ const EMPTY_MOTION_PROPS = {};
 
 interface Props {
   post: PostView;
-  auth: AuthState;
+  auth: AuthState | null;
   zIndex: number;
   scale: number;
   onSwipeRight: () => void;

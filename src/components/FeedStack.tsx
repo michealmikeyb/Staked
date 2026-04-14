@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, fetchCommunityInfo, followCommunity, type PostView, type SortType, type StakType, type CommunityInfo } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
+import { getAnonInstance } from '../lib/instanceRankings';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
 import CommunityHeader from './CommunityHeader';
 
 interface Props {
-  auth: AuthState;
-  onLogout: () => void;
+  auth: AuthState | null;
+  onLogout?: () => void;
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   community?: { name: string; instance: string };
@@ -31,11 +32,15 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [sortType, setSortType] = useState<SortType>(community ? 'Active' : settings.defaultSort);
-  const [stak, setStak] = useState<StakType>(settings.activeStak);
+  const [stak, setStak] = useState<StakType>(auth === null ? 'All' : settings.activeStak);
+
+  const isAnonymousMode = auth === null || stak === 'Anonymous';
+
   const [communityInfo, setCommunityInfo] = useState<CommunityInfo | null>(null);
 
   useEffect(() => {
     if (community) return;
+    if (!auth) return;
     fetchUnreadCount(auth.instance, auth.token)
       .then(setUnreadCount)
       .catch(() => {});
@@ -43,6 +48,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
   useEffect(() => {
     if (!community) return;
+    if (!auth) return;
     fetchCommunityInfo(auth.instance, auth.token, `${community.name}@${community.instance}`)
       .then(setCommunityInfo)
       .catch(() => {});
@@ -51,10 +57,14 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType, currentStak: StakType) => {
     setLoading(true);
+    const isAnonymous = auth === null || currentStak === 'Anonymous';
+    const instance = isAnonymous ? (settings.anonInstance || getAnonInstance(sort)) : auth!.instance;
+    const token = isAnonymous ? '' : auth!.token;
+    const stakForApi: StakType = currentStak === 'Anonymous' ? 'All' : currentStak;
     try {
       const newPosts = community
-        ? await fetchCommunityPosts(auth.instance, auth.token, `${community.name}@${community.instance}`, nextPage, sort)
-        : await fetchPosts(auth.instance, auth.token, nextPage, sort, currentStak);
+        ? await fetchCommunityPosts(instance, token, `${community.name}@${community.instance}`, nextPage, sort)
+        : await fetchPosts(instance, token, nextPage, sort, stakForApi);
       if (newPosts.length === 0) {
         setCanLoadMore(false);
       } else {
@@ -72,7 +82,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   // Use primitive values (not the community object) as deps to avoid re-creating
   // loadMore every render when the parent passes `community={{ ... }}` inline.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, community?.name, community?.instance]);
+  }, [auth, community?.name, community?.instance, settings.anonInstance]);
 
   useEffect(() => {
     loadMore(1, sortType, stak);
@@ -97,7 +107,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   }
 
   async function handleSubscribeToggle() {
-    if (!communityInfo) return;
+    if (!communityInfo || !auth) return;
     const follow = communityInfo.subscribed !== 'Subscribed';
     const previous = communityInfo;
     setCommunityInfo({ ...communityInfo, subscribed: follow ? 'Subscribed' : 'NotSubscribed' });
@@ -143,11 +153,13 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') {
-        upvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        if (!isAnonymousMode) {
+          upvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+        }
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowLeft') {
-        if (settings.leftSwipe === 'downvote') {
-          downvotePost(auth.instance, auth.token, topPost.post.id).catch(() => {});
+        if (!isAnonymousMode && settings.leftSwipe === 'downvote') {
+          downvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
         }
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowDown') {
@@ -157,7 +169,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [posts, auth, settings]);
+  }, [posts, auth, settings, isAnonymousMode]);
 
   if (loading && posts.length === 0) {
     return (
@@ -171,9 +183,15 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     return (
       <div style={screenStyle}>
         <div style={{ color: '#ff4444' }}>{error}</div>
-        <button onClick={onLogout} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
-          Log out
-        </button>
+        {auth !== null ? (
+          <button onClick={onLogout} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
+            Log out
+          </button>
+        ) : (
+          <button onClick={() => navigate('/login')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
+            Log in
+          </button>
+        )}
       </div>
     );
   }
@@ -201,12 +219,21 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
             )}
           </>
         )}
-        <button
-          onClick={onLogout}
-          style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
-        >
-          Log out
-        </button>
+        {auth !== null ? (
+          <button
+            onClick={onLogout}
+            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
+          >
+            Log out
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
+          >
+            Log in
+          </button>
+        )}
       </div>
     );
   }
@@ -232,8 +259,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           onNavigate={navigate}
           onLogoClick={() => navigate('/')}
           unreadCount={unreadCount}
-          activeStak={stak}
-          onStakChange={handleStakChange}
+          activeStak={auth !== null ? stak : undefined}
+          onStakChange={auth !== null ? handleStakChange : undefined}
+          isAuthenticated={auth !== null}
         />
       )}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -249,12 +277,14 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
               zIndex={zIndex}
               scale={isTop ? 1 : scale}
               onSwipeRight={isTop ? async () => {
-                await upvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                if (!isAnonymousMode) {
+                  await upvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                }
                 dismissTop(post.post.id);
               } : () => {}}
               onSwipeLeft={isTop ? async () => {
-                if (settings.leftSwipe === 'downvote') {
-                  await downvotePost(auth.instance, auth.token, post.post.id).catch(() => {});
+                if (!isAnonymousMode && settings.leftSwipe === 'downvote') {
+                  await downvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
                 }
                 dismissTop(post.post.id);
               } : () => {}}

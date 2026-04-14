@@ -13,12 +13,12 @@ interface Result {
 export function useCommentLoader(
   post: { ap_id: string; id: number },
   community: { actor_id: string },
-  auth: AuthState,
+  auth: AuthState | null,
 ): Result {
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const resolvedInstanceRef = useRef<string>(auth.instance);
-  const resolvedTokenRef = useRef<string>(auth.token);
+  const resolvedInstanceRef = useRef<string>(auth?.instance ?? '');
+  const resolvedTokenRef = useRef<string>(auth?.token ?? '');
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +28,7 @@ export function useCommentLoader(
       const source = sourceFromApId(post.ap_id);
 
       if (source) {
-        const sourceToken = source.instance === auth.instance ? auth.token : '';
+        const sourceToken = source.instance === auth?.instance ? (auth?.token ?? '') : '';
         loaded = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
         if (loaded.length > 0) {
           resolvedInstanceRef.current = source.instance;
@@ -41,7 +41,7 @@ export function useCommentLoader(
         if (communityInstance && communityInstance !== source?.instance) {
           const localId = await resolvePostId(communityInstance, post.ap_id).catch(() => null);
           if (localId != null) {
-            const communityToken = communityInstance === auth.instance ? auth.token : '';
+            const communityToken = communityInstance === auth?.instance ? (auth?.token ?? '') : '';
             loaded = await fetchComments(communityInstance, communityToken, localId).catch(() => []);
             if (loaded.length > 0) {
               resolvedInstanceRef.current = communityInstance;
@@ -51,9 +51,10 @@ export function useCommentLoader(
         }
       }
 
+      // Tier 3: home instance fallback — only available when authenticated
       let cachedHomeComments: CommentView[] | null = null;
 
-      if (loaded.length === 0 && source?.instance !== auth.instance) {
+      if (auth && loaded.length === 0 && source?.instance !== auth.instance) {
         cachedHomeComments = await fetchComments(auth.instance, auth.token, post.id).catch(() => null) ?? [];
         loaded = cachedHomeComments.length > 0 ? cachedHomeComments
           : await fetchComments(auth.instance, '', post.id).catch(() => []);
@@ -63,7 +64,7 @@ export function useCommentLoader(
         }
       }
 
-      if (auth.token && source?.instance !== auth.instance) {
+      if (auth?.token && source?.instance !== auth.instance) {
         const homeComments = cachedHomeComments ?? await fetchComments(auth.instance, auth.token, post.id).catch(() => []);
         if (homeComments.length > 0) {
           const seenApIds = new Set(loaded.map((c) => c.comment.ap_id));
