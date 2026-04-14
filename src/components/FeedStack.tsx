@@ -183,15 +183,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     return (
       <div style={screenStyle}>
         <div style={{ color: '#ff4444' }}>{error}</div>
-        {auth !== null ? (
-          <button onClick={onLogout} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
-            Log out
-          </button>
-        ) : (
-          <button onClick={() => navigate('/login')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
-            Log in
-          </button>
-        )}
+        <button onClick={auth !== null ? onLogout : () => navigate('/login')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
+          {auth !== null ? 'Log out' : 'Log in'}
+        </button>
       </div>
     );
   }
@@ -219,21 +213,12 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
             )}
           </>
         )}
-        {auth !== null ? (
-          <button
-            onClick={onLogout}
-            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
-          >
-            Log out
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/login')}
-            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
-          >
-            Log in
-          </button>
-        )}
+        <button
+          onClick={auth !== null ? onLogout : () => navigate('/login')}
+          style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
+        >
+          {auth !== null ? 'Log out' : 'Log in'}
+        </button>
       </div>
     );
   }

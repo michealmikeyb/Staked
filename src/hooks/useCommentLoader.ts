@@ -64,7 +64,7 @@ export function useCommentLoader(
         }
       }
 
-      if (auth?.token && source?.instance !== auth.instance) {
+      if (auth && source?.instance !== auth.instance) {
         const homeComments = cachedHomeComments ?? await fetchComments(auth.instance, auth.token, post.id).catch(() => []);
         if (homeComments.length > 0) {
           const seenApIds = new Set(loaded.map((c) => c.comment.ap_id));
