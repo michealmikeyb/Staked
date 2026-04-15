@@ -1,11 +1,24 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../lib/SettingsContext';
+import { loadAuth } from '../lib/store';
 import { SORT_OPTIONS } from './HeaderBar';
 import InstanceInput from './InstanceInput';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { settings, updateSetting } = useSettings();
+
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(() => {
+    if (typeof Notification === 'undefined') return 'unsupported';
+    return Notification.permission;
+  });
+  const isAuthenticated = loadAuth() !== null;
+
+  async function handleEnableNotifications() {
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+  }
 
   const pillBase: React.CSSProperties = {
     border: 'none', borderRadius: 8, padding: '8px 12px',
@@ -106,6 +119,23 @@ export default function SettingsPage() {
             }}
           />
         </div>
+
+        {notifPermission !== 'unsupported' && (
+          <div style={card}>
+            <div style={sectionLabel}>Notifications</div>
+            {!isAuthenticated ? (
+              <div style={{ fontSize: 12, color: '#888' }}>Log in to enable notifications</div>
+            ) : notifPermission === 'granted' ? (
+              <div style={{ fontSize: 13, color: '#4caf50', fontWeight: 600 }}>Notifications on</div>
+            ) : notifPermission === 'denied' ? (
+              <div style={{ fontSize: 12, color: '#888' }}>Blocked in browser settings</div>
+            ) : (
+              <button style={inactive} onClick={handleEnableNotifications}>
+                Enable notifications
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

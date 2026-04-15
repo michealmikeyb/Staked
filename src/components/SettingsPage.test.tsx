@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingsProvider } from '../lib/SettingsContext';
 import SettingsPage from './SettingsPage';
+import { loadAuth } from '../lib/store';
+
+vi.mock('../lib/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/store')>();
+  return { ...actual, loadAuth: vi.fn() };
+});
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -13,6 +21,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  vi.mocked(loadAuth).mockReturnValue({ instance: 'lemmy.world', token: 'tok', username: 'alice' });
 });
 
 function renderPage() {
@@ -83,5 +92,61 @@ describe('SettingsPage', () => {
     fireEvent.change(input, { target: { value: 'lemmy.ml' } });
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
     expect(stored.anonInstance).toBe('lemmy.ml');
+  });
+
+  describe('Notifications section', () => {
+    beforeEach(() => {
+      vi.mocked(loadAuth).mockReturnValue({ instance: 'lemmy.world', token: 'tok', username: 'alice' });
+    });
+
+    it('shows Enable button when permission is default', () => {
+      Object.defineProperty(global, 'Notification', {
+        value: { permission: 'default', requestPermission: vi.fn().mockResolvedValue('granted') },
+        writable: true, configurable: true,
+      });
+      render(<SettingsPage />);
+      expect(screen.getByRole('button', { name: /enable notifications/i })).toBeInTheDocument();
+    });
+
+    it('shows On state when permission is granted', () => {
+      Object.defineProperty(global, 'Notification', {
+        value: { permission: 'granted', requestPermission: vi.fn() },
+        writable: true, configurable: true,
+      });
+      render(<SettingsPage />);
+      expect(screen.getByText(/notifications on/i)).toBeInTheDocument();
+    });
+
+    it('shows Blocked message when permission is denied', () => {
+      Object.defineProperty(global, 'Notification', {
+        value: { permission: 'denied', requestPermission: vi.fn() },
+        writable: true, configurable: true,
+      });
+      render(<SettingsPage />);
+      expect(screen.getByText(/blocked in browser settings/i)).toBeInTheDocument();
+    });
+
+    it('shows Log in message when not authenticated', () => {
+      vi.mocked(loadAuth).mockReturnValue(null);
+      Object.defineProperty(global, 'Notification', {
+        value: { permission: 'default', requestPermission: vi.fn() },
+        writable: true, configurable: true,
+      });
+      render(<SettingsPage />);
+      expect(screen.getByText(/log in to enable notifications/i)).toBeInTheDocument();
+    });
+
+    it('calls requestPermission when Enable is clicked', async () => {
+      const requestPermission = vi.fn().mockResolvedValue('granted');
+      Object.defineProperty(global, 'Notification', {
+        value: { permission: 'default', requestPermission },
+        writable: true, configurable: true,
+      });
+      render(<SettingsPage />);
+      await act(async () => {
+        await userEvent.click(screen.getByRole('button', { name: /enable notifications/i }));
+      });
+      expect(requestPermission).toHaveBeenCalled();
+    });
   });
 });
