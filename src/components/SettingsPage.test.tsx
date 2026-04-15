@@ -5,12 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingsProvider } from '../lib/SettingsContext';
 import SettingsPage from './SettingsPage';
-import { loadAuth } from '../lib/store';
-
-vi.mock('../lib/store', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/store')>();
-  return { ...actual, loadAuth: vi.fn() };
-});
+import type React from 'react';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -21,14 +16,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  vi.mocked(loadAuth).mockReturnValue({ instance: 'lemmy.world', token: 'tok', username: 'alice' });
 });
 
-function renderPage() {
+function renderPage(props: Partial<React.ComponentProps<typeof SettingsPage>> = {}) {
   return render(
     <MemoryRouter>
       <SettingsProvider>
-        <SettingsPage />
+        <SettingsPage isAuthenticated={true} {...props} />
       </SettingsProvider>
     </MemoryRouter>,
   );
@@ -95,10 +89,6 @@ describe('SettingsPage', () => {
   });
 
   describe('Notifications section', () => {
-    beforeEach(() => {
-      vi.mocked(loadAuth).mockReturnValue({ instance: 'lemmy.world', token: 'tok', username: 'alice' });
-    });
-
     it('shows Enable button when permission is default', () => {
       Object.defineProperty(global, 'Notification', {
         value: { permission: 'default', requestPermission: vi.fn().mockResolvedValue('granted') },
@@ -127,12 +117,11 @@ describe('SettingsPage', () => {
     });
 
     it('shows Log in message when not authenticated', () => {
-      vi.mocked(loadAuth).mockReturnValue(null);
       Object.defineProperty(global, 'Notification', {
         value: { permission: 'default', requestPermission: vi.fn() },
         writable: true, configurable: true,
       });
-      renderPage();
+      renderPage({ isAuthenticated: false });
       expect(screen.getByText(/log in to enable notifications/i)).toBeInTheDocument();
     });
 

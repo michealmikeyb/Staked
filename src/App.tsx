@@ -80,7 +80,7 @@ export default function App() {
               />
             }
           />
-          <Route path="/settings" element={<SettingsPage onPermissionChange={setNotifPermission} />} />
+          <Route path="/settings" element={<SettingsPage isAuthenticated={auth !== null} onPermissionChange={setNotifPermission} />} />
           <Route
             path="/inbox"
             element={

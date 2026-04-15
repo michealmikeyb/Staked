@@ -65,18 +65,14 @@ const auth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
 describe('useNotificationPolling', () => {
   it('does not poll when auth is null', async () => {
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(null, setUnreadCount));
+    renderHook(() => useNotificationPolling(null, setUnreadCount, 'granted'));
     await act(async () => { vi.advanceTimersByTime(5 * 60 * 1000); });
     expect(fetchUnreadCount).not.toHaveBeenCalled();
   });
 
   it('does not poll when permission is not granted', async () => {
-    Object.defineProperty(global, 'Notification', {
-      value: Object.assign(mockNotification, { permission: 'denied', requestPermission: mockRequestPermission }),
-      writable: true, configurable: true,
-    });
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'denied'));
     await act(async () => { vi.advanceTimersByTime(5 * 60 * 1000); });
     expect(fetchUnreadCount).not.toHaveBeenCalled();
   });
@@ -84,7 +80,7 @@ describe('useNotificationPolling', () => {
   it('polls on mount and calls setUnreadCount', async () => {
     vi.mocked(fetchUnreadCount).mockResolvedValue(3);
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     await act(async () => { vi.runAllTimersAsync(); });
     expect(fetchUnreadCount).toHaveBeenCalledWith('lemmy.world', 'tok');
     expect(setUnreadCount).toHaveBeenCalledWith(3);
@@ -93,7 +89,7 @@ describe('useNotificationPolling', () => {
   it('does NOT fire a Notification on first poll (establishing baseline)', async () => {
     vi.mocked(fetchUnreadCount).mockResolvedValue(5);
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     await act(async () => { vi.runAllTimersAsync(); });
     expect(mockNotification).not.toHaveBeenCalled();
   });
@@ -103,7 +99,7 @@ describe('useNotificationPolling', () => {
       .mockResolvedValueOnce(3)  // first poll: baseline
       .mockResolvedValueOnce(5); // second poll: increase
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     // first poll (on mount)
     await act(async () => { vi.runAllTimersAsync(); });
     // second poll (after 5 min interval)
@@ -117,7 +113,7 @@ describe('useNotificationPolling', () => {
   it('does NOT fire a Notification when count stays the same', async () => {
     vi.mocked(fetchUnreadCount).mockResolvedValue(3);
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     await act(async () => { vi.runAllTimersAsync(); });
     await act(async () => { vi.advanceTimersByTime(5 * 60 * 1000); vi.runAllTimersAsync(); });
     expect(mockNotification).not.toHaveBeenCalled();
@@ -131,7 +127,7 @@ describe('useNotificationPolling', () => {
       writable: true, configurable: true,
     });
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     await act(async () => { vi.runAllTimersAsync(); });
     expect(mockRegister).toHaveBeenCalledWith('check-notifications', { minInterval: 15 * 60 * 1000 });
   });
@@ -144,7 +140,7 @@ describe('useNotificationPolling', () => {
     });
     const setUnreadCount = vi.fn();
     expect(() =>
-      renderHook(() => useNotificationPolling(auth, setUnreadCount))
+      renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'))
     ).not.toThrow();
   });
 
@@ -152,7 +148,7 @@ describe('useNotificationPolling', () => {
     vi.mocked(fetchUnreadCount).mockResolvedValue(0);
     const setUnreadCount = vi.fn();
     const { rerender } = renderHook(
-      ({ a }: { a: typeof auth | null }) => useNotificationPolling(a, setUnreadCount),
+      ({ a }: { a: typeof auth | null }) => useNotificationPolling(a, setUnreadCount, 'granted'),
       { initialProps: { a: auth } },
     );
     await act(async () => { vi.runAllTimersAsync(); });
@@ -167,7 +163,7 @@ describe('useNotificationPolling', () => {
     });
     vi.mocked(fetchUnreadCount).mockResolvedValue(3);
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     await act(async () => { vi.advanceTimersByTime(5 * 60 * 1000); vi.runAllTimersAsync(); });
     expect(fetchUnreadCount).not.toHaveBeenCalled();
   });
@@ -175,7 +171,7 @@ describe('useNotificationPolling', () => {
   it('writes updated count to notifStore after poll', async () => {
     vi.mocked(fetchUnreadCount).mockResolvedValue(7);
     const setUnreadCount = vi.fn();
-    renderHook(() => useNotificationPolling(auth, setUnreadCount));
+    renderHook(() => useNotificationPolling(auth, setUnreadCount, 'granted'));
     await act(async () => { vi.runAllTimersAsync(); });
     expect(writeNotifState).toHaveBeenCalledWith(
       expect.objectContaining({ lastCount: 7 }),

@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../lib/SettingsContext';
-import { loadAuth } from '../lib/store';
 import { SORT_OPTIONS } from './HeaderBar';
 import InstanceInput from './InstanceInput';
 
 interface Props {
+  isAuthenticated: boolean;
   onPermissionChange?: (permission: NotificationPermission) => void;
 }
 
-export default function SettingsPage({ onPermissionChange }: Props = {}) {
+export default function SettingsPage({ isAuthenticated, onPermissionChange }: Props) {
   const navigate = useNavigate();
   const { settings, updateSetting } = useSettings();
 
@@ -17,7 +17,6 @@ export default function SettingsPage({ onPermissionChange }: Props = {}) {
     if (typeof Notification === 'undefined') return 'unsupported';
     return Notification.permission;
   });
-  const isAuthenticated = loadAuth() !== null;
 
   async function handleEnableNotifications() {
     const result = await Notification.requestPermission();
