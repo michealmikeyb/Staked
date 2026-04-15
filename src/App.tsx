@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { loadAuth, clearAuth, type AuthState } from './lib/store';
 import { SettingsProvider } from './lib/SettingsContext';
+import { useNotificationPolling } from './hooks/useNotificationPolling';
 import LoginPage from './components/LoginPage';
 import FeedStack from './components/FeedStack';
 import InboxPage from './components/InboxPage';
@@ -48,6 +49,7 @@ function UserProfileRoute({ auth }: { auth: AuthState }) {
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(() => loadAuth());
   const [unreadCount, setUnreadCount] = useState(0);
+  useNotificationPolling(auth, setUnreadCount);
 
   function handleLogin(newAuth: AuthState) {
     setAuth(newAuth);

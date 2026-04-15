@@ -66,6 +66,12 @@ vi.mock('./components/CreatePostPage', () => ({
   default: () => <div>CreatePostPage</div>,
 }));
 
+vi.mock('./hooks/useNotificationPolling', () => ({
+  useNotificationPolling: vi.fn(),
+}));
+
+import { useNotificationPolling } from './hooks/useNotificationPolling';
+
 describe('App routing', () => {
   beforeEach(async () => {
     window.location.hash = '';
@@ -134,5 +140,28 @@ describe('App routing', () => {
     window.location.hash = '#/settings';
     render(<App />);
     expect(screen.getByText('SettingsPage')).toBeInTheDocument();
+  });
+
+  it('calls useNotificationPolling with auth and setUnreadCount', async () => {
+    // Render the app with a mocked logged-in state by pre-populating localStorage
+    localStorage.setItem('stakswipe_token', 'tok');
+    localStorage.setItem('stakswipe_instance', 'lemmy.world');
+    localStorage.setItem('stakswipe_username', 'alice');
+
+    const { loadAuth } = await import('./lib/store');
+    vi.mocked(loadAuth).mockReturnValue({
+      token: 'tok',
+      instance: 'lemmy.world',
+      username: 'alice',
+    });
+
+    render(<App />);
+
+    expect(useNotificationPolling).toHaveBeenCalledWith(
+      expect.objectContaining({ instance: 'lemmy.world', token: 'tok' }),
+      expect.any(Function),
+    );
+
+    localStorage.clear();
   });
 });
