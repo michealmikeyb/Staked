@@ -160,6 +160,7 @@ describe('App routing', () => {
     expect(useNotificationPolling).toHaveBeenCalledWith(
       expect.objectContaining({ instance: 'lemmy.world', token: 'tok' }),
       expect.any(Function),
+      expect.any(String),
     );
 
     localStorage.clear();

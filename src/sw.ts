@@ -39,6 +39,15 @@ async function writeState(state: NotifState): Promise<void> {
   });
 }
 
+async function deleteState(): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(RECORD_KEY);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 async function checkAndNotify(): Promise<void> {
   const state = await readState();
   if (!state) return;
@@ -48,6 +57,10 @@ async function checkAndNotify(): Promise<void> {
     const res = await fetch(`https://${state.instance}/api/v3/user/unread_count`, {
       headers: { Authorization: `Bearer ${state.token}` },
     });
+    if (res.status === 401) {
+      await deleteState();
+      return;
+    }
     if (!res.ok) return;
     const json = await res.json() as { replies: number; mentions: number };
     count = json.replies + json.mentions;

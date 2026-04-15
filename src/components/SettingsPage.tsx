@@ -5,7 +5,11 @@ import { loadAuth } from '../lib/store';
 import { SORT_OPTIONS } from './HeaderBar';
 import InstanceInput from './InstanceInput';
 
-export default function SettingsPage() {
+interface Props {
+  onPermissionChange?: (permission: NotificationPermission) => void;
+}
+
+export default function SettingsPage({ onPermissionChange }: Props = {}) {
   const navigate = useNavigate();
   const { settings, updateSetting } = useSettings();
 
@@ -18,6 +22,7 @@ export default function SettingsPage() {
   async function handleEnableNotifications() {
     const result = await Notification.requestPermission();
     setNotifPermission(result);
+    onPermissionChange?.(result);
   }
 
   const pillBase: React.CSSProperties = {

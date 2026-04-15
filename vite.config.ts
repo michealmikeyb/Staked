@@ -10,7 +10,6 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Stakswipe',
         short_name: 'Stakswipe',

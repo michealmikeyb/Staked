@@ -49,7 +49,10 @@ function UserProfileRoute({ auth }: { auth: AuthState }) {
 export default function App() {
   const [auth, setAuth] = useState<AuthState | null>(() => loadAuth());
   const [unreadCount, setUnreadCount] = useState(0);
-  useNotificationPolling(auth, setUnreadCount);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  useNotificationPolling(auth, setUnreadCount, notifPermission);
 
   function handleLogin(newAuth: AuthState) {
     setAuth(newAuth);
@@ -77,7 +80,7 @@ export default function App() {
               />
             }
           />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<SettingsPage onPermissionChange={setNotifPermission} />} />
           <Route
             path="/inbox"
             element={

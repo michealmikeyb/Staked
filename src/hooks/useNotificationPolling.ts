@@ -10,11 +10,14 @@ const SYNC_MIN_INTERVAL = 15 * 60 * 1000;
 export function useNotificationPolling(
   auth: AuthState | null,
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>,
+  permission: NotificationPermission = typeof Notification !== 'undefined'
+    ? Notification.permission
+    : 'default',
 ): void {
   const lastCountRef = useRef<number>(-1); // -1 = baseline not yet established
 
   useEffect(() => {
-    if (!auth || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    if (!auth || permission !== 'granted') return;
 
     let cancelled = false;
 
@@ -57,7 +60,7 @@ export function useNotificationPolling(
     poll();
     const id = setInterval(poll, POLL_INTERVAL);
     return () => { cancelled = true; clearInterval(id); };
-  }, [auth, setUnreadCount]);
+  }, [auth, setUnreadCount, permission]);
 
   // Clean up IndexedDB and reset baseline on logout
   useEffect(() => {

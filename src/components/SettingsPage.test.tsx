@@ -104,7 +104,7 @@ describe('SettingsPage', () => {
         value: { permission: 'default', requestPermission: vi.fn().mockResolvedValue('granted') },
         writable: true, configurable: true,
       });
-      render(<SettingsPage />);
+      renderPage();
       expect(screen.getByRole('button', { name: /enable notifications/i })).toBeInTheDocument();
     });
 
@@ -113,7 +113,7 @@ describe('SettingsPage', () => {
         value: { permission: 'granted', requestPermission: vi.fn() },
         writable: true, configurable: true,
       });
-      render(<SettingsPage />);
+      renderPage();
       expect(screen.getByText(/notifications on/i)).toBeInTheDocument();
     });
 
@@ -122,7 +122,7 @@ describe('SettingsPage', () => {
         value: { permission: 'denied', requestPermission: vi.fn() },
         writable: true, configurable: true,
       });
-      render(<SettingsPage />);
+      renderPage();
       expect(screen.getByText(/blocked in browser settings/i)).toBeInTheDocument();
     });
 
@@ -132,7 +132,7 @@ describe('SettingsPage', () => {
         value: { permission: 'default', requestPermission: vi.fn() },
         writable: true, configurable: true,
       });
-      render(<SettingsPage />);
+      renderPage();
       expect(screen.getByText(/log in to enable notifications/i)).toBeInTheDocument();
     });
 
@@ -142,7 +142,7 @@ describe('SettingsPage', () => {
         value: { permission: 'default', requestPermission },
         writable: true, configurable: true,
       });
-      render(<SettingsPage />);
+      renderPage();
       await act(async () => {
         await userEvent.click(screen.getByRole('button', { name: /enable notifications/i }));
       });
