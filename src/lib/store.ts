@@ -79,9 +79,12 @@ export function loadSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    // Migrate: old leftSwipe key → nonUpvoteSwipeAction
     if ('leftSwipe' in parsed && !('nonUpvoteSwipeAction' in parsed)) {
       parsed.nonUpvoteSwipeAction = parsed.leftSwipe;
+      delete parsed.leftSwipe;
+      const migrated = { ...DEFAULT_SETTINGS, ...parsed } as AppSettings;
+      saveSettings(migrated);
+      return migrated;
     }
     return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {

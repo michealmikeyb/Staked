@@ -147,28 +147,24 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     setReturningPostId(post.post.id);
   }
 
+  function voteForSwipe(isRight: boolean, postId: number): Promise<void> {
+    if (isAnonymousMode) return Promise.resolve();
+    const isUpvote = isRight !== settings.swapGestures;
+    if (isUpvote) return upvotePost(auth!.instance, auth!.token, postId).catch(() => {});
+    if (settings.nonUpvoteSwipeAction === 'downvote') return downvotePost(auth!.instance, auth!.token, postId).catch(() => {});
+    return Promise.resolve();
+  }
+
   useEffect(() => {
     const topPost = posts[0];
     if (!topPost) return;
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') {
-        if (!isAnonymousMode) {
-          if (!settings.swapGestures) {
-            upvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
-          } else if (settings.nonUpvoteSwipeAction === 'downvote') {
-            downvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
-          }
-        }
+        voteForSwipe(true, topPost.post.id);
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowLeft') {
-        if (!isAnonymousMode) {
-          if (settings.swapGestures) {
-            upvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
-          } else if (settings.nonUpvoteSwipeAction === 'downvote') {
-            downvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
-          }
-        }
+        voteForSwipe(false, topPost.post.id);
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowDown') {
         handleUndo();
@@ -270,23 +266,11 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
               zIndex={zIndex}
               scale={isTop ? 1 : scale}
               onSwipeRight={isTop ? async () => {
-                if (!isAnonymousMode) {
-                  if (!settings.swapGestures) {
-                    await upvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
-                  } else if (settings.nonUpvoteSwipeAction === 'downvote') {
-                    await downvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
-                  }
-                }
+                await voteForSwipe(true, post.post.id);
                 dismissTop(post.post.id);
               } : () => {}}
               onSwipeLeft={isTop ? async () => {
-                if (!isAnonymousMode) {
-                  if (settings.swapGestures) {
-                    await upvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
-                  } else if (settings.nonUpvoteSwipeAction === 'downvote') {
-                    await downvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
-                  }
-                }
+                await voteForSwipe(false, post.post.id);
                 dismissTop(post.post.id);
               } : () => {}}
               onUndo={isTop ? handleUndo : () => {}}

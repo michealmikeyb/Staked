@@ -22,8 +22,8 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
   const navigate = useNavigate();
   const { settings } = useSettings();
   const [vote, setVote] = useState<1 | 0 | -1>(0);
-  const [score, setScore] = useState(cv.counts.score);
   const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
+  const displayScore = cv.counts.score + vote;
   const lastTapRef = useRef<number>(0);
   const resolvedIdRef = useRef<number | null>(null);
 
@@ -46,18 +46,17 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
       const delta = newVote - vote;
       const prevVote = vote;
       setVote(newVote);
-      setScore((s) => s + delta);
       setFlash((f) => ({ key: f.key + 1, delta: delta > 0 ? 1 : -1 }));
       const doLike = async () => {
         if (resolvedIdRef.current === null) {
           const resolved = await resolveCommentId(auth.instance, auth.token, cv.comment.ap_id).catch(() => null);
-          resolvedIdRef.current = resolved ?? cv.comment.id;
+          if (resolved !== null) resolvedIdRef.current = resolved;
         }
-        await likeComment(auth.instance, auth.token, resolvedIdRef.current, newVote);
+        const commentId = resolvedIdRef.current ?? cv.comment.id;
+        await likeComment(auth.instance, auth.token, commentId, newVote);
       };
       doLike().catch(() => {
         setVote(prevVote);
-        setScore((s) => s - delta);
       });
     } else {
       lastTapRef.current = now;
@@ -87,7 +86,7 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
           @{cv.creator.display_name ?? cv.creator.name}
         </button>
         <span className={vote === 1 ? styles.scoreLiked : vote === -1 ? styles.scoreDownvoted : styles.score}>
-          {vote === -1 ? '▼' : '▲'} {score}
+          {vote === -1 ? '▼' : '▲'} {displayScore}
         </span>
         {flash.key > 0 && (
           <span key={flash.key} className={styles.scoreFlash}>
