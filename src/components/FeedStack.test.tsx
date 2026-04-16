@@ -470,6 +470,63 @@ describe('FeedStack settings — gestures', () => {
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(downvotePost).not.toHaveBeenCalled();
   });
+
+  it('calls upvotePost on ArrowLeft when swapGestures is true', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      nonUpvoteSwipeAction: 'downvote', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
+    }));
+    const { fetchPosts, upvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      {
+        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]).mockResolvedValue([]);
+    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
+    await screen.findByText('Test Post');
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(upvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+  });
+
+  it('calls downvotePost on ArrowRight when swapGestures is true and nonUpvoteSwipeAction is downvote', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      nonUpvoteSwipeAction: 'downvote', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
+    }));
+    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      {
+        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]).mockResolvedValue([]);
+    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
+    await screen.findByText('Test Post');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(downvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+  });
+
+  it('does not call downvotePost on ArrowRight when swapGestures is true and nonUpvoteSwipeAction is dismiss', async () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      nonUpvoteSwipeAction: 'dismiss', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
+    }));
+    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      {
+        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
+        creator: { name: 'alice' },
+        counts: { score: 10, comments: 0 },
+      },
+    ]).mockResolvedValue([]);
+    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
+    await screen.findByText('Test Post');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(downvotePost).not.toHaveBeenCalled();
+  });
 });
 
 describe('FeedStack community mode', () => {

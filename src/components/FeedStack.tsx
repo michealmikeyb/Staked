@@ -154,12 +154,20 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') {
         if (!isAnonymousMode) {
-          upvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+          if (!settings.swapGestures) {
+            upvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+          } else if (settings.nonUpvoteSwipeAction === 'downvote') {
+            downvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+          }
         }
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowLeft') {
-        if (!isAnonymousMode && settings.leftSwipe === 'downvote') {
-          downvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+        if (!isAnonymousMode) {
+          if (settings.swapGestures) {
+            upvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+          } else if (settings.nonUpvoteSwipeAction === 'downvote') {
+            downvotePost(auth!.instance, auth!.token, topPost.post.id).catch(() => {});
+          }
         }
         dismissTop(topPost.post.id);
       } else if (e.key === 'ArrowDown') {
@@ -263,13 +271,21 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
               scale={isTop ? 1 : scale}
               onSwipeRight={isTop ? async () => {
                 if (!isAnonymousMode) {
-                  await upvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                  if (!settings.swapGestures) {
+                    await upvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                  } else if (settings.nonUpvoteSwipeAction === 'downvote') {
+                    await downvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                  }
                 }
                 dismissTop(post.post.id);
               } : () => {}}
               onSwipeLeft={isTop ? async () => {
-                if (!isAnonymousMode && settings.leftSwipe === 'downvote') {
-                  await downvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                if (!isAnonymousMode) {
+                  if (settings.swapGestures) {
+                    await upvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                  } else if (settings.nonUpvoteSwipeAction === 'downvote') {
+                    await downvotePost(auth!.instance, auth!.token, post.post.id).catch(() => {});
+                  }
                 }
                 dismissTop(post.post.id);
               } : () => {}}
