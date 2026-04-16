@@ -55,7 +55,8 @@ export function clearSeen(): void {
 }
 
 export interface AppSettings {
-  leftSwipe: 'downvote' | 'dismiss';
+  nonUpvoteSwipeAction: 'downvote' | 'dismiss';
+  swapGestures: boolean;
   blurNsfw: boolean;
   defaultSort: SortType;
   activeStak: StakType;
@@ -65,7 +66,8 @@ export interface AppSettings {
 const SETTINGS_KEY = 'stakswipe_settings';
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  leftSwipe: 'downvote',
+  nonUpvoteSwipeAction: 'downvote',
+  swapGestures: false,
   blurNsfw: true,
   defaultSort: 'TopTwelveHour',
   activeStak: 'All',
@@ -76,7 +78,12 @@ export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    // Migrate: old leftSwipe key → nonUpvoteSwipeAction
+    if ('leftSwipe' in parsed && !('nonUpvoteSwipeAction' in parsed)) {
+      parsed.nonUpvoteSwipeAction = parsed.leftSwipe;
+    }
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

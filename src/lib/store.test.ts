@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { saveAuth, loadAuth, clearAuth, loadSeen, addSeen, clearSeen, type AuthState, loadSettings, saveSettings } from './store';
+import { saveAuth, loadAuth, clearAuth, loadSeen, addSeen, clearSeen, type AuthState, loadSettings, saveSettings, type AppSettings } from './store';
 
 const VALID_AUTH: AuthState = {
   token: 'test-jwt-token',
@@ -105,7 +105,8 @@ describe('clearSeen', () => {
 describe('loadSettings', () => {
   it('returns defaults when nothing is stored', () => {
     expect(loadSettings()).toEqual({
-      leftSwipe: 'downvote',
+      nonUpvoteSwipeAction: 'downvote',
+      swapGestures: false,
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
       activeStak: 'All',
@@ -114,11 +115,12 @@ describe('loadSettings', () => {
   });
 
   it('round-trips settings through localStorage', () => {
-    const s = {
-      leftSwipe: 'dismiss' as const,
+    const s: AppSettings = {
+      nonUpvoteSwipeAction: 'dismiss',
+      swapGestures: true,
       blurNsfw: false,
-      defaultSort: 'Hot' as const,
-      activeStak: 'Local' as const,
+      defaultSort: 'Hot',
+      activeStak: 'Local',
       anonInstance: '',
     };
     saveSettings(s);
@@ -129,7 +131,8 @@ describe('loadSettings', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({ blurNsfw: false }));
     const s = loadSettings();
     expect(s.blurNsfw).toBe(false);
-    expect(s.leftSwipe).toBe('downvote');
+    expect(s.nonUpvoteSwipeAction).toBe('downvote');
+    expect(s.swapGestures).toBe(false);
     expect(s.defaultSort).toBe('TopTwelveHour');
     expect(s.activeStak).toBe('All');
   });
@@ -137,7 +140,8 @@ describe('loadSettings', () => {
   it('returns defaults when stored value is invalid JSON', () => {
     localStorage.setItem('stakswipe_settings', 'not-json');
     expect(loadSettings()).toEqual({
-      leftSwipe: 'downvote',
+      nonUpvoteSwipeAction: 'downvote',
+      swapGestures: false,
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
       activeStak: 'All',
@@ -147,7 +151,8 @@ describe('loadSettings', () => {
 
   it('persists and reloads activeStak: Subscribed', () => {
     saveSettings({
-      leftSwipe: 'downvote',
+      nonUpvoteSwipeAction: 'downvote',
+      swapGestures: false,
       blurNsfw: true,
       defaultSort: 'TopTwelveHour',
       activeStak: 'Subscribed',
@@ -169,8 +174,23 @@ describe('loadSettings', () => {
   });
 
   it('loadSettings fills missing anonInstance from defaults when not in stored JSON', () => {
-    localStorage.setItem('stakswipe_settings', JSON.stringify({ leftSwipe: 'dismiss' }));
+    localStorage.setItem('stakswipe_settings', JSON.stringify({ nonUpvoteSwipeAction: 'dismiss' }));
     const settings = loadSettings();
     expect(settings.anonInstance).toBe('');
+  });
+
+  it('migrates old leftSwipe value to nonUpvoteSwipeAction', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({ leftSwipe: 'dismiss' }));
+    const s = loadSettings();
+    expect(s.nonUpvoteSwipeAction).toBe('dismiss');
+    expect(s.swapGestures).toBe(false);
+  });
+
+  it('does not overwrite nonUpvoteSwipeAction if already present alongside leftSwipe', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({
+      leftSwipe: 'dismiss',
+      nonUpvoteSwipeAction: 'downvote',
+    }));
+    expect(loadSettings().nonUpvoteSwipeAction).toBe('downvote');
   });
 });
