@@ -40,6 +40,7 @@ export default function LoginPage({ onLogin }: Props) {
       const auth: AuthState = { token, instance, username };
       saveAuth(auth);
       onLogin(auth);
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
