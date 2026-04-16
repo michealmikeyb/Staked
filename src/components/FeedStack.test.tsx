@@ -513,7 +513,7 @@ describe('FeedStack settings — gestures', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'dismiss', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
     }));
-    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
+    const { fetchPosts, downvotePost, upvotePost } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       {
         post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
@@ -526,6 +526,7 @@ describe('FeedStack settings — gestures', () => {
     await screen.findByText('Test Post');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(downvotePost).not.toHaveBeenCalled();
+    expect(upvotePost).not.toHaveBeenCalled();
   });
 });
 
