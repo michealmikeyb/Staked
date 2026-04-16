@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -29,9 +29,10 @@ function renderPage(props: Partial<React.ComponentProps<typeof SettingsPage>> = 
 }
 
 describe('SettingsPage', () => {
-  it('renders all three setting sections', () => {
+  it('renders all setting sections', () => {
     renderPage();
-    expect(screen.getByText('Left Swipe')).toBeInTheDocument();
+    expect(screen.getByText('Swap Gestures')).toBeInTheDocument();
+    expect(screen.getByText('Left Swipe Action')).toBeInTheDocument();
     expect(screen.getByText('Blur NSFW')).toBeInTheDocument();
     expect(screen.getByText('Default Sort')).toBeInTheDocument();
   });
@@ -42,16 +43,38 @@ describe('SettingsPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
-  it('Dismiss pill updates leftSwipe setting', () => {
+  it('Swap Gestures On pill updates swapGestures setting', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    const swapCard = screen.getByTestId('swap-gestures-card');
+    fireEvent.click(within(swapCard).getByRole('button', { name: /^on$/i }));
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
-    expect(stored.leftSwipe).toBe('dismiss');
+    expect(stored.swapGestures).toBe(true);
   });
 
-  it('Off pill updates blurNsfw setting', () => {
+  it('non-upvote swipe card label is "Left Swipe Action" by default', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /^off$/i }));
+    expect(screen.getByText('Left Swipe Action')).toBeInTheDocument();
+  });
+
+  it('non-upvote swipe card label changes to "Right Swipe Action" when swapGestures is on', () => {
+    renderPage();
+    const swapCard = screen.getByTestId('swap-gestures-card');
+    fireEvent.click(within(swapCard).getByRole('button', { name: /^on$/i }));
+    expect(screen.getByText('Right Swipe Action')).toBeInTheDocument();
+  });
+
+  it('Dismiss pill updates nonUpvoteSwipeAction setting', () => {
+    renderPage();
+    const swipeCard = screen.getByTestId('non-upvote-swipe-card');
+    fireEvent.click(within(swipeCard).getByRole('button', { name: /dismiss/i }));
+    const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+    expect(stored.nonUpvoteSwipeAction).toBe('dismiss');
+  });
+
+  it('Off pill in Blur NSFW card updates blurNsfw setting', () => {
+    renderPage();
+    const blurCard = screen.getByTestId('blur-nsfw-card');
+    fireEvent.click(within(blurCard).getByRole('button', { name: /^off$/i }));
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
     expect(stored.blurNsfw).toBe(false);
   });
@@ -65,7 +88,6 @@ describe('SettingsPage', () => {
 
   it('active sort pill has distinct styling (orange background)', () => {
     renderPage();
-    // TopTwelveHour is default — its button should have orange background
     const topBtn = screen.getByRole('button', { name: /top 12h/i });
     expect(topBtn).toHaveStyle({ background: '#ff6b35' });
   });

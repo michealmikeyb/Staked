@@ -37,6 +37,12 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
     fontSize: 11, color: '#888', textTransform: 'uppercase',
     letterSpacing: '0.08em', marginBottom: 10,
   };
+  const descText: React.CSSProperties = { fontSize: 12, color: '#888', marginBottom: 10 };
+
+  const swipeActionLabel = settings.swapGestures ? 'Right Swipe Action' : 'Left Swipe Action';
+  const gestureDesc = settings.swapGestures
+    ? 'Left swipe upvotes · Left tap upvotes'
+    : 'Right swipe upvotes · Right tap upvotes';
 
   return (
     <div style={{ background: '#1a1d24', minHeight: '100dvh', color: '#f5f5f5' }}>
@@ -55,25 +61,44 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
       </div>
 
       <div style={{ padding: 16 }}>
-        <div style={card}>
-          <div style={sectionLabel}>Left Swipe</div>
+        <div data-testid="swap-gestures-card" style={card}>
+          <div style={sectionLabel}>Swap Gestures</div>
+          <div style={descText}>{gestureDesc}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
-              style={settings.leftSwipe === 'downvote' ? active : inactive}
-              onClick={() => updateSetting('leftSwipe', 'downvote')}
+              style={settings.swapGestures ? active : inactive}
+              onClick={() => updateSetting('swapGestures', true)}
+            >
+              On
+            </button>
+            <button
+              style={!settings.swapGestures ? active : inactive}
+              onClick={() => updateSetting('swapGestures', false)}
+            >
+              Off
+            </button>
+          </div>
+        </div>
+
+        <div data-testid="non-upvote-swipe-card" style={card}>
+          <div style={sectionLabel}>{swipeActionLabel}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              style={settings.nonUpvoteSwipeAction === 'downvote' ? active : inactive}
+              onClick={() => updateSetting('nonUpvoteSwipeAction', 'downvote')}
             >
               Downvote
             </button>
             <button
-              style={settings.leftSwipe === 'dismiss' ? active : inactive}
-              onClick={() => updateSetting('leftSwipe', 'dismiss')}
+              style={settings.nonUpvoteSwipeAction === 'dismiss' ? active : inactive}
+              onClick={() => updateSetting('nonUpvoteSwipeAction', 'dismiss')}
             >
               Dismiss
             </button>
           </div>
         </div>
 
-        <div style={card}>
+        <div data-testid="blur-nsfw-card" style={card}>
           <div style={sectionLabel}>Blur NSFW</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
