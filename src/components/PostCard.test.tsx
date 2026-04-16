@@ -702,7 +702,7 @@ describe('PostCard NSFW blur', () => {
 
   it('does not show blur overlay when blurNsfw setting is off', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
-      leftSwipe: 'downvote', blurNsfw: false, defaultSort: 'TopTwelveHour',
+      nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: false, defaultSort: 'TopTwelveHour',
     }));
     render(
       <SettingsProvider>

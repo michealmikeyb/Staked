@@ -413,7 +413,7 @@ describe('FeedStack settings — defaultSort', () => {
 
   it('uses defaultSort from settings for initial fetch', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
-      leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'Hot',
+      nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'Hot',
     }));
     const { fetchPosts } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -430,13 +430,13 @@ describe('FeedStack settings — defaultSort', () => {
   });
 });
 
-describe('FeedStack settings — leftSwipe', () => {
+describe('FeedStack settings — gestures', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
-  it('calls downvotePost on ArrowLeft when leftSwipe is downvote (default)', async () => {
+  it('calls downvotePost on ArrowLeft when nonUpvoteSwipeAction is downvote (default)', async () => {
     const { fetchPosts, downvotePost } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       {
@@ -452,9 +452,9 @@ describe('FeedStack settings — leftSwipe', () => {
     expect(downvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
   });
 
-  it('does not call downvotePost on ArrowLeft when leftSwipe is dismiss', async () => {
+  it('does not call downvotePost on ArrowLeft when nonUpvoteSwipeAction is dismiss', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
-      leftSwipe: 'dismiss', blurNsfw: true, defaultSort: 'TopTwelveHour',
+      nonUpvoteSwipeAction: 'dismiss', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour',
     }));
     const { fetchPosts, downvotePost } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
@@ -756,7 +756,7 @@ describe('FeedStack settings — activeStak', () => {
 
   it('calls fetchPosts with activeStak from persisted settings', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
-      leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Local',
+      nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Local',
     }));
     const { fetchPosts } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -785,7 +785,7 @@ describe('FeedStack subscribed empty state', () => {
 
   it('shows subscribed empty state when Subscribed stak returns no posts', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
-      leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Subscribed',
+      nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Subscribed',
     }));
     const { fetchPosts } = await import('../lib/lemmy');
     (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);

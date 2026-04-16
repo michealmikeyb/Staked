@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 vi.mock('./lib/store', () => {
-  const DEFAULT_SETTINGS = { leftSwipe: 'downvote', blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'All', anonInstance: '' };
+  const DEFAULT_SETTINGS = { nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'All', anonInstance: '' };
   return {
     loadAuth: vi.fn().mockReturnValue(null),
     clearAuth: vi.fn(),
