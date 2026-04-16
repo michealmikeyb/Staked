@@ -37,6 +37,7 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
       lastTapRef.current = 0;
       const el = e.currentTarget;
       const rect = el.getBoundingClientRect();
+      if (rect.width === 0) return;
       const mid = rect.left + rect.width / 2;
       const tappedRight = e.clientX >= mid;
       const isUpvoteSide = settings.swapGestures ? !tappedRight : tappedRight;
