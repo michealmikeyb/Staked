@@ -99,3 +99,9 @@
   color: inherit;
   -webkit-tap-highlight-color: transparent;
 }
+
+.scoreDownvoted {
+  color: #5c9aff;
+  font-weight: 700;
+  transition: color 0.2s;
+}

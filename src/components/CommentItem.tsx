@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import MarkdownRenderer from './MarkdownRenderer';
 import { likeComment, resolveCommentId, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
+import { useSettings } from '../lib/SettingsContext';
 import { instanceFromActorId } from '../lib/urlUtils';
 import CreatorAvatar from './CreatorAvatar';
 import styles from './CommentItem.module.css';
@@ -19,7 +20,8 @@ interface Props {
 
 export default function CommentItem({ cv, auth, depth, onReply, onEdit, overrideContent, isHighlighted }: Props) {
   const navigate = useNavigate();
-  const [liked, setLiked] = useState(false);
+  const { settings } = useSettings();
+  const [vote, setVote] = useState<1 | 0 | -1>(0);
   const [score, setScore] = useState(cv.counts.score);
   const [flash, setFlash] = useState<{ key: number; delta: 1 | -1 }>({ key: 0, delta: 1 });
   const lastTapRef = useRef<number>(0);
@@ -29,24 +31,31 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
     cv.creator.name === auth.username &&
     instanceFromActorId(cv.creator.actor_id ?? '') === auth.instance;
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
       lastTapRef.current = 0;
-      const newLiked = !liked;
-      const delta = newLiked ? 1 : -1;
-      setLiked(newLiked);
+      const el = e.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const mid = rect.left + rect.width / 2;
+      const tappedRight = e.clientX >= mid;
+      const isUpvoteSide = settings.swapGestures ? !tappedRight : tappedRight;
+      const targetVote: 1 | -1 = isUpvoteSide ? 1 : -1;
+      const newVote: 1 | 0 | -1 = vote === targetVote ? 0 : targetVote;
+      const delta = newVote - vote;
+      const prevVote = vote;
+      setVote(newVote);
       setScore((s) => s + delta);
-      setFlash((f) => ({ key: f.key + 1, delta: delta as 1 | -1 }));
+      setFlash((f) => ({ key: f.key + 1, delta: delta > 0 ? 1 : -1 }));
       const doLike = async () => {
         if (resolvedIdRef.current === null) {
           const resolved = await resolveCommentId(auth.instance, auth.token, cv.comment.ap_id).catch(() => null);
           resolvedIdRef.current = resolved ?? cv.comment.id;
         }
-        await likeComment(auth.instance, auth.token, resolvedIdRef.current, newLiked ? 1 : 0);
+        await likeComment(auth.instance, auth.token, resolvedIdRef.current, newVote);
       };
       doLike().catch(() => {
-        setLiked(!newLiked);
+        setVote(prevVote);
         setScore((s) => s - delta);
       });
     } else {
@@ -76,7 +85,9 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
           <CreatorAvatar name={cv.creator.name} avatar={cv.creator.avatar} size={20} />
           @{cv.creator.display_name ?? cv.creator.name}
         </button>
-        <span className={liked ? styles.scoreLiked : styles.score}>▲ {score}</span>
+        <span className={vote === 1 ? styles.scoreLiked : vote === -1 ? styles.scoreDownvoted : styles.score}>
+          {vote === -1 ? '▼' : '▲'} {score}
+        </span>
         {flash.key > 0 && (
           <span key={flash.key} className={styles.scoreFlash}>
             {flash.delta > 0 ? '+1' : '-1'}
