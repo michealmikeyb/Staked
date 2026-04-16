@@ -130,7 +130,7 @@ export async function likeComment(
   instance: string,
   token: string,
   commentId: number,
-  score: 1 | 0,
+  score: 1 | 0 | -1,
 ): Promise<void> {
   await client(instance, token).likeComment({ comment_id: commentId, score });
 }
