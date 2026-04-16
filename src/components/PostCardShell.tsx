@@ -23,6 +23,19 @@ interface Post {
   body?: string | null;
   thumbnail_url?: string | null;
   nsfw?: boolean;
+  published: string;
+}
+
+function timeAgo(published: string): string {
+  const seconds = Math.floor((Date.now() - new Date(published).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return `${Math.floor(days / 7)}w`;
 }
 
 interface Community {
@@ -196,6 +209,7 @@ export default function PostCardShell({
           <div className={styles.metaStats}>
             <span data-testid="meta-score">▲ {counts.score}</span>
             <span data-testid="meta-comments">💬 {counts.comments}</span>
+            <span data-testid="meta-age">{timeAgo(post.published)}</span>
           </div>
         </div>
 
