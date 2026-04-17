@@ -66,27 +66,23 @@ export default function SwipeHint({ showUndoHint = false }: Props) {
       </AnimatePresence>
       <AnimatePresence>
         {undoVisible && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            style={{
-              position: 'fixed',
-              bottom: 80,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,0.75)',
-              color: '#ccc',
-              fontSize: '0.85rem',
-              padding: '10px 20px',
-              borderRadius: 20,
-              pointerEvents: 'none',
-              zIndex: 200,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ↓ Swipe down to go back
-          </motion.div>
+          <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 200, pointerEvents: 'none' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              style={{
+                background: 'rgba(0,0,0,0.75)',
+                color: '#ccc',
+                fontSize: '0.85rem',
+                padding: '10px 20px',
+                borderRadius: 20,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ↓ Swipe down to go back
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>
