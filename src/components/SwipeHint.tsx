@@ -4,11 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const HINT_KEY = 'stakswipe_hint_seen';
 const UNDO_HINT_KEY = 'stakswipe_undo_hint_seen';
 
-interface Props {
-  showUndoHint?: boolean;
-}
-
-export default function SwipeHint({ showUndoHint = false }: Props) {
+export default function SwipeHint() {
   const [visible, setVisible] = useState(() => !localStorage.getItem(HINT_KEY));
   const [undoVisible, setUndoVisible] = useState(false);
 
@@ -22,14 +18,19 @@ export default function SwipeHint({ showUndoHint = false }: Props) {
   }, [visible]);
 
   useEffect(() => {
-    if (!showUndoHint || localStorage.getItem(UNDO_HINT_KEY)) return;
-    setUndoVisible(true);
-    const t = setTimeout(() => {
-      setUndoVisible(false);
-      localStorage.setItem(UNDO_HINT_KEY, '1');
-    }, 3000);
-    return () => clearTimeout(t);
-  }, [showUndoHint]);
+    if (localStorage.getItem(UNDO_HINT_KEY)) return;
+    function handler() {
+      setUndoVisible(true);
+      const t = setTimeout(() => {
+        setUndoVisible(false);
+        localStorage.setItem(UNDO_HINT_KEY, '1');
+      }, 3000);
+      window.removeEventListener('stakswipe:swiped', handler);
+      return () => clearTimeout(t);
+    }
+    window.addEventListener('stakswipe:swiped', handler, { once: true });
+    return () => window.removeEventListener('stakswipe:swiped', handler);
+  }, []);
 
   return (
     <>

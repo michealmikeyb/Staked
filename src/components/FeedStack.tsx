@@ -37,7 +37,6 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const isAnonymousMode = auth === null || stak === 'Anonymous';
 
   const [communityInfo, setCommunityInfo] = useState<CommunityInfo | null>(null);
-  const [hasSwipedOnce, setHasSwipedOnce] = useState(false);
 
   useEffect(() => {
     if (community) return;
@@ -138,7 +137,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     if (returningPostId !== null) setReturningPostId(null);
     if (!community) addSeen(postId);
     seenRef.current.add(postId);
-    setHasSwipedOnce(true);
+    window.dispatchEvent(new CustomEvent('stakswipe:swiped'));
   }
 
   function handleUndo() {
@@ -285,7 +284,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
             />
           );
         })}
-        <SwipeHint showUndoHint={hasSwipedOnce} />
+        <SwipeHint />
       </div>
     </div>
   );
