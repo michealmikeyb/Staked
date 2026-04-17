@@ -85,7 +85,7 @@ export default function SwipeHint({ showUndoHint = false }: Props) {
               whiteSpace: 'nowrap',
             }}
           >
-            ↑ Swipe up to go back
+            ↓ Swipe down to go back
           </motion.div>
         )}
       </AnimatePresence>
