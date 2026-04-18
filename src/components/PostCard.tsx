@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
-import { type PostView } from '../lib/lemmy';
+import { type PostView, type CommentSortType } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { useCommentLoader } from '../hooks/useCommentLoader';
 import { useSettings } from '../lib/SettingsContext';
@@ -31,8 +31,9 @@ export default function PostCard({
   onReturnAnimationComplete,
 }: Props) {
   const { post: p, community, creator, counts } = post;
-  const { comments, commentsLoaded } = useCommentLoader(p, community, auth);
   const { settings } = useSettings();
+  const [activeSort, setActiveSort] = useState<CommentSortType>(() => settings.commentSort);
+  const { comments, commentsLoaded } = useCommentLoader(p, community, auth, activeSort);
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const [pullDelta, setPullDelta] = useState(0);
@@ -108,6 +109,8 @@ export default function PostCard({
         commentsLoaded={commentsLoaded}
         scrollRef={scrollRef}
         blurNsfw={settings.blurNsfw}
+        activeSort={activeSort}
+        onSortChange={setActiveSort}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
