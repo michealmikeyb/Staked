@@ -118,10 +118,12 @@ export default function HeaderBar({
             onClick={() => setShowSortDropdown(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 29 }}
           />
-          <div style={{
-            position: 'fixed', top: 48, left: 0, right: 0,
-            background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30,
-          }}>
+          <div
+            data-testid="sort-dropdown"
+            style={{
+              position: 'fixed', top: 48, left: 0, right: 0,
+              background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30,
+            }}>
             {SORT_OPTIONS.map(({ sort, label }) => (
               <button
                 key={sort}

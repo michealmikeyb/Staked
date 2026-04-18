@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import FeedStack from './FeedStack';
 import { addSeen } from '../lib/store';
 import { SettingsProvider } from '../lib/SettingsContext';
@@ -153,7 +153,7 @@ describe('FeedStack header and sort', () => {
 
     // Open dropdown and pick Hot
     fireEvent.click(screen.getByRole('button', { name: /top 12h/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
+    fireEvent.click(within(screen.getByTestId('sort-dropdown')).getByRole('button', { name: /^hot$/i }));
 
     await waitFor(() => {
       expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot', 'All');
