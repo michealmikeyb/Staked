@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type MutableRefObject } from 'react';
-import { fetchComments, resolvePostId, type CommentView } from '../lib/lemmy';
+import { fetchComments, resolvePostId, type CommentView, type CommentSortType } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { instanceFromActorId, sourceFromApId } from '../lib/urlUtils';
 
@@ -14,6 +14,7 @@ export function useCommentLoader(
   post: { ap_id: string; id: number },
   community: { actor_id: string },
   auth: AuthState | null,
+  sort: CommentSortType = 'Top',
 ): Result {
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
@@ -29,7 +30,7 @@ export function useCommentLoader(
 
       if (source) {
         const sourceToken = source.instance === auth?.instance ? (auth?.token ?? '') : '';
-        loaded = await fetchComments(source.instance, sourceToken, source.postId).catch(() => []);
+        loaded = await fetchComments(source.instance, sourceToken, source.postId, sort).catch(() => []);
         if (loaded.length > 0) {
           resolvedInstanceRef.current = source.instance;
           resolvedTokenRef.current = sourceToken;
@@ -42,7 +43,7 @@ export function useCommentLoader(
           const localId = await resolvePostId(communityInstance, post.ap_id).catch(() => null);
           if (localId != null) {
             const communityToken = communityInstance === auth?.instance ? (auth?.token ?? '') : '';
-            loaded = await fetchComments(communityInstance, communityToken, localId).catch(() => []);
+            loaded = await fetchComments(communityInstance, communityToken, localId, sort).catch(() => []);
             if (loaded.length > 0) {
               resolvedInstanceRef.current = communityInstance;
               resolvedTokenRef.current = communityToken;
@@ -55,9 +56,9 @@ export function useCommentLoader(
       let cachedHomeComments: CommentView[] | null = null;
 
       if (auth && loaded.length === 0 && source?.instance !== auth.instance) {
-        cachedHomeComments = await fetchComments(auth.instance, auth.token, post.id).catch(() => null) ?? [];
+        cachedHomeComments = await fetchComments(auth.instance, auth.token, post.id, sort).catch(() => null) ?? [];
         loaded = cachedHomeComments.length > 0 ? cachedHomeComments
-          : await fetchComments(auth.instance, '', post.id).catch(() => []);
+          : await fetchComments(auth.instance, '', post.id, sort).catch(() => []);
         if (loaded.length > 0) {
           resolvedInstanceRef.current = auth.instance;
           resolvedTokenRef.current = auth.token;
@@ -65,7 +66,7 @@ export function useCommentLoader(
       }
 
       if (auth && source?.instance !== auth.instance) {
-        const homeComments = cachedHomeComments ?? await fetchComments(auth.instance, auth.token, post.id).catch(() => []);
+        const homeComments = cachedHomeComments ?? await fetchComments(auth.instance, auth.token, post.id, sort).catch(() => []);
         if (homeComments.length > 0) {
           const seenApIds = new Set(loaded.map((c) => c.comment.ap_id));
           const novel = homeComments.filter((c) => !seenApIds.has(c.comment.ap_id));
@@ -102,7 +103,7 @@ export function useCommentLoader(
 
     load();
     return () => { cancelled = true; };
-  }, [auth, post.ap_id, post.id, community.actor_id]);
+  }, [auth, post.ap_id, post.id, community.actor_id, sort]);
 
   return { comments, commentsLoaded, resolvedInstanceRef, resolvedTokenRef };
 }

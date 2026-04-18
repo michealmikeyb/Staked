@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useCommentLoader } from './useCommentLoader';
+import { fetchComments } from '../lib/lemmy';
+import type { CommentSortType } from '../lib/lemmy';
 
 vi.mock('../lib/lemmy', () => ({
   fetchComments: vi.fn().mockResolvedValue([
@@ -39,5 +41,21 @@ describe('useCommentLoader', () => {
     await waitFor(() => expect(result.current.commentsLoaded).toBe(true));
     expect(result.current.resolvedInstanceRef.current).toBe('lemmy.world');
     expect(result.current.resolvedTokenRef.current).toBeDefined();
+  });
+
+  it('re-fetches with new sort when sort param changes', async () => {
+    const { rerender } = renderHook(
+      ({ sort }: { sort: CommentSortType }) =>
+        useCommentLoader(mockPost, mockCommunity, mockAuth, sort),
+      { initialProps: { sort: 'Top' as CommentSortType } },
+    );
+    await waitFor(() => expect(vi.mocked(fetchComments)).toHaveBeenCalledWith(
+      'lemmy.world', 'tok', 42, 'Top',
+    ));
+    vi.clearAllMocks();
+    rerender({ sort: 'New' });
+    await waitFor(() => expect(vi.mocked(fetchComments)).toHaveBeenCalledWith(
+      'lemmy.world', 'tok', 42, 'New',
+    ));
   });
 });
