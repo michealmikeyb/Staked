@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   resolveCommentId, createComment, editComment, savePost,
-  type CommentView,
+  type CommentView, type CommentSortType,
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
+import { useSettings } from '../lib/SettingsContext';
 import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import { useShare } from '../hooks/useShare';
 import CommentList from './CommentList';
@@ -70,7 +71,17 @@ interface Props {
   onTouchMove?: React.TouchEventHandler<HTMLDivElement>;
   onTouchEnd?: React.TouchEventHandler<HTMLDivElement>;
   blurNsfw?: boolean;
+  activeSort?: CommentSortType;
+  onSortChange?: (sort: CommentSortType) => void;
 }
+
+const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = [
+  { sort: 'Hot', label: 'Hot' },
+  { sort: 'Top', label: 'Top' },
+  { sort: 'New', label: 'New' },
+  { sort: 'Old', label: 'Old' },
+  { sort: 'Controversial', label: 'Controversial' },
+];
 
 type SheetState =
   | { mode: 'reply'; target: CommentView }
@@ -83,8 +94,11 @@ export default function PostCardShell({
   comments, commentsLoaded, highlightCommentId,
   scrollRef: scrollRefProp, onTouchStart, onTouchMove, onTouchEnd,
   blurNsfw = true,
+  activeSort = 'Top',
+  onSortChange = () => {},
 }: Props) {
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollRefProp ?? internalRef;
 
@@ -293,6 +307,25 @@ export default function PostCardShell({
             </button>
           )}
         </div>
+
+        {settings.showCommentSortBar && (
+          <div style={{ display: 'flex', gap: 6, padding: '8px 16px', borderBottom: '1px solid #2a2d35', flexWrap: 'wrap' }}>
+            {COMMENT_SORT_OPTIONS.map(({ sort, label }) => (
+              <button
+                key={sort}
+                onClick={() => onSortChange(sort)}
+                style={{
+                  border: 'none', borderRadius: 8, padding: '4px 10px',
+                  cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  background: activeSort === sort ? '#ff6b35' : '#2a2d35',
+                  color: activeSort === sort ? '#fff' : '#888',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className={styles.commentsSection}>
           {commentsLoaded && comments.length === 0 && counts.comments > 0 && (

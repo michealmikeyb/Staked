@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { SettingsProvider } from '../lib/SettingsContext';
+import type { CommentSortType } from '../lib/lemmy';
 
 vi.mock('../lib/lemmy', () => ({
   savePost: vi.fn().mockResolvedValue(undefined),
@@ -39,17 +41,22 @@ const COUNTS = { score: 42, comments: 7 };
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 
 function renderShell(overrides: Record<string, unknown> = {}) {
+  const { activeSort = 'Top', onSortChange = vi.fn(), ...rest } = overrides;
   return render(
-    <PostCardShell
-      post={POST}
-      community={COMMUNITY}
-      creator={CREATOR}
-      counts={COUNTS}
-      comments={[]}
-      commentsLoaded={true}
-      auth={AUTH}
-      {...overrides}
-    />,
+    <SettingsProvider>
+      <PostCardShell
+        post={POST}
+        community={COMMUNITY}
+        creator={CREATOR}
+        counts={COUNTS}
+        comments={[]}
+        commentsLoaded={true}
+        auth={AUTH}
+        activeSort={activeSort as CommentSortType}
+        onSortChange={onSortChange as (s: CommentSortType) => void}
+        {...rest}
+      />
+    </SettingsProvider>,
   );
 }
 
@@ -183,5 +190,36 @@ describe('PostCardShell', () => {
     renderShell({ community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' } });
     expect(screen.getByText('L')).toBeInTheDocument();
     expect(document.querySelector('[data-testid="community-avatar-img"]')).toBeNull();
+  });
+
+  describe('sort bar', () => {
+    beforeEach(() => { localStorage.clear(); });
+
+    it('renders sort pills when showCommentSortBar is true (default)', () => {
+      renderShell();
+      expect(screen.getByRole('button', { name: /^top$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^new$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^hot$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^old$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^controversial$/i })).toBeInTheDocument();
+    });
+
+    it('hides sort pills when showCommentSortBar is false', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ showCommentSortBar: false }));
+      renderShell();
+      expect(screen.queryByRole('button', { name: /^top$/i })).not.toBeInTheDocument();
+    });
+
+    it('active sort pill has orange background', () => {
+      renderShell({ activeSort: 'New' });
+      expect(screen.getByRole('button', { name: /^new$/i })).toHaveStyle({ background: '#ff6b35' });
+    });
+
+    it('clicking a pill calls onSortChange with that sort', () => {
+      const onSortChange = vi.fn();
+      renderShell({ onSortChange });
+      fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
+      expect(onSortChange).toHaveBeenCalledWith('Hot');
+    });
   });
 });
