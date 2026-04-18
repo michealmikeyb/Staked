@@ -1,6 +1,6 @@
-import { LemmyHttp, type PostView, type CommentView, type SortType, type CommentReplyView, type PersonMentionView, type CommunityView } from 'lemmy-js-client';
+import { LemmyHttp, type PostView, type CommentView, type SortType, type CommentSortType, type CommentReplyView, type PersonMentionView, type CommunityView } from 'lemmy-js-client';
 
-export type { PostView, CommentView, SortType, CommentReplyView, PersonMentionView, CommunityView };
+export type { PostView, CommentView, SortType, CommentSortType, CommentReplyView, PersonMentionView, CommunityView };
 
 export type StakType = 'All' | 'Local' | 'Subscribed' | 'Anonymous';
 
@@ -107,10 +107,11 @@ export async function fetchComments(
   instance: string,
   token: string,
   postId: number,
+  sort: CommentSortType = 'Top',
 ): Promise<CommentView[]> {
   const res = await client(instance, token).getComments({
     post_id: postId,
-    sort: 'Top',
+    sort,
     limit: 50,
   });
   return res.comments;
