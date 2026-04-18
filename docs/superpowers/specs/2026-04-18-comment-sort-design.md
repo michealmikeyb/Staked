@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add per-card comment sort control (pill row) and a settings toggle to show/hide it. Users can change sort per-card; the setting controls the default.
+Add a comment sort pill row and a settings toggle to show/hide it. The sort bar appears on every surface that renders comments via `PostCardShell` — the swipe card, post detail pages, shared post, and profile/saved post views. Users can change sort per-view; the setting controls the default.
 
 ---
 
@@ -13,15 +13,17 @@ Two new fields added to `AppSettings` in `src/lib/store.ts`:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `commentSort` | `CommentSortType` | `'Top'` | Default sort applied when a card first loads |
-| `showCommentSortBar` | `boolean` | `true` | Whether the pill row renders on each card |
+| `showCommentSortBar` | `boolean` | `true` | Whether the pill row renders on every comment-showing surface |
 
 `CommentSortType` is already exported from `lemmy-js-client`: `"Hot" | "Top" | "New" | "Old" | "Controversial"`.
 
 ---
 
-## Card Changes
+## PostCardShell Changes
 
-### Sort bar (PostCardShell)
+### Sort bar
+
+`PostCardShell` is the single rendering point for comments across all surfaces: `PostCard`, `PostDetailCard`, `SharedPostPage`, `PostViewPage`, `SavedPostDetailPage`, and `ProfilePostDetailPage`. Adding the sort bar here covers all of them.
 
 When `showCommentSortBar` is `true`, a pill row renders between the footer actions border and the first comment. Layout matches the existing footer style (dark background, `#ff6b35` accent for active).
 
@@ -31,7 +33,11 @@ When `showCommentSortBar` is `true`, a pill row renders between the footer actio
 - Local state `activeSort` initialises from `settings.commentSort`
 - Tapping a pill sets `activeSort`, which triggers comment re-fetch
 
-`PostCardShell` receives `commentSort` and `showCommentSortBar` as props (passed down from `PostCard` via `useSettings`).
+`PostCardShell` reads `settings.showCommentSortBar` via `useSettings()` and receives two new props:
+- `activeSort: CommentSortType` — current sort (owned by the parent)
+- `onSortChange: (sort: CommentSortType) => void` — called when a pill is tapped
+
+Both `PostCard` and `PostDetailCard` own `activeSort` state (initialised from `settings.commentSort`), pass it to `useCommentLoader`, and thread it down to `PostCardShell`.
 
 ### useCommentLoader
 
@@ -58,9 +64,16 @@ Two new cards added to `SettingsPage`, below the existing "Default Sort" card:
 
 ---
 
-## Other Callers of fetchComments
+## Data Flow
 
-`useCommentLoader` is used by `PostCard`, `PostDetailPage`, `SavedPostDetailPage`, `ProfilePostDetailPage`, and `SharedPostPage`. Only `PostCard` gets the sort bar UI — the others call `useCommentLoader` without a sort argument and fall back to the default `'Top'`.
+`useCommentLoader` is called in `PostCard` and `PostDetailCard` (not in `PostCardShell`). The flow for sort switching is:
+
+1. `PostCard` / `PostDetailCard` initialise `activeSort` state from `settings.commentSort`
+2. `activeSort` is passed to `useCommentLoader`, which re-fetches when it changes
+3. `activeSort` + `onSortChange` are threaded as props into `PostCardShell`
+4. `PostCardShell` renders the pill row and calls `onSortChange` on tap
+
+This covers all surfaces because every page that shows comments goes through `PostCard` or `PostDetailCard`.
 
 ---
 
