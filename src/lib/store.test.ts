@@ -111,6 +111,8 @@ describe('loadSettings', () => {
       defaultSort: 'TopTwelveHour',
       activeStak: 'All',
       anonInstance: '',
+      commentSort: 'Top',
+      showCommentSortBar: true,
     });
   });
 
@@ -122,6 +124,8 @@ describe('loadSettings', () => {
       defaultSort: 'Hot',
       activeStak: 'Local',
       anonInstance: '',
+      commentSort: 'New',
+      showCommentSortBar: false,
     };
     saveSettings(s);
     expect(loadSettings()).toEqual(s);
@@ -146,6 +150,8 @@ describe('loadSettings', () => {
       defaultSort: 'TopTwelveHour',
       activeStak: 'All',
       anonInstance: '',
+      commentSort: 'Top',
+      showCommentSortBar: true,
     });
   });
 
@@ -192,5 +198,13 @@ describe('loadSettings', () => {
       nonUpvoteSwipeAction: 'downvote',
     }));
     expect(loadSettings().nonUpvoteSwipeAction).toBe('downvote');
+  });
+
+  it('returns commentSort: Top by default', () => {
+    expect(loadSettings().commentSort).toBe('Top');
+  });
+
+  it('returns showCommentSortBar: true by default', () => {
+    expect(loadSettings().showCommentSortBar).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { type SortType, type StakType } from './lemmy';
+import { type SortType, type StakType, type CommentSortType } from './lemmy';
 
 const KEYS = {
   TOKEN: 'stakswipe_token',
@@ -61,6 +61,8 @@ export interface AppSettings {
   defaultSort: SortType;
   activeStak: StakType;
   anonInstance: string;
+  commentSort: CommentSortType;
+  showCommentSortBar: boolean;
 }
 
 const SETTINGS_KEY = 'stakswipe_settings';
@@ -72,6 +74,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultSort: 'TopTwelveHour',
   activeStak: 'All',
   anonInstance: '',
+  commentSort: 'Top',
+  showCommentSortBar: true,
 };
 
 export function loadSettings(): AppSettings {
