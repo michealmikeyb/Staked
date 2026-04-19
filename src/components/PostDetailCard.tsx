@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { instanceFromActorId } from '../lib/urlUtils';
 import { useCommentLoader } from '../hooks/useCommentLoader';
 import { type AuthState } from '../lib/store';
+import { type CommentSortType } from '../lib/lemmy';
+import { useSettings } from '../lib/SettingsContext';
 import PostCardShell from './PostCardShell';
 
 interface Post {
@@ -48,10 +50,14 @@ export default function PostDetailCard({
     username: '',
   }), [community.actor_id]);
 
+  const { settings } = useSettings();
+  const [activeSort, setActiveSort] = useState<CommentSortType>(() => settings.commentSort);
+
   const { comments, commentsLoaded } = useCommentLoader(
     { ap_id: post.ap_id, id: post.id },
     { actor_id: community.actor_id },
     auth ?? anonAuth,
+    activeSort,
   );
 
   const highlightCommentId = useMemo(() => {
@@ -76,6 +82,8 @@ export default function PostDetailCard({
         comments={comments}
         commentsLoaded={commentsLoaded}
         highlightCommentId={highlightCommentId}
+        activeSort={activeSort}
+        onSortChange={setActiveSort}
       />
     </div>
   );
