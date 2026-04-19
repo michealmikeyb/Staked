@@ -4,6 +4,18 @@
   cursor: pointer;
 }
 
+.opBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 3px;
+  padding: 1px 4px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
 .authorRow {
   display: flex;
   align-items: center;

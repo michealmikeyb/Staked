@@ -16,9 +16,10 @@ interface Props {
   onEdit?: (cv: CommentView) => void;
   overrideContent?: string;
   isHighlighted?: boolean;
+  opActorId?: string;
 }
 
-export default function CommentItem({ cv, auth, depth, onReply, onEdit, overrideContent, isHighlighted }: Props) {
+export default function CommentItem({ cv, auth, depth, onReply, onEdit, overrideContent, isHighlighted, opActorId }: Props) {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const [vote, setVote] = useState<1 | 0 | -1>(0);
@@ -30,6 +31,8 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
   const isOwnComment =
     cv.creator.name === auth.username &&
     instanceFromActorId(cv.creator.actor_id ?? '') === auth.instance;
+
+  const isOP = opActorId != null && cv.creator.actor_id === opActorId;
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const now = Date.now();
@@ -85,6 +88,7 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
           <CreatorAvatar name={cv.creator.name} avatar={cv.creator.avatar} size={20} />
           @{cv.creator.display_name ?? cv.creator.name}
         </button>
+        {isOP && <span className={styles.opBadge}>OP</span>}
         <span className={vote === 1 ? styles.scoreLiked : vote === -1 ? styles.scoreDownvoted : styles.score}>
           {vote === -1 ? '▼' : '▲'} {displayScore}
         </span>
