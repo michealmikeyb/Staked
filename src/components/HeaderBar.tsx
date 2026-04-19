@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type SortType, type StakType } from '../lib/lemmy';
+import { type SortType, type StakType, type CommentSortType } from '../lib/lemmy';
 import Logo from './Logo';
 
 export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
@@ -9,6 +9,14 @@ export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
   { sort: 'TopSixHour', label: 'Top 6h' },
   { sort: 'TopTwelveHour', label: 'Top 12h' },
   { sort: 'TopDay', label: 'Top Day' },
+];
+
+export const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = [
+  { sort: 'Hot', label: 'Hot' },
+  { sort: 'Top', label: 'Top' },
+  { sort: 'New', label: 'New' },
+  { sort: 'Old', label: 'Old' },
+  { sort: 'Controversial', label: 'Controversial' },
 ];
 
 export const STAKS: { stak: StakType; label: string; icon: string }[] = [

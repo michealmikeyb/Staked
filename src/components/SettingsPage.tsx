@@ -1,22 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../lib/SettingsContext';
-import { SORT_OPTIONS } from './HeaderBar';
+import { SORT_OPTIONS, COMMENT_SORT_OPTIONS } from './HeaderBar';
 import InstanceInput from './InstanceInput';
-import type { CommentSortType } from '../lib/lemmy';
-
-interface Props {
-  isAuthenticated: boolean;
-  onPermissionChange?: (permission: NotificationPermission) => void;
-}
-
-const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = [
-  { sort: 'Hot', label: 'Hot' },
-  { sort: 'Top', label: 'Top' },
-  { sort: 'New', label: 'New' },
-  { sort: 'Old', label: 'Old' },
-  { sort: 'Controversial', label: 'Controversial' },
-];
 
 export default function SettingsPage({ isAuthenticated, onPermissionChange }: Props) {
   const navigate = useNavigate();

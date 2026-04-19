@@ -8,6 +8,7 @@ import { type AuthState } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
 import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
 import { useShare } from '../hooks/useShare';
+import { COMMENT_SORT_OPTIONS } from './HeaderBar';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import Toast from './Toast';
@@ -75,13 +76,7 @@ interface Props {
   onSortChange?: (sort: CommentSortType) => void;
 }
 
-const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = [
-  { sort: 'Hot', label: 'Hot' },
-  { sort: 'Top', label: 'Top' },
-  { sort: 'New', label: 'New' },
-  { sort: 'Old', label: 'Old' },
-  { sort: 'Controversial', label: 'Controversial' },
-];
+const noop = () => {};
 
 type SheetState =
   | { mode: 'reply'; target: CommentView }
@@ -95,7 +90,7 @@ export default function PostCardShell({
   scrollRef: scrollRefProp, onTouchStart, onTouchMove, onTouchEnd,
   blurNsfw = true,
   activeSort = 'Top',
-  onSortChange = () => {},
+  onSortChange = noop,
 }: Props) {
   const navigate = useNavigate();
   const { settings } = useSettings();
