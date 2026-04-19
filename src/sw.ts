@@ -8,6 +8,11 @@ declare const self: ServiceWorkerGlobalScope & {
 // Workbox injects the asset manifest here at build time
 precacheAndRoute(self.__WB_MANIFEST);
 
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  (event as ExtendableEvent).waitUntil(self.clients.claim());
+});
+
 const DB_NAME = 'stakswipe-notif';
 const STORE_NAME = 'notif';
 const RECORD_KEY = 'state';
