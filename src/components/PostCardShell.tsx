@@ -6,7 +6,7 @@ import {
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
-import { instanceFromActorId, isImageUrl, getShareUrl } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl, getShareUrl, sourceFromApId } from '../lib/urlUtils';
 import { useShare } from '../hooks/useShare';
 import { COMMENT_SORT_OPTIONS } from './HeaderBar';
 import CommentList from './CommentList';
@@ -135,7 +135,16 @@ export default function PostCardShell({
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   }, [sheetState, scrollRef]);
 
-  const handleShare = () => share(post.name, getShareUrl(auth?.instance ?? instance, post.id));
+  const handleShare = () => {
+    if (auth) {
+      share(post.name, getShareUrl(auth.instance, post.id));
+    } else {
+      const src = sourceFromApId(post.ap_id);
+      const shareInstance = src?.instance ?? instance;
+      const sharePostId = src?.postId ?? post.id;
+      share(post.name, getShareUrl(shareInstance, sharePostId));
+    }
+  };
 
   const handleSave = async () => {
     if (!auth) return;
@@ -337,6 +346,7 @@ export default function PostCardShell({
             comments={comments}
             localReplies={localReplies}
             auth={auth ?? { instance, token: '', username: '' }}
+            opActorId={creator.actor_id ?? undefined}
             onSetReplyTarget={(cv) => setSheetState({ mode: 'reply', target: cv })}
             onEdit={(cv) => setSheetState({ mode: 'edit', target: cv })}
             localEdits={localEdits}
