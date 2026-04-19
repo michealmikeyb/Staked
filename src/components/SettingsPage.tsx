@@ -45,7 +45,7 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
     : 'Right swipe upvotes · Right tap upvotes';
 
   return (
-    <div style={{ background: '#1a1d24', minHeight: '100dvh', color: '#f5f5f5' }}>
+    <div style={{ background: '#1a1d24', height: '100dvh', color: '#f5f5f5', display: 'flex', flexDirection: 'column' }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '12px 16px', borderBottom: '1px solid #2a2d35',
@@ -60,7 +60,7 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
         <span style={{ fontWeight: 600, fontSize: 16 }}>Settings</span>
       </div>
 
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
         <div data-testid="swap-gestures-card" style={card}>
           <div style={sectionLabel}>Swap Gestures</div>
           <div style={descText}>{gestureDesc}</div>
