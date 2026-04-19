@@ -81,7 +81,8 @@ describe('SettingsPage', () => {
 
   it('sort pill updates defaultSort setting', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
+    const sortCard = screen.getByTestId('default-sort-card');
+    fireEvent.click(within(sortCard).getByRole('button', { name: /^hot$/i }));
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
     expect(stored.defaultSort).toBe('Hot');
   });
@@ -108,6 +109,51 @@ describe('SettingsPage', () => {
     fireEvent.change(input, { target: { value: 'lemmy.ml' } });
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
     expect(stored.anonInstance).toBe('lemmy.ml');
+  });
+
+  describe('Comment Sort Bar card', () => {
+    it('renders the Comment Sort Bar section', () => {
+      renderPage();
+      expect(screen.getByText('Comment Sort Bar')).toBeInTheDocument();
+    });
+
+    it('Off pill updates showCommentSortBar to false', () => {
+      renderPage();
+      const card = screen.getByTestId('comment-sort-bar-card');
+      fireEvent.click(within(card).getByRole('button', { name: /^off$/i }));
+      const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+      expect(stored.showCommentSortBar).toBe(false);
+    });
+
+    it('On pill updates showCommentSortBar to true', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ showCommentSortBar: false }));
+      renderPage();
+      const card = screen.getByTestId('comment-sort-bar-card');
+      fireEvent.click(within(card).getByRole('button', { name: /^on$/i }));
+      const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+      expect(stored.showCommentSortBar).toBe(true);
+    });
+  });
+
+  describe('Default Comment Sort card', () => {
+    it('renders the Default Comment Sort section', () => {
+      renderPage();
+      expect(screen.getByText('Default Comment Sort')).toBeInTheDocument();
+    });
+
+    it('New pill updates commentSort to New', () => {
+      renderPage();
+      const card = screen.getByTestId('comment-sort-card');
+      fireEvent.click(within(card).getByRole('button', { name: /^new$/i }));
+      const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+      expect(stored.commentSort).toBe('New');
+    });
+
+    it('active commentSort pill has orange background', () => {
+      renderPage();
+      const card = screen.getByTestId('comment-sort-card');
+      expect(within(card).getByRole('button', { name: /^top$/i })).toHaveStyle({ background: '#ff6b35' });
+    });
   });
 
   describe('Notifications section', () => {

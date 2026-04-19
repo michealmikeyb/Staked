@@ -3,11 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../lib/SettingsContext';
 import { SORT_OPTIONS } from './HeaderBar';
 import InstanceInput from './InstanceInput';
+import type { CommentSortType } from '../lib/lemmy';
 
 interface Props {
   isAuthenticated: boolean;
   onPermissionChange?: (permission: NotificationPermission) => void;
 }
+
+const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = [
+  { sort: 'Hot', label: 'Hot' },
+  { sort: 'Top', label: 'Top' },
+  { sort: 'New', label: 'New' },
+  { sort: 'Old', label: 'Old' },
+  { sort: 'Controversial', label: 'Controversial' },
+];
 
 export default function SettingsPage({ isAuthenticated, onPermissionChange }: Props) {
   const navigate = useNavigate();
@@ -116,7 +125,7 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
           </div>
         </div>
 
-        <div style={card}>
+        <div data-testid="default-sort-card" style={card}>
           <div style={sectionLabel}>Default Sort</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {SORT_OPTIONS.map(({ sort, label }) => (
@@ -124,6 +133,40 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
                 key={sort}
                 style={settings.defaultSort === sort ? active : inactive}
                 onClick={() => updateSetting('defaultSort', sort)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div data-testid="comment-sort-bar-card" style={card}>
+          <div style={sectionLabel}>Comment Sort Bar</div>
+          <div style={descText}>Show sort pills (Hot · Top · New · …) above comments</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              style={settings.showCommentSortBar ? active : inactive}
+              onClick={() => updateSetting('showCommentSortBar', true)}
+            >
+              On
+            </button>
+            <button
+              style={!settings.showCommentSortBar ? active : inactive}
+              onClick={() => updateSetting('showCommentSortBar', false)}
+            >
+              Off
+            </button>
+          </div>
+        </div>
+
+        <div data-testid="comment-sort-card" style={card}>
+          <div style={sectionLabel}>Default Comment Sort</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {COMMENT_SORT_OPTIONS.map(({ sort, label }) => (
+              <button
+                key={sort}
+                style={settings.commentSort === sort ? active : inactive}
+                onClick={() => updateSetting('commentSort', sort)}
               >
                 {label}
               </button>
