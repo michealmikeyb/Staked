@@ -4,6 +4,11 @@ import { useSettings } from '../lib/SettingsContext';
 import { SORT_OPTIONS, COMMENT_SORT_OPTIONS } from './HeaderBar';
 import InstanceInput from './InstanceInput';
 
+interface Props {
+  isAuthenticated: boolean;
+  onPermissionChange?: (permission: NotificationPermission) => void;
+}
+
 export default function SettingsPage({ isAuthenticated, onPermissionChange }: Props) {
   const navigate = useNavigate();
   const { settings, updateSetting } = useSettings();
