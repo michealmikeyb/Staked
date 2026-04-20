@@ -1,9 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ProfileHeader from './ProfileHeader';
 
 describe('ProfileHeader', () => {
   const onBack = vi.fn();
+
+  beforeEach(() => { onBack.mockClear(); });
 
   it('renders u/username@instance', () => {
     render(<ProfileHeader username="alice" instance="lemmy.world" onBack={onBack} />);
