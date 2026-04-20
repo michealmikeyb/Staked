@@ -5,9 +5,10 @@ interface Props {
   instance: string;
   onBack: () => void;
   onBlock?: () => Promise<void>;
+  blockDisabled?: boolean;
 }
 
-export default function ProfileHeader({ username, instance, onBack, onBlock }: Props) {
+export default function ProfileHeader({ username, instance, onBack, onBlock, blockDisabled }: Props) {
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [blocking, setBlocking] = useState(false);
@@ -98,8 +99,8 @@ export default function ProfileHeader({ username, instance, onBack, onBlock }: P
               <button
                 aria-label="Block"
                 onClick={handleBlock}
-                disabled={blocking}
-                style={{ flex: 1, padding: '10px 0', background: '#cc2222', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: blocking ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocking ? 0.6 : 1 }}
+                disabled={blocking || blockDisabled}
+                style={{ flex: 1, padding: '10px 0', background: '#cc2222', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: blocking || blockDisabled ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocking || blockDisabled ? 0.6 : 1 }}
               >
                 {blocking ? '…' : 'Block'}
               </button>

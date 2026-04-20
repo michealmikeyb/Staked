@@ -94,6 +94,7 @@ export default function ProfilePage({ auth, target }: Props) {
 
   const isEmpty = !loading && !error && posts.length === 0 && comments.length === 0;
 
+  // throws on failure — ProfileHeader.handleBlock is responsible for catching
   async function handleBlockPerson() {
     if (!personId) return;
     await blockPerson(auth.instance, auth.token, personId, true);
@@ -118,6 +119,7 @@ export default function ProfilePage({ auth, target }: Props) {
         onBlock={target && !(target.username === auth.username && target.instance === auth.instance)
           ? handleBlockPerson
           : undefined}
+        blockDisabled={!personId}
       />
 
       <div style={{ display: 'flex', borderBottom: '2px solid #2a2d35', background: '#1a1d24' }}>
