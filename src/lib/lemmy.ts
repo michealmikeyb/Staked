@@ -209,14 +209,18 @@ export async function fetchPersonDetails(
   token: string | undefined,
   username: string,
   page: number,
-): Promise<{ posts: PostView[]; comments: CommentView[] }> {
+): Promise<{ posts: PostView[]; comments: CommentView[]; personId: number | null }> {
   const res = await client(instance, token).getPersonDetails({
     username,
     sort: 'New',
     page,
     limit: 20,
   });
-  return { posts: res.posts, comments: res.comments };
+  return {
+    posts: res.posts,
+    comments: res.comments,
+    personId: res.person_view?.person?.id ?? null,
+  };
 }
 
 export async function resolveCommunityId(
@@ -314,4 +318,22 @@ export async function searchPosts(
     limit: 20,
   });
   return res.posts;
+}
+
+export async function blockPerson(
+  instance: string,
+  token: string,
+  personId: number,
+  block: boolean,
+): Promise<void> {
+  await client(instance, token).blockPerson({ person_id: personId, block });
+}
+
+export async function blockCommunity(
+  instance: string,
+  token: string,
+  communityId: number,
+  block: boolean,
+): Promise<void> {
+  await client(instance, token).blockCommunity({ community_id: communityId, block });
 }

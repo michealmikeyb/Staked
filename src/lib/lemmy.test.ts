@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts, blockPerson, blockCommunity } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -7,6 +7,8 @@ vi.mock('lemmy-js-client', () => {
     login: vi.fn().mockResolvedValue({ jwt: 'mock-token' }),
     getPosts: vi.fn().mockResolvedValue({ posts: [{ post: { id: 1, name: 'Test Post' } }] }),
     likePost: vi.fn().mockResolvedValue({}),
+    blockPerson: vi.fn().mockResolvedValue({}),
+    blockCommunity: vi.fn().mockResolvedValue({}),
     savePost: vi.fn().mockResolvedValue({}),
     getComments: vi.fn().mockResolvedValue({ comments: [{ comment: { id: 1, content: 'Hello' } }] }),
     likeComment: vi.fn().mockResolvedValue({}),
@@ -52,7 +54,7 @@ vi.mock('lemmy-js-client', () => {
     markCommentReplyAsRead: vi.fn().mockResolvedValue({}),
     markPersonMentionAsRead: vi.fn().mockResolvedValue({}),
     getPersonDetails: vi.fn().mockResolvedValue({
-      person_view: {},
+      person_view: { person: { id: 77 } },
       posts: [{ post: { id: 1, name: 'Test Post' }, community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' }, creator: { name: 'alice', display_name: null }, counts: { score: 10, comments: 2 } }],
       comments: [{ comment: { id: 5, content: 'Great post!', ap_id: 'https://lemmy.world/comment/5', path: '0.5', published: '2026-03-29T10:00:00Z' }, post: { id: 1, name: 'Test Post', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null }, community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' }, creator: { name: 'alice', display_name: null }, counts: { score: 3 } }],
     }),
@@ -421,5 +423,43 @@ describe('searchPosts', () => {
     const result = await searchPosts('lemmy.world', 'tok', 'rust', 1);
     expect(result).toHaveLength(1);
     expect(result[0].post.name).toBe('Rust is great');
+  });
+});
+
+describe('blockPerson', () => {
+  it('resolves without throwing', async () => {
+    const { blockPerson } = await import('./lemmy');
+    await expect(blockPerson('lemmy.world', 'tok', 42, true)).resolves.toBeUndefined();
+  });
+
+  it('calls blockPerson on the client with correct args', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    const { blockPerson } = await import('./lemmy');
+    await blockPerson('lemmy.world', 'tok', 42, true);
+    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(mockInstance.blockPerson).toHaveBeenCalledWith({ person_id: 42, block: true });
+  });
+});
+
+describe('blockCommunity', () => {
+  it('resolves without throwing', async () => {
+    const { blockCommunity } = await import('./lemmy');
+    await expect(blockCommunity('lemmy.world', 'tok', 99, true)).resolves.toBeUndefined();
+  });
+
+  it('calls blockCommunity on the client with correct args', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    const { blockCommunity } = await import('./lemmy');
+    await blockCommunity('lemmy.world', 'tok', 99, true);
+    const mockInstance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(mockInstance.blockCommunity).toHaveBeenCalledWith({ community_id: 99, block: true });
+  });
+});
+
+describe('fetchPersonDetails', () => {
+  it('returns personId from person_view.person.id', async () => {
+    const { fetchPersonDetails } = await import('./lemmy');
+    const result = await fetchPersonDetails('lemmy.world', 'tok', 'alice', 1);
+    expect(result.personId).toBe(77);
   });
 });
