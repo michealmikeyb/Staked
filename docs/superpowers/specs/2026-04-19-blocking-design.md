@@ -59,3 +59,30 @@ Both delegate to `lemmy-js-client` (`blockPerson` / `blockCommunity`). The `bloc
 
 - If the block API call fails, show an inline error message in the confirmation panel ("Failed to block. Try again.") and stay on the current page.
 - No navigation on failure.
+
+## Test plan
+
+### `src/lib/lemmy.test.ts`
+- `blockPerson` calls `client.blockPerson` with correct args and resolves
+- `blockCommunity` calls `client.blockCommunity` with correct args and resolves
+
+### `src/components/ProfilePage.test.tsx`
+- Hamburger button is not rendered when viewing own profile (`target.username === auth.username`)
+- Hamburger button is rendered when viewing another user's profile
+- Clicking hamburger opens menu panel with Block button
+- Clicking Block in menu shows confirmation panel with "Block u/username?" text
+- Clicking Cancel closes confirmation panel and returns to menu-closed state
+- Clicking Block in confirmation panel calls `blockPerson` and navigates to `/` with toast state
+- If `blockPerson` rejects, shows inline error message without navigating
+
+### `src/components/CommunityHeader.test.tsx`
+- Block button appears in hamburger menu grid
+- Block button is disabled when `communityInfo` is null
+- Clicking Block closes menu and shows confirmation panel with "Block c/name?" text
+- Clicking Cancel closes confirmation panel
+- Clicking Block in confirmation panel calls `onBlock` prop and shows loading state
+- If `onBlock` rejects, shows inline error message
+
+### `src/components/FeedStack.test.tsx`
+- Toast is shown on mount when `location.state.toast` is set
+- Toast is not shown when `location.state` has no toast
