@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, fetchCommunityInfo, followCommunity, type PostView, type SortType, type StakType, type CommunityInfo } from '../lib/lemmy';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, fetchCommunityInfo, followCommunity, blockCommunity, type PostView, type SortType, type StakType, type CommunityInfo } from '../lib/lemmy';
 import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
 import { getAnonInstance } from '../lib/instanceRankings';
@@ -8,6 +8,7 @@ import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
 import CommunityHeader from './CommunityHeader';
+import Toast from './Toast';
 import { SORT_OPTIONS, STAKS } from './HeaderBar';
 
 interface Props {
@@ -23,6 +24,7 @@ const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'colu
 
 export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { settings, updateSetting } = useSettings();
   const [posts, setPosts] = useState<PostView[]>([]);
   const [undoStack, setUndoStack] = useState<PostView[]>([]);
@@ -38,6 +40,8 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const isAnonymousMode = auth === null || stak === 'Anonymous';
 
   const [communityInfo, setCommunityInfo] = useState<CommunityInfo | null>(null);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
 
   useEffect(() => {
     if (community) return;
@@ -55,6 +59,15 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount-only: community and auth are stable for the lifetime of this route
+
+  useEffect(() => {
+    const msg = (location.state as { toast?: string } | null)?.toast;
+    if (msg) {
+      setToastMessage(msg);
+      setToastVisible(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount-only: read once from navigation state
 
   const loadMore = useCallback(async (nextPage: number, sort: SortType, currentStak: StakType) => {
     setLoading(true);
@@ -117,6 +130,12 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     } catch {
       setCommunityInfo(previous);
     }
+  }
+
+  async function handleBlock() {
+    if (!auth || !communityInfo || !community) return;
+    await blockCommunity(auth.instance, auth.token, communityInfo.id, true);
+    navigate('/', { state: { toast: `Blocked c/${community.name}` } });
   }
 
   function handleSortChange(newSort: SortType) {
@@ -258,6 +277,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           onBack={() => navigate(-1)}
           communityInfo={communityInfo}
           onSubscribeToggle={handleSubscribeToggle}
+          onBlock={handleBlock}
         />
       ) : (
         <MenuDrawer
@@ -303,6 +323,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
         })}
         <SwipeHint />
       </div>
+      <Toast message={toastMessage} visible={toastVisible} onHide={() => setToastVisible(false)} />
     </div>
   );
 }

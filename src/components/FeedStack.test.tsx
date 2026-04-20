@@ -36,11 +36,14 @@ vi.mock('../lib/lemmy', () => ({
     subscribed: 'NotSubscribed',
   }),
   followCommunity: vi.fn().mockResolvedValue(undefined),
+  blockCommunity: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockNavigate = vi.fn();
+const mockLocation = { state: null as unknown };
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => mockLocation,
 }));
 
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
@@ -868,5 +871,71 @@ describe('FeedStack subscribed empty state', () => {
     await waitFor(() => {
       expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
     });
+  });
+});
+
+describe('FeedStack community feed — onBlock', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    mockLocation.state = null;
+  });
+
+  it('calls blockCommunity and navigates to / with toast when onBlock fires', async () => {
+    const { blockCommunity } = await import('../lib/lemmy');
+    render(
+      <SettingsProvider>
+        <FeedStack
+          auth={AUTH}
+          onLogout={vi.fn()}
+          unreadCount={0}
+          setUnreadCount={vi.fn()}
+          community={{ name: 'rust', instance: 'lemmy.world' }}
+        />
+      </SettingsProvider>,
+    );
+    await waitFor(() => screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    await waitFor(() => expect(blockCommunity).toHaveBeenCalledWith('lemmy.world', 'tok', 99, true));
+    expect(mockNavigate).toHaveBeenCalledWith('/', { state: { toast: 'Blocked c/rust' } });
+  });
+});
+
+describe('FeedStack toast from navigation state', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    const { fetchPosts } = await import('../lib/lemmy');
+    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
+        community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
+        creator: { name: 'alice' },
+        counts: { score: 847, comments: 0 },
+      },
+    ]);
+  });
+
+  it('shows toast when location.state.toast is set', async () => {
+    mockLocation.state = { toast: 'Blocked c/rust' };
+    render(
+      <SettingsProvider>
+        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Blocked c/rust')).toBeInTheDocument());
+  });
+
+  it('does not show toast when location.state has no toast', async () => {
+    mockLocation.state = null;
+    render(
+      <SettingsProvider>
+        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await waitFor(() => screen.getByText('Test Post Title'));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });
