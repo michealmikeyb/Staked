@@ -69,4 +69,15 @@ describe('ProfileHeader', () => {
     await waitFor(() => expect(screen.getByText('Failed to block. Try again.')).toBeInTheDocument());
     expect(screen.getByText('Block u/alice?')).toBeInTheDocument();
   });
+
+  it('Block button is disabled and does not call onBlock when blockDisabled is true', async () => {
+    const onBlock = vi.fn().mockResolvedValue(undefined);
+    render(<ProfileHeader username="alice" instance="lemmy.world" onBack={onBack} onBlock={onBlock} blockDisabled />);
+    fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    const blockBtn = screen.getByRole('button', { name: /^block$/i });
+    expect(blockBtn).toBeDisabled();
+    fireEvent.click(blockBtn);
+    await waitFor(() => expect(onBlock).not.toHaveBeenCalled());
+  });
 });
