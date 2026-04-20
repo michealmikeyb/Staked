@@ -58,8 +58,7 @@ describe('ProfilePage', () => {
   it('renders username and instance', async () => {
     renderPage();
     await waitFor(() => screen.getByText('My Terminal Setup'));
-    expect(screen.getByText('u/alice')).toBeInTheDocument();
-    expect(screen.getByText('lemmy.world')).toBeInTheDocument();
+    expect(screen.getByText('u/alice@lemmy.world')).toBeInTheDocument();
   });
 
   it('All tab is active by default and shows both post and comment', async () => {
@@ -141,8 +140,7 @@ describe('ProfilePage with target prop', () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
-    expect(screen.getByText('u/bob')).toBeInTheDocument();
-    expect(screen.getByText('beehaw.org')).toBeInTheDocument();
+    expect(screen.getByText('u/bob@beehaw.org')).toBeInTheDocument();
   });
 });
 
