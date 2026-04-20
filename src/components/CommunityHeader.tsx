@@ -12,14 +12,18 @@ interface Props {
   onBack: () => void;
   communityInfo?: CommunityInfo | null;
   onSubscribeToggle?: () => void;
+  onBlock?: () => Promise<void>;
 }
 
 export default function CommunityHeader({
-  name, instance, sortType, onSortChange, onBack, communityInfo, onSubscribeToggle,
+  name, instance, sortType, onSortChange, onBack, communityInfo, onSubscribeToggle, onBlock,
 }: Props) {
   const navigate = useNavigate();
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [blockError, setBlockError] = useState('');
   const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType;
   const isSubscribed = communityInfo?.subscribed === 'Subscribed';
 
@@ -28,14 +32,28 @@ export default function CommunityHeader({
     onSortChange(sort);
   }
 
-  function handleMenuAction(action: 'post' | 'subscribe' | 'about') {
+  function handleMenuAction(action: 'post' | 'subscribe' | 'about' | 'block') {
     setShowMenu(false);
     if (action === 'post') {
       navigate('/create-post', { state: { community: `${name}@${instance}` } });
     } else if (action === 'subscribe') {
       onSubscribeToggle?.();
+    } else if (action === 'block') {
+      setShowConfirm(true);
     } else {
       navigate(`/community/${instance}/${name}/about`, { state: { communityInfo } });
+    }
+  }
+
+  async function handleBlock() {
+    setBlocking(true);
+    setBlockError('');
+    try {
+      await onBlock?.();
+    } catch {
+      setBlockError('Failed to block. Try again.');
+    } finally {
+      setBlocking(false);
     }
   }
 
@@ -115,7 +133,7 @@ export default function CommunityHeader({
         <>
           <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 29 }} />
           <div style={{ position: 'fixed', top: 48, left: 0, right: 0, background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30, padding: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               <button
                 aria-label="Post"
                 onClick={() => handleMenuAction('post')}
@@ -144,6 +162,46 @@ export default function CommunityHeader({
               >
                 <span style={{ fontSize: 20 }}>ℹ️</span>
                 About
+              </button>
+              <button
+                aria-label="Block"
+                onClick={() => handleMenuAction('block')}
+                disabled={!communityInfo}
+                style={menuItemStyle}
+              >
+                <span style={{ fontSize: 20 }}>🚫</span>
+                Block
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showConfirm && (
+        <>
+          <div onClick={() => { setShowConfirm(false); setBlockError(''); }} style={{ position: 'fixed', inset: 0, zIndex: 29 }} />
+          <div style={{ position: 'fixed', top: 48, left: 0, right: 0, background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30, padding: 16 }}>
+            <div style={{ color: '#f5f5f5', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+              Block c/{name}?
+            </div>
+            {blockError && (
+              <div style={{ color: '#ff4444', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>{blockError}</div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                aria-label="Cancel"
+                onClick={() => { setShowConfirm(false); setBlockError(''); }}
+                style={{ flex: 1, padding: '10px 0', background: '#2a2d35', border: 'none', borderRadius: 8, color: '#f5f5f5', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+              >
+                Cancel
+              </button>
+              <button
+                aria-label="Block"
+                onClick={handleBlock}
+                disabled={blocking}
+                style={{ flex: 1, padding: '10px 0', background: '#cc2222', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: blocking ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocking ? 0.6 : 1 }}
+              >
+                {blocking ? '…' : 'Block'}
               </button>
             </div>
           </div>

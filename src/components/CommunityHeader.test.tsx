@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CommunityHeader from './CommunityHeader';
 
 const mockNavigate = vi.fn();
@@ -118,5 +118,76 @@ describe('CommunityHeader', () => {
     const img = document.querySelector('[data-testid="community-avatar-img"]') as HTMLImageElement;
     expect(img).not.toBeNull();
     expect(img.src).toBe('https://lemmy.world/icon.png');
+  });
+
+  it('shows Block button in the hamburger menu', () => {
+    const communityInfo = {
+      id: 99, icon: undefined, banner: undefined, description: '',
+      counts: { subscribers: 100, posts: 50, comments: 200 },
+      subscribed: 'NotSubscribed' as const,
+    };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    expect(screen.getByRole('button', { name: /^block$/i })).toBeInTheDocument();
+  });
+
+  it('Block button is disabled when communityInfo is null', () => {
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={null} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    expect(screen.getByRole('button', { name: /^block$/i })).toBeDisabled();
+  });
+
+  it('clicking Block in menu closes menu and shows confirmation panel', () => {
+    const communityInfo = {
+      id: 99, icon: undefined, banner: undefined, description: '',
+      counts: { subscribers: 100, posts: 50, comments: 200 },
+      subscribed: 'NotSubscribed' as const,
+    };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    expect(screen.queryByRole('button', { name: /^post$/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Block c/asklemmy?')).toBeInTheDocument();
+  });
+
+  it('Cancel in confirmation panel closes the panel', () => {
+    const communityInfo = {
+      id: 99, icon: undefined, banner: undefined, description: '',
+      counts: { subscribers: 100, posts: 50, comments: 200 },
+      subscribed: 'NotSubscribed' as const,
+    };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.queryByText('Block c/asklemmy?')).not.toBeInTheDocument();
+  });
+
+  it('confirming block calls onBlock prop', async () => {
+    const onBlock = vi.fn().mockResolvedValue(undefined);
+    const communityInfo = {
+      id: 99, icon: undefined, banner: undefined, description: '',
+      counts: { subscribers: 100, posts: 50, comments: 200 },
+      subscribed: 'NotSubscribed' as const,
+    };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} onBlock={onBlock} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    await waitFor(() => expect(onBlock).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows inline error when onBlock rejects', async () => {
+    const onBlock = vi.fn().mockRejectedValue(new Error('Network error'));
+    const communityInfo = {
+      id: 99, icon: undefined, banner: undefined, description: '',
+      counts: { subscribers: 100, posts: 50, comments: 200 },
+      subscribed: 'NotSubscribed' as const,
+    };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} onBlock={onBlock} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    await waitFor(() => expect(screen.getByText('Failed to block. Try again.')).toBeInTheDocument());
   });
 });
