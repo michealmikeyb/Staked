@@ -8,6 +8,7 @@ import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
 import CommunityHeader from './CommunityHeader';
+import { SORT_OPTIONS, STAKS } from './HeaderBar';
 
 interface Props {
   auth: AuthState | null;
@@ -196,34 +197,50 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   }
 
   if (posts.length === 0 && !loading && !canLoadMore) {
+    const pillBase: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 14 };
+    const pillActive: React.CSSProperties = { ...pillBase, background: 'var(--accent)', color: '#fff' };
+    const pillInactive: React.CSSProperties = { ...pillBase, background: 'var(--surface)', color: 'var(--text-secondary)' };
+    const pillRow: React.CSSProperties = { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' };
+    const sectionLabel: React.CSSProperties = { color: 'var(--text-secondary)', fontSize: 13, marginTop: 8 };
     return (
       <div style={screenStyle}>
-        {stak === 'Subscribed' ? (
+        <div style={{ fontSize: 32 }}>✓</div>
+        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 280, padding: '0 16px' }}>
+          {stak === 'Subscribed'
+            ? 'No more posts in your subscriptions.'
+            : "You've seen everything in this stak."}
+        </div>
+
+        {!community && (
           <>
-            <div style={{ fontSize: 32 }}>⭐</div>
-            <div style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 280, padding: '0 16px' }}>
-              No subscriptions yet. Browse communities and subscribe to see their posts here.
+            <div style={sectionLabel}>Switch stak</div>
+            <div style={pillRow}>
+              {(auth !== null ? STAKS : STAKS.filter((s) => s.stak === 'All' || s.stak === 'Anonymous')).map(({ stak: s, label, icon }) => (
+                <button key={s} onClick={() => handleStakChange(s)} style={s === stak ? pillActive : pillInactive}>
+                  {icon} {label}
+                </button>
+              ))}
             </div>
-          </>
-        ) : (
-          <>
-            <div style={{ color: 'var(--text-secondary)' }}>You've seen everything!</div>
-            {!community && (
+
+            <div style={sectionLabel}>Switch sort</div>
+            <div style={pillRow}>
+              {SORT_OPTIONS.map(({ sort, label }) => (
+                <button key={sort} onClick={() => handleSortChange(sort)} style={sort === sortType ? pillActive : pillInactive}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {stak !== 'Subscribed' && (
               <button
                 onClick={() => { clearSeen(); window.location.reload(); }}
-                style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
+                style={{ ...pillInactive, marginTop: 8 }}
               >
                 Reset seen history
               </button>
             )}
           </>
         )}
-        <button
-          onClick={auth !== null ? onLogout : () => navigate('/login')}
-          style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}
-        >
-          {auth !== null ? 'Log out' : 'Log in'}
-        </button>
       </div>
     );
   }

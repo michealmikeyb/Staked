@@ -7,6 +7,7 @@ export interface RawPost {
   ap_id: string;
   upvotes: number;
   downvotes: number;
+  published?: string; // ISO timestamp — used for threshold-based fetch stopping
 }
 
 export interface RawComment {

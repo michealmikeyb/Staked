@@ -36,6 +36,7 @@ export async function fetchPostsPage(
         ap_id: pv.post.ap_id,
         upvotes: pv.counts.upvotes ?? 0,
         downvotes: pv.counts.downvotes ?? 0,
+        published: pv.post.published,
       }));
     return { posts };
   } catch (err) {
