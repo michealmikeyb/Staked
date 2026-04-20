@@ -192,8 +192,8 @@ export default function ProfilePage({ auth, target }: Props) {
               <button
                 aria-label="Block"
                 onClick={handleBlockPerson}
-                disabled={blocking}
-                style={{ flex: 1, padding: '10px 0', background: '#cc2222', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: blocking ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocking ? 0.6 : 1 }}
+                disabled={blocking || !personId}
+                style={{ flex: 1, padding: '10px 0', background: '#cc2222', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: blocking || !personId ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocking || !personId ? 0.6 : 1 }}
               >
                 {blocking ? '…' : 'Block'}
               </button>

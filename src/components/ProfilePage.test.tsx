@@ -177,6 +177,26 @@ describe('ProfilePage block functionality', () => {
     expect(screen.queryByRole('button', { name: /profile menu/i })).not.toBeInTheDocument();
   });
 
+  it('does not show hamburger menu button when target matches own username and instance', async () => {
+    render(
+      <MemoryRouter initialEntries={['/user/lemmy.world/alice']}>
+        <ProfilePage auth={targetAuth} target={{ username: 'alice', instance: 'lemmy.world' }} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /profile menu/i })).not.toBeInTheDocument();
+  });
+
+  it('shows hamburger menu button when same username but different instance', async () => {
+    render(
+      <MemoryRouter initialEntries={['/user/beehaw.org/alice']}>
+        <ProfilePage auth={targetAuth} target={{ username: 'alice', instance: 'beehaw.org' }} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /profile menu/i })).toBeInTheDocument();
+  });
+
   it('shows hamburger menu button when viewing another user', async () => {
     renderTarget();
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
