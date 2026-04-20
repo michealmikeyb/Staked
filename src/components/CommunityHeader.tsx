@@ -50,6 +50,7 @@ export default function CommunityHeader({
     setBlockError('');
     try {
       await onBlock?.();
+      setShowConfirm(false);
     } catch {
       setBlockError('Failed to block. Try again.');
     } finally {

@@ -190,4 +190,18 @@ describe('CommunityHeader', () => {
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     await waitFor(() => expect(screen.getByText('Failed to block. Try again.')).toBeInTheDocument());
   });
+
+  it('confirmation panel closes after successful block', async () => {
+    const onBlock = vi.fn().mockResolvedValue(undefined);
+    const communityInfo = {
+      id: 99, icon: undefined, banner: undefined, description: '',
+      counts: { subscribers: 100, posts: 50, comments: 200 },
+      subscribed: 'NotSubscribed' as const,
+    };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} onBlock={onBlock} />);
+    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    await waitFor(() => expect(screen.queryByText('Block c/asklemmy?')).not.toBeInTheDocument());
+  });
 });
