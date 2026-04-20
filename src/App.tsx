@@ -41,7 +41,7 @@ function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
   );
 }
 
-function UserProfileRoute({ auth }: { auth: AuthState }) {
+function UserProfileRoute({ auth }: { auth: AuthState | null }) {
   const { instance, username } = useParams<{ instance: string; username: string }>();
   return <ProfilePage auth={auth} target={{ instance: instance!, username: username! }} />;
 }
@@ -138,9 +138,7 @@ export default function App() {
           />
           <Route
             path="/user/:instance/:username"
-            element={
-              <RequireAuth auth={auth}><UserProfileRoute auth={auth!} /></RequireAuth>
-            }
+            element={<UserProfileRoute auth={auth} />}
           />
           <Route
             path="/search"

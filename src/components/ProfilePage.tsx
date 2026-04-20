@@ -6,7 +6,7 @@ import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import ProfileHeader from './ProfileHeader';
 
 interface Props {
-  auth: AuthState;
+  auth: AuthState | null;
   target?: { username: string; instance: string };
 }
 
@@ -18,12 +18,16 @@ type FeedItem =
 
 export default function ProfilePage({ auth, target }: Props) {
   const navigate = useNavigate();
-  // Display values shown in the header
-  const displayUsername = target?.username ?? auth.username;
-  const displayInstance = target?.instance ?? auth.instance;
-  // Fetch from auth.instance using "user@instance" format so federation handles it —
-  // avoids hitting non-Lemmy instances (PieFed, Kbin, etc.) directly.
-  const fetchUsername = target ? `${target.username}@${target.instance}` : auth.username;
+  const displayUsername = target?.username ?? auth?.username ?? '';
+  const displayInstance = target?.instance ?? auth?.instance ?? '';
+  // Anonymous: fetch directly from target's instance with plain username (no federation suffix needed).
+  // Authenticated viewing another user: use "user@instance" via auth.instance so federation handles it.
+  // Own profile: fetch from auth.instance with plain username.
+  const fetchInstance = auth ? auth.instance : (target?.instance ?? '');
+  const fetchToken = auth?.token ?? '';
+  const fetchUsername = !auth && target ? target.username
+    : target ? `${target.username}@${target.instance}`
+    : (auth?.username ?? '');
 
   const [posts, setPosts] = useState<PostView[]>([]);
   const [comments, setComments] = useState<CommentView[]>([]);
@@ -40,7 +44,7 @@ export default function ProfilePage({ auth, target }: Props) {
     if (loadingRef.current) return;
     loadingRef.current = true;
     try {
-      const result = await fetchPersonDetails(auth.instance, auth.token, fetchUsername, pageNum);
+      const result = await fetchPersonDetails(fetchInstance, fetchToken, fetchUsername, pageNum);
       if (result.posts.length === 0 && result.comments.length === 0) {
         setCanLoadMore(false);
       } else {
@@ -60,7 +64,7 @@ export default function ProfilePage({ auth, target }: Props) {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [auth.instance, auth.token, fetchUsername]);
+  }, [fetchInstance, fetchToken, fetchUsername]);
 
   useEffect(() => {
     loadPage(1);
@@ -96,7 +100,7 @@ export default function ProfilePage({ auth, target }: Props) {
 
   // throws on failure — ProfileHeader.handleBlock is responsible for catching
   async function handleBlockPerson() {
-    if (!personId) return;
+    if (!personId || !auth) return;
     await blockPerson(auth.instance, auth.token, personId, true);
     navigate('/', { state: { toast: `Blocked u/${displayUsername}` } });
   }
@@ -116,7 +120,7 @@ export default function ProfilePage({ auth, target }: Props) {
         username={displayUsername}
         instance={displayInstance}
         onBack={() => navigate(-1)}
-        onBlock={target && !(target.username === auth.username && target.instance === auth.instance)
+        onBlock={auth && target && !(target.username === auth.username && target.instance === auth.instance)
           ? handleBlockPerson
           : undefined}
         blockDisabled={!personId}
