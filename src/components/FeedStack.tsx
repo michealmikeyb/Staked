@@ -40,8 +40,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
   const isAnonymousMode = auth === null || stak === 'Anonymous';
 
   const [communityInfo, setCommunityInfo] = useState<CommunityInfo | null>(null);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastVisible, setToastVisible] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (community) return;
@@ -62,10 +61,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
   useEffect(() => {
     const msg = (location.state as { toast?: string } | null)?.toast;
-    if (msg) {
-      setToastMessage(msg);
-      setToastVisible(true);
-    }
+    if (msg) setToast(msg);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount-only: read once from navigation state
 
@@ -323,7 +319,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
         })}
         <SwipeHint />
       </div>
-      <Toast message={toastMessage} visible={toastVisible} onHide={() => setToastVisible(false)} />
+      <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} />
     </div>
   );
 }

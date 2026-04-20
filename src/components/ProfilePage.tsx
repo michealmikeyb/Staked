@@ -157,16 +157,14 @@ export default function ProfilePage({ auth, target }: Props) {
         <>
           <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 29 }} />
           <div style={{ position: 'fixed', top: 112, left: 0, right: 0, background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30, padding: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-              <button
-                aria-label="Block"
-                onClick={() => { setShowMenu(false); setShowConfirm(true); }}
-                style={menuItemStyle}
-              >
-                <span style={{ fontSize: 20 }}>🚫</span>
-                Block
-              </button>
-            </div>
+            <button
+              aria-label="Block"
+              onClick={() => { setShowMenu(false); setShowConfirm(true); }}
+              style={{ ...menuItemStyle, width: '100%' }}
+            >
+              <span style={{ fontSize: 20 }}>🚫</span>
+              Block
+            </button>
           </div>
         </>
       )}
