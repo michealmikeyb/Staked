@@ -5,7 +5,7 @@
 
 ## Overview
 
-Add block functionality to profile and community pages. A hamburger menu button on each page opens a confirmation panel; confirming calls the Lemmy block API, navigates to the main feed, and shows a toast.
+Add block functionality to profile and community pages. Both pages share a unified two-step UX: a `☰` hamburger button opens a grid menu of actions; tapping Block in that menu opens an inline confirmation panel; confirming calls the Lemmy block API, navigates to the main feed, and shows a toast.
 
 ## API layer (`src/lib/lemmy.ts`)
 
@@ -25,9 +25,12 @@ Both delegate to `lemmy-js-client` (`blockPerson` / `blockCommunity`). The `bloc
 
 - Store `personId: number | null` in state, populated from `fetchPersonDetails` response.
 - Add a `☰` icon button in the profile header, right-aligned, only rendered when `target` is set and `target.username !== auth.username`.
-- Clicking opens an inline confirmation panel (local state, same pattern as community sort dropdown).
-- Confirmation panel shows: "Block u/\<username\>?" with a red **Block** button and a **Cancel** button. Shows a loading spinner while the API call is in flight.
+- Clicking opens an inline menu panel below the header — same visual style as `CommunityHeader`'s menu (dark background, `borderBottom: 2px solid #ff6b35`, grid of icon+label buttons).
+- Menu contains one button for now: **Block** (🚫 icon). Additional actions can be added later.
+- Tapping Block: close the menu, show an inline confirmation panel below the header.
+- Confirmation panel shows: "Block u/\<username\>?" with a red **Block** button and a **Cancel** button. Shows a loading spinner while in flight.
 - On confirm: call `blockPerson(auth.instance, auth.token, personId, true)`, then `navigate('/', { state: { toast: 'Blocked u/\<username\>' } })`.
+- On error: show inline error in the panel, stay on page.
 - On cancel: close the panel.
 
 ## Community header (`src/components/CommunityHeader.tsx`)
