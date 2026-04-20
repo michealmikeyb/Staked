@@ -11,6 +11,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 vi.mock('../lib/lemmy', () => ({
   fetchPersonDetails: vi.fn(),
+  blockPerson: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
@@ -44,6 +45,7 @@ beforeEach(async () => {
   (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValue({
     posts: [mockPost],
     comments: [mockComment],
+    personId: null,
   });
 });
 
@@ -104,7 +106,7 @@ describe('ProfilePage', () => {
 
   it('shows empty state when no posts or comments', async () => {
     const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [] });
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [], personId: null });
     renderPage();
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
   });
@@ -120,7 +122,7 @@ describe('ProfilePage', () => {
 describe('ProfilePage with target prop', () => {
   it('fetches via auth.instance using user@instance format when target is provided', async () => {
     const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [] });
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [], personId: null });
     render(
       <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
         <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
@@ -132,7 +134,7 @@ describe('ProfilePage with target prop', () => {
 
   it('shows target username and instance in header', async () => {
     const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [] });
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [], personId: null });
     render(
       <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
         <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
@@ -141,5 +143,90 @@ describe('ProfilePage with target prop', () => {
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
     expect(screen.getByText('u/bob')).toBeInTheDocument();
     expect(screen.getByText('beehaw.org')).toBeInTheDocument();
+  });
+});
+
+describe('ProfilePage block functionality', () => {
+  const targetAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
+
+  function renderTarget() {
+    return render(
+      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
+        <ProfilePage auth={targetAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { fetchPersonDetails } = await import('../lib/lemmy');
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValue({
+      posts: [],
+      comments: [],
+      personId: 77,
+    });
+  });
+
+  it('does not show hamburger menu button when viewing own profile', async () => {
+    render(
+      <MemoryRouter initialEntries={['/profile']}>
+        <ProfilePage auth={targetAuth} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /profile menu/i })).not.toBeInTheDocument();
+  });
+
+  it('shows hamburger menu button when viewing another user', async () => {
+    renderTarget();
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /profile menu/i })).toBeInTheDocument();
+  });
+
+  it('clicking hamburger opens menu panel with Block button', async () => {
+    renderTarget();
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
+    expect(screen.getByRole('button', { name: /^block$/i })).toBeInTheDocument();
+  });
+
+  it('clicking Block in menu shows confirmation panel', async () => {
+    renderTarget();
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    expect(screen.getByText('Block u/bob?')).toBeInTheDocument();
+  });
+
+  it('Cancel closes the confirmation panel', async () => {
+    renderTarget();
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.queryByText('Block u/bob?')).not.toBeInTheDocument();
+  });
+
+  it('confirming block calls blockPerson and navigates with toast', async () => {
+    const { blockPerson } = await import('../lib/lemmy');
+    renderTarget();
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    await waitFor(() => expect(blockPerson).toHaveBeenCalledWith('lemmy.world', 'tok', 77, true));
+    expect(mockNavigate).toHaveBeenCalledWith('/', { state: { toast: 'Blocked u/bob' } });
+  });
+
+  it('shows inline error when blockPerson rejects', async () => {
+    const { blockPerson } = await import('../lib/lemmy');
+    (blockPerson as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Server error'));
+    renderTarget();
+    await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
+    await waitFor(() => expect(screen.getByText('Failed to block. Try again.')).toBeInTheDocument());
+    expect(mockNavigate).not.toHaveBeenCalledWith('/', expect.anything());
   });
 });

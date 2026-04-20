@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPersonDetails, type PostView, type CommentView } from '../lib/lemmy';
+import { fetchPersonDetails, blockPerson, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import MenuDrawer from './MenuDrawer';
@@ -31,6 +31,11 @@ export default function ProfilePage({ auth, target }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
+  const [personId, setPersonId] = useState<number | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [blockError, setBlockError] = useState('');
   const loadingRef = useRef(false);
   const pageRef = useRef(1);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -45,6 +50,9 @@ export default function ProfilePage({ auth, target }: Props) {
       } else {
         setPosts((prev) => [...prev, ...result.posts]);
         setComments((prev) => [...prev, ...result.comments]);
+      }
+      if (pageNum === 1 && result.personId !== null) {
+        setPersonId(result.personId);
       }
     } catch (err) {
       if (pageNum === 1) {
@@ -90,6 +98,28 @@ export default function ProfilePage({ auth, target }: Props) {
 
   const isEmpty = !loading && !error && posts.length === 0 && comments.length === 0;
 
+  async function handleBlockPerson() {
+    if (!personId) return;
+    setBlocking(true);
+    setBlockError('');
+    try {
+      await blockPerson(auth.instance, auth.token, personId, true);
+      setShowConfirm(false);
+      navigate('/', { state: { toast: `Blocked u/${displayUsername}` } });
+    } catch {
+      setBlockError('Failed to block. Try again.');
+    } finally {
+      setBlocking(false);
+    }
+  }
+
+  const menuItemStyle: React.CSSProperties = {
+    background: '#2a2d35', border: 'none', borderRadius: 8,
+    cursor: 'pointer', padding: '10px 4px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+    color: '#f5f5f5', fontSize: 11, fontWeight: 500,
+  };
+
   const tabStyle = (t: Tab): React.CSSProperties => ({
     flex: 1, textAlign: 'center', padding: '10px 0', fontSize: 13,
     fontWeight: tab === t ? 600 : 400,
@@ -104,11 +134,73 @@ export default function ProfilePage({ auth, target }: Props) {
       <MenuDrawer onNavigate={navigate} onLogoClick={() => navigate('/')} />
 
       <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid #2a2d35' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f0f0', marginBottom: 2 }}>
-          u/{displayUsername}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f0f0', marginBottom: 2 }}>
+              u/{displayUsername}
+            </div>
+            <div style={{ fontSize: 11, color: '#666' }}>{displayInstance}</div>
+          </div>
+          {target && target.username !== auth.username && (
+            <button
+              aria-label="Profile menu"
+              onClick={() => { setShowMenu((v) => !v); setShowConfirm(false); setBlockError(''); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f5f5f5', fontSize: 18, padding: '0 0 0 12px', lineHeight: 1 }}
+            >
+              ☰
+            </button>
+          )}
         </div>
-        <div style={{ fontSize: 11, color: '#666' }}>{displayInstance}</div>
       </div>
+
+      {showMenu && (
+        <>
+          <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 29 }} />
+          <div style={{ position: 'fixed', top: 112, left: 0, right: 0, background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30, padding: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <button
+                aria-label="Block"
+                onClick={() => { setShowMenu(false); setShowConfirm(true); }}
+                style={menuItemStyle}
+              >
+                <span style={{ fontSize: 20 }}>🚫</span>
+                Block
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showConfirm && (
+        <>
+          <div onClick={() => { setShowConfirm(false); setBlockError(''); }} style={{ position: 'fixed', inset: 0, zIndex: 29 }} />
+          <div style={{ position: 'fixed', top: 112, left: 0, right: 0, background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30, padding: 16 }}>
+            <div style={{ color: '#f5f5f5', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+              Block u/{displayUsername}?
+            </div>
+            {blockError && (
+              <div style={{ color: '#ff4444', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>{blockError}</div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                aria-label="Cancel"
+                onClick={() => { setShowConfirm(false); setBlockError(''); }}
+                style={{ flex: 1, padding: '10px 0', background: '#2a2d35', border: 'none', borderRadius: 8, color: '#f5f5f5', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+              >
+                Cancel
+              </button>
+              <button
+                aria-label="Block"
+                onClick={handleBlockPerson}
+                disabled={blocking}
+                style={{ flex: 1, padding: '10px 0', background: '#cc2222', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: blocking ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocking ? 0.6 : 1 }}
+              >
+                {blocking ? '…' : 'Block'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={{ display: 'flex', borderBottom: '2px solid #2a2d35', background: '#1a1d24' }}>
         <button style={tabStyle('all')} onClick={() => setTab('all')} aria-label="All">All</button>
