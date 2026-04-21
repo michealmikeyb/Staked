@@ -29,6 +29,32 @@ export function getShareUrl(instance: string, postId: number): string {
   return `${base}/#/post/${instance}/${postId}`;
 }
 
+export function buildShareUrl(
+  format: 'stakswipe' | 'source' | 'home',
+  post: { id: number; ap_id: string },
+  auth: { instance: string } | null,
+  communityActorId: string,
+): string {
+  const src = sourceFromApId(post.ap_id);
+  const communityInstance = instanceFromActorId(communityActorId);
+
+  if (format === 'home' && auth) {
+    return `https://${auth.instance}/post/${post.id}`;
+  }
+
+  if (format === 'source' || format === 'home') {
+    // home without auth falls back to source
+    if (src) return `https://${src.instance}/post/${src.postId}`;
+    return post.ap_id;
+  }
+
+  // stakswipe
+  if (auth) return getShareUrl(auth.instance, post.id);
+  const shareInstance = src?.instance ?? communityInstance;
+  const sharePostId = src?.postId ?? post.id;
+  return getShareUrl(shareInstance, sharePostId);
+}
+
 export function parsePostUrl(query: string): { instance: string; postId: number } | null {
   const trimmed = query.trim();
   if (!trimmed) return null;
