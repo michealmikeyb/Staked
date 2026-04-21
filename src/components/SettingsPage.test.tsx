@@ -156,6 +156,62 @@ describe('SettingsPage', () => {
     });
   });
 
+  describe('Share Link Format card', () => {
+    it('renders Share Link Format section', () => {
+      renderPage();
+      expect(screen.getByText('Share Link Format')).toBeInTheDocument();
+    });
+
+    it('Stakswipe pill is active (orange) by default', () => {
+      renderPage();
+      const card = screen.getByTestId('share-link-format-card');
+      expect(within(card).getByRole('button', { name: /^stakswipe$/i })).toHaveStyle({ background: '#ff6b35' });
+    });
+
+    it('Source Instance pill is always shown for unauthenticated users', () => {
+      renderPage({ isAuthenticated: false });
+      const card = screen.getByTestId('share-link-format-card');
+      expect(within(card).getByRole('button', { name: /^source instance$/i })).toBeInTheDocument();
+    });
+
+    it('Home Instance pill is shown when isAuthenticated is true', () => {
+      renderPage({ isAuthenticated: true });
+      const card = screen.getByTestId('share-link-format-card');
+      expect(within(card).getByRole('button', { name: /^home instance$/i })).toBeInTheDocument();
+    });
+
+    it('Home Instance pill is not shown when isAuthenticated is false', () => {
+      renderPage({ isAuthenticated: false });
+      const card = screen.getByTestId('share-link-format-card');
+      expect(within(card).queryByRole('button', { name: /^home instance$/i })).not.toBeInTheDocument();
+    });
+
+    it('clicking Source Instance pill updates shareLinkFormat to source', () => {
+      renderPage();
+      const card = screen.getByTestId('share-link-format-card');
+      fireEvent.click(within(card).getByRole('button', { name: /^source instance$/i }));
+      const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+      expect(stored.shareLinkFormat).toBe('source');
+    });
+
+    it('clicking Home Instance pill updates shareLinkFormat to home', () => {
+      renderPage({ isAuthenticated: true });
+      const card = screen.getByTestId('share-link-format-card');
+      fireEvent.click(within(card).getByRole('button', { name: /^home instance$/i }));
+      const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+      expect(stored.shareLinkFormat).toBe('home');
+    });
+
+    it('clicking Stakswipe pill updates shareLinkFormat to stakswipe', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ shareLinkFormat: 'source' }));
+      renderPage();
+      const card = screen.getByTestId('share-link-format-card');
+      fireEvent.click(within(card).getByRole('button', { name: /^stakswipe$/i }));
+      const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
+      expect(stored.shareLinkFormat).toBe('stakswipe');
+    });
+  });
+
   describe('Notifications section', () => {
     it('shows Enable button when permission is default', () => {
       Object.defineProperty(global, 'Notification', {

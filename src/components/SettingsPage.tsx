@@ -165,6 +165,32 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
           </div>
         </div>
 
+        <div data-testid="share-link-format-card" style={card}>
+          <div style={sectionLabel}>Share Link Format</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              style={settings.shareLinkFormat === 'stakswipe' ? active : inactive}
+              onClick={() => updateSetting('shareLinkFormat', 'stakswipe')}
+            >
+              Stakswipe
+            </button>
+            <button
+              style={settings.shareLinkFormat === 'source' ? active : inactive}
+              onClick={() => updateSetting('shareLinkFormat', 'source')}
+            >
+              Source Instance
+            </button>
+            {isAuthenticated && (
+              <button
+                style={settings.shareLinkFormat === 'home' ? active : inactive}
+                onClick={() => updateSetting('shareLinkFormat', 'home')}
+              >
+                Home Instance
+              </button>
+            )}
+          </div>
+        </div>
+
         <div style={card}>
           <div style={sectionLabel}>Anonymous Feed</div>
           <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
