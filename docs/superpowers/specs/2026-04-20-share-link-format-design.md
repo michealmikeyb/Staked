@@ -45,6 +45,26 @@ Three pills using the existing pill-button pattern:
 - **Anonymous user with `home` saved:** Cannot occur in normal usage — Home Instance pill is not rendered for unauthenticated users. If a user logs out after setting `home`, the setting persists in storage but `handleShare` will only receive `auth = null`, so `buildShareUrl` treats `home` as `source` in that case.
 - **Kbin/Mbin posts with `source` format:** `sourceFromApId` returns `null` for slug-based URLs. `buildShareUrl` falls back to the raw `ap_id` string, which is still a navigable URL.
 
+## Test Plan
+
+### `urlUtils.test.ts` — `buildShareUrl`
+- Returns Stakswipe URL for `'stakswipe'` format
+- Returns source instance URL for `'source'` with a standard Lemmy `ap_id`
+- Falls back to raw `ap_id` for `'source'` when `ap_id` is a Kbin/Mbin slug URL (no numeric post ID)
+- Returns home instance URL for `'home'` when auth is present
+- Falls back to `'source'` behavior for `'home'` when auth is `null`
+
+### `SettingsPage.test.tsx` — Share Link Format card
+- Renders Stakswipe and Source Instance pills for unauthenticated users
+- Does not render Home Instance pill when `isAuthenticated` is false
+- Renders all three pills when `isAuthenticated` is true
+- Clicking a pill calls `updateSetting('shareLinkFormat', ...)` with the correct value
+
+### `PostCardShell.test.tsx` / `PostCard.test.tsx` — share behavior
+- When `shareLinkFormat` is `'stakswipe'`, `navigator.share` is called with a Stakswipe URL
+- When `shareLinkFormat` is `'source'`, `navigator.share` is called with the source instance URL
+- When `shareLinkFormat` is `'home'` and auth is present, `navigator.share` is called with the home instance URL
+
 ## Files Changed
 
 | File | Change |
