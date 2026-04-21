@@ -37,7 +37,11 @@ vi.mock('@use-gesture/react', () => ({
 // ── urlUtils mock ─────────────────────────────────────────────────────────────
 vi.mock('../lib/urlUtils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/urlUtils')>();
-  return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1') };
+  return {
+    ...actual,
+    getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1'),
+    buildShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1'),
+  };
 });
 
 // ── React Router mock ─────────────────────────────────────────────────────────

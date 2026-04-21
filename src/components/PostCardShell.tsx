@@ -6,7 +6,7 @@ import {
 } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
-import { instanceFromActorId, isImageUrl, getShareUrl, sourceFromApId } from '../lib/urlUtils';
+import { instanceFromActorId, isImageUrl, buildShareUrl } from '../lib/urlUtils';
 import { useShare } from '../hooks/useShare';
 import { COMMENT_SORT_OPTIONS } from './HeaderBar';
 import CommentList from './CommentList';
@@ -136,14 +136,8 @@ export default function PostCardShell({
   }, [sheetState, scrollRef]);
 
   const handleShare = () => {
-    if (auth) {
-      share(post.name, getShareUrl(auth.instance, post.id));
-    } else {
-      const src = sourceFromApId(post.ap_id);
-      const shareInstance = src?.instance ?? instance;
-      const sharePostId = src?.postId ?? post.id;
-      share(post.name, getShareUrl(shareInstance, sharePostId));
-    }
+    const url = buildShareUrl(settings.shareLinkFormat, post, auth ?? null, community.actor_id);
+    share(post.name, url);
   };
 
   const handleSave = async () => {

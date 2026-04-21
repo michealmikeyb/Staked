@@ -20,7 +20,11 @@ vi.mock('../lib/lemmy', () => ({
 
 vi.mock('../lib/urlUtils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/urlUtils')>();
-  return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1') };
+  return {
+    ...actual,
+    getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1'),
+    buildShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1'),
+  };
 });
 
 const mockNavigate = vi.fn();
@@ -30,6 +34,7 @@ vi.mock('react-router-dom', () => ({
 
 import PostCardShell from './PostCardShell';
 import { savePost } from '../lib/lemmy';
+import { buildShareUrl } from '../lib/urlUtils';
 
 const POST = {
   id: 1, name: 'Test Post', ap_id: 'https://lemmy.world/post/1',
@@ -190,6 +195,43 @@ describe('PostCardShell', () => {
     renderShell({ community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' } });
     expect(screen.getByText('L')).toBeInTheDocument();
     expect(document.querySelector('[data-testid="community-avatar-img"]')).toBeNull();
+  });
+
+  describe('share link format', () => {
+    beforeEach(() => {
+      localStorage.clear();
+      Object.defineProperty(navigator, 'share', {
+        value: vi.fn().mockResolvedValue(undefined),
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    it('calls buildShareUrl with stakswipe format by default', () => {
+      renderShell();
+      fireEvent.click(screen.getByTestId('share-button'));
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('stakswipe', POST, AUTH, COMMUNITY.actor_id);
+    });
+
+    it('calls buildShareUrl with source format when shareLinkFormat=source', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ shareLinkFormat: 'source' }));
+      renderShell();
+      fireEvent.click(screen.getByTestId('share-button'));
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('source', POST, AUTH, COMMUNITY.actor_id);
+    });
+
+    it('calls buildShareUrl with home format when shareLinkFormat=home', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ shareLinkFormat: 'home' }));
+      renderShell();
+      fireEvent.click(screen.getByTestId('share-button'));
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('home', POST, AUTH, COMMUNITY.actor_id);
+    });
+
+    it('passes null auth when not authenticated', () => {
+      renderShell({ auth: undefined });
+      fireEvent.click(screen.getByTestId('share-button'));
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('stakswipe', POST, null, COMMUNITY.actor_id);
+    });
   });
 
   describe('sort bar', () => {
