@@ -36,21 +36,22 @@ export function buildShareUrl(
   communityActorId: string,
 ): string {
   const src = sourceFromApId(post.ap_id);
-  const communityInstance = instanceFromActorId(communityActorId);
 
-  if (format === 'home' && auth) {
-    return `https://${auth.instance}/post/${post.id}`;
+  if (format === 'home') {
+    if (auth) return `https://${auth.instance}/post/${post.id}`;
+    // home without auth falls back to source
+    if (src) return `https://${src.instance}/post/${src.postId}`;
+    return post.ap_id;
   }
 
-  if (format === 'source' || format === 'home') {
-    // home without auth falls back to source
+  if (format === 'source') {
     if (src) return `https://${src.instance}/post/${src.postId}`;
     return post.ap_id;
   }
 
   // stakswipe
   if (auth) return getShareUrl(auth.instance, post.id);
-  const shareInstance = src?.instance ?? communityInstance;
+  const shareInstance = src?.instance ?? instanceFromActorId(communityActorId);
   const sharePostId = src?.postId ?? post.id;
   return getShareUrl(shareInstance, sharePostId);
 }
