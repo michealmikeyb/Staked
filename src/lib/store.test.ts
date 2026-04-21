@@ -113,6 +113,7 @@ describe('loadSettings', () => {
       anonInstance: '',
       commentSort: 'Top',
       showCommentSortBar: true,
+      shareLinkFormat: 'stakswipe',
     });
   });
 
@@ -126,6 +127,7 @@ describe('loadSettings', () => {
       anonInstance: '',
       commentSort: 'New',
       showCommentSortBar: false,
+      shareLinkFormat: 'stakswipe',
     };
     saveSettings(s);
     expect(loadSettings()).toEqual(s);
@@ -152,6 +154,7 @@ describe('loadSettings', () => {
       anonInstance: '',
       commentSort: 'Top',
       showCommentSortBar: true,
+      shareLinkFormat: 'stakswipe',
     });
   });
 
@@ -163,6 +166,9 @@ describe('loadSettings', () => {
       defaultSort: 'TopTwelveHour',
       activeStak: 'Subscribed',
       anonInstance: '',
+      commentSort: 'Top',
+      showCommentSortBar: true,
+      shareLinkFormat: 'stakswipe',
     });
     expect(loadSettings().activeStak).toBe('Subscribed');
   });

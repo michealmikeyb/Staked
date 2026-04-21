@@ -63,6 +63,7 @@ export interface AppSettings {
   anonInstance: string;
   commentSort: CommentSortType;
   showCommentSortBar: boolean;
+  shareLinkFormat: 'stakswipe' | 'source' | 'home';
 }
 
 const SETTINGS_KEY = 'stakswipe_settings';
@@ -76,6 +77,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   anonInstance: '',
   commentSort: 'Top',
   showCommentSortBar: true,
+  shareLinkFormat: 'stakswipe',
 };
 
 export function loadSettings(): AppSettings {
