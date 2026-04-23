@@ -5,7 +5,7 @@
 
 ## Overview
 
-Two features: (1) toggle save state on posts with visual feedback, including unsave from SavedPage; (2) delete own posts and comments via an inline confirmation strip.
+Two features: (1) toggle save state on posts with visual feedback, including unsave from SavedPage; (2) delete own posts and comments from the ProfilePage (the natural place to manage your own content — the main feed swipe stack is unlikely to surface your own posts).
 
 ## API layer (`src/lib/lemmy.ts`)
 
@@ -25,45 +25,30 @@ Two features: (1) toggle save state on posts with visual feedback, including uns
 - Each card gets a small "🔖 Unsave" button in the bottom-right
 - On tap: call `savePost(..., false)`, remove post from local list
 
-## Delete post
+## Delete post/comment (ProfilePage only)
 
-**`PostCardShell`**
-- Add `onDelete?: () => void` prop
-- Detect post ownership: `creator.actor_id` compared against `auth.instance` + `auth.username`
-- Footer shows "🗑 Delete" only for own posts
-- Tapping sets `showDeleteConfirm` boolean — footer row morphs into `"Delete post? [Cancel] [Delete]"`
-- On confirm: call `deletePost`, then call `onDelete()`. On error: revert to normal footer.
-- No optimistic update — wait for API success before calling `onDelete`
+Delete is only available on your own profile. `isOwnProfile` is true when there is no `target` prop, or when `target.username === auth.username && target.instance === auth.instance`.
 
-**`PostCard`**
-- Add `onDismiss` prop (advance feed without voting)
-- Pass `onDelete` to PostCardShell: animates card off-screen (`animate(x, 600, ...)`) then calls `onDismiss`
+**Post cards in ProfilePage**
+- When `isOwnProfile`, each post card shows a "🗑" button (bottom-right, stopPropagation so it doesn't navigate)
+- Tapping sets `deleteConfirm: { kind: 'post', id: number } | null` state in ProfilePage
+- The matching card's stats row morphs into `"Delete post? [Cancel] [Delete]"` inline
+- On confirm: call `deletePost(auth.instance, auth.token, post.id)`, remove the post from local `posts` state. On error: revert to normal.
 
-**`FeedStack`**
-- Add `onDismiss` callback alongside `onSwipeRight`/`onSwipeLeft`
-- Same queue-advance logic as a swipe, skips the vote call
+**Comment cards in ProfilePage**
+- Same pattern: "🗑" button, same `deleteConfirm` state (kind: `'comment'`, id: `comment.id`)
+- On confirm: call `deleteComment(auth.instance, auth.token, comment.id)`, remove from local `comments` state.
 
-## Delete comment
-
-**`CommentItem`**
-- Add `onDelete?: (cv: CommentView) => void` prop
-- Show "🗑 Delete" next to "✏ Edit" for own comments only
-- Tapping sets local `showDeleteConfirm` state — action row morphs into `"Delete? [Cancel] [Delete]"`
-- On confirm: call `onDelete(cv)`. Parent handles the API call and list update.
-
-**`PostCardShell`**
-- Handle `onDelete` from CommentItem: resolve comment ID (same pattern as edit), call `deleteComment`
-- Track `localDeletes: Set<number>` state for deleted comment IDs
-- Pass `localDeletes` to `CommentList`, which filters those IDs out of the rendered list
+**No federation complexity**: own content is always on `auth.instance`, so `post.id` and `comment.id` work directly — no `resolveCommentId` needed.
 
 ## Error handling
 
 - **Save toggle**: optimistic update, revert on error (consistent with comment voting)
-- **Delete post/comment**: wait for API success; on error revert footer to normal actions, suppress error silently (consistent with existing `handleSave`)
+- **Delete**: wait for API success before removing from list; on error revert confirmation strip to normal card, suppress silently (consistent with existing `handleSave`)
 
 ## Testing
 
 - `savePost` unit test: verify `save: false` is passed when unsaving
-- `PostCardShell`: save toggle flips state; delete confirm renders inline strip; confirm triggers `onDelete`
-- `CommentItem`: delete confirm renders for own comments; confirm calls `onDelete`
-- `FeedStack`: `onDismiss` advances queue without calling upvote/downvote
+- `PostCardShell`: save toggle flips state; "Saved" button has orange tint
+- `SavedPage`: unsave button removes post from list
+- `ProfilePage`: delete button hidden when viewing another user's profile; confirm strip renders on tap; confirm removes item from list
