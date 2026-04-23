@@ -16,13 +16,29 @@ type FeedItem =
   | { kind: 'post'; data: PostView; published: string }
   | { kind: 'comment'; data: CommentView; published: string };
 
+function ConfirmStrip({ label, onCancel, onConfirm, style }: {
+  label: string;
+  onCancel: (e: React.MouseEvent) => void;
+  onConfirm: (e: React.MouseEvent) => void;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, ...style }}>
+      <span style={{ color: '#f0f0f0' }}>{label}</span>
+      <button onClick={onCancel} style={{ background: '#2a2d35', border: 'none', borderRadius: 6, color: '#aaa', padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}>
+        Cancel
+      </button>
+      <button onClick={onConfirm} style={{ background: '#c0392b', border: 'none', borderRadius: 6, color: '#fff', padding: '3px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+        Delete
+      </button>
+    </div>
+  );
+}
+
 export default function ProfilePage({ auth, target }: Props) {
   const navigate = useNavigate();
   const displayUsername = target?.username ?? auth?.username ?? '';
   const displayInstance = target?.instance ?? auth?.instance ?? '';
-  // Anonymous: fetch directly from target's instance with plain username (no federation suffix needed).
-  // Authenticated viewing another user: use "user@instance" via auth.instance so federation handles it.
-  // Own profile: fetch from auth.instance with plain username.
   const fetchInstance = auth ? auth.instance : (target?.instance ?? '');
   const fetchToken = auth?.token ?? '';
   const fetchUsername = !auth && target ? target.username
@@ -100,25 +116,17 @@ export default function ProfilePage({ auth, target }: Props) {
 
   const isEmpty = !loading && !error && posts.length === 0 && comments.length === 0;
 
-  async function handleDeletePost(postId: number) {
+  async function handleDelete(kind: 'post' | 'comment', id: number) {
     if (!auth) return;
     try {
-      await deletePost(auth.instance, auth.token, postId);
-      setPosts((prev) => prev.filter((pv) => pv.post.id !== postId));
+      if (kind === 'post') {
+        await deletePost(auth.instance, auth.token, id);
+        setPosts((prev) => prev.filter((pv) => pv.post.id !== id));
+      } else {
+        await deleteComment(auth.instance, auth.token, id);
+        setComments((prev) => prev.filter((cv) => cv.comment.id !== id));
+      }
     } catch {
-      // suppress silently
-    } finally {
-      setDeleteConfirm(null);
-    }
-  }
-
-  async function handleDeleteComment(commentId: number) {
-    if (!auth) return;
-    try {
-      await deleteComment(auth.instance, auth.token, commentId);
-      setComments((prev) => prev.filter((cv) => cv.comment.id !== commentId));
-    } catch {
-      // suppress silently
     } finally {
       setDeleteConfirm(null);
     }
@@ -146,9 +154,7 @@ export default function ProfilePage({ auth, target }: Props) {
         username={displayUsername}
         instance={displayInstance}
         onBack={() => navigate(-1)}
-        onBlock={auth && target && !(target.username === auth.username && target.instance === auth.instance)
-          ? handleBlockPerson
-          : undefined}
+        onBlock={!!auth && !!target && !isOwnProfile ? handleBlockPerson : undefined}
         blockDisabled={!personId}
       />
 
@@ -199,21 +205,11 @@ export default function ProfilePage({ auth, target }: Props) {
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>{post.name}</div>
                   {deleteConfirm?.kind === 'post' && deleteConfirm.id === post.id ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                      <span style={{ color: '#f0f0f0' }}>Delete post?</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                        style={{ background: '#2a2d35', border: 'none', borderRadius: 6, color: '#aaa', padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }}
-                        style={{ background: '#c0392b', border: 'none', borderRadius: 6, color: '#fff', padding: '3px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <ConfirmStrip
+                      label="Delete post?"
+                      onCancel={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                      onConfirm={(e) => { e.stopPropagation(); handleDelete('post', post.id); }}
+                    />
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
@@ -262,21 +258,12 @@ export default function ProfilePage({ auth, target }: Props) {
                 display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
               }}>{comment.content}</div>
               {deleteConfirm?.kind === 'comment' && deleteConfirm.id === comment.id ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginTop: 6 }}>
-                  <span style={{ color: '#f0f0f0' }}>Delete comment?</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                    style={{ background: '#2a2d35', border: 'none', borderRadius: 6, color: '#aaa', padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteComment(comment.id); }}
-                    style={{ background: '#c0392b', border: 'none', borderRadius: 6, color: '#fff', padding: '3px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-                  >
-                    Delete
-                  </button>
-                </div>
+                <ConfirmStrip
+                  label="Delete comment?"
+                  onCancel={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                  onConfirm={(e) => { e.stopPropagation(); handleDelete('comment', comment.id); }}
+                  style={{ marginTop: 6 }}
+                />
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
                   <div style={{ fontSize: 10, color: '#555' }}>▲ {counts.score}</div>

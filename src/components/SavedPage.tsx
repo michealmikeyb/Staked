@@ -42,11 +42,12 @@ export default function SavedPage({ auth }: Props) {
   }, [auth]);
 
   const handleUnsave = async (postId: number) => {
+    const snapshot = posts;
+    setPosts((prev) => prev.filter((pv) => pv.post.id !== postId));
     try {
       await savePost(auth.instance, auth.token, postId, false);
-      setPosts((prev) => prev.filter((pv) => pv.post.id !== postId));
     } catch {
-      // suppress silently
+      setPosts(snapshot);
     }
   };
 
