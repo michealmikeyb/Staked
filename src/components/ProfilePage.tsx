@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPersonDetails, blockPerson, type PostView, type CommentView } from '../lib/lemmy';
+import { fetchPersonDetails, blockPerson, deletePost, deleteComment, type PostView, type CommentView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import ProfileHeader from './ProfileHeader';
@@ -29,6 +29,8 @@ export default function ProfilePage({ auth, target }: Props) {
     : target ? `${target.username}@${target.instance}`
     : (auth?.username ?? '');
 
+  const isOwnProfile = !target || (target.username === auth?.username && target.instance === auth?.instance);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ kind: 'post' | 'comment'; id: number } | null>(null);
   const [posts, setPosts] = useState<PostView[]>([]);
   const [comments, setComments] = useState<CommentView[]>([]);
   const [tab, setTab] = useState<Tab>('all');
@@ -97,6 +99,30 @@ export default function ProfilePage({ auth, target }: Props) {
   [allItems, tab]);
 
   const isEmpty = !loading && !error && posts.length === 0 && comments.length === 0;
+
+  async function handleDeletePost(postId: number) {
+    if (!auth) return;
+    try {
+      await deletePost(auth.instance, auth.token, postId);
+      setPosts((prev) => prev.filter((pv) => pv.post.id !== postId));
+    } catch {
+      // suppress silently
+    } finally {
+      setDeleteConfirm(null);
+    }
+  }
+
+  async function handleDeleteComment(commentId: number) {
+    if (!auth) return;
+    try {
+      await deleteComment(auth.instance, auth.token, commentId);
+      setComments((prev) => prev.filter((cv) => cv.comment.id !== commentId));
+    } catch {
+      // suppress silently
+    } finally {
+      setDeleteConfirm(null);
+    }
+  }
 
   // throws on failure — ProfileHeader.handleBlock is responsible for catching
   async function handleBlockPerson() {
@@ -172,10 +198,39 @@ export default function ProfilePage({ auth, target }: Props) {
                     fontSize: 14, fontWeight: 600, color: '#f0f0f0', lineHeight: 1.35, marginBottom: 8,
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>{post.name}</div>
-                  <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
-                    <span>▲ {counts.score}</span>
-                    <span>💬 {counts.comments}</span>
-                  </div>
+                  {deleteConfirm?.kind === 'post' && deleteConfirm.id === post.id ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                      <span style={{ color: '#f0f0f0' }}>Delete post?</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                        style={{ background: '#2a2d35', border: 'none', borderRadius: 6, color: '#aaa', padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }}
+                        style={{ background: '#c0392b', border: 'none', borderRadius: 6, color: '#fff', padding: '3px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
+                        <span>▲ {counts.score}</span>
+                        <span>💬 {counts.comments}</span>
+                      </div>
+                      {isOwnProfile && (
+                        <button
+                          aria-label="Delete post"
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ kind: 'post', id: post.id }); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#555', padding: '0 4px' }}
+                        >
+                          🗑
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -206,7 +261,36 @@ export default function ProfilePage({ auth, target }: Props) {
                 fontSize: 13, color: '#d0d0d0', lineHeight: 1.4,
                 display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
               }}>{comment.content}</div>
-              <div style={{ fontSize: 10, color: '#555', marginTop: 6 }}>▲ {counts.score}</div>
+              {deleteConfirm?.kind === 'comment' && deleteConfirm.id === comment.id ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginTop: 6 }}>
+                  <span style={{ color: '#f0f0f0' }}>Delete comment?</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                    style={{ background: '#2a2d35', border: 'none', borderRadius: 6, color: '#aaa', padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteComment(comment.id); }}
+                    style={{ background: '#c0392b', border: 'none', borderRadius: 6, color: '#fff', padding: '3px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                  <div style={{ fontSize: 10, color: '#555' }}>▲ {counts.score}</div>
+                  {isOwnProfile && (
+                    <button
+                      aria-label="Delete comment"
+                      onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ kind: 'comment', id: comment.id }); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#555', padding: '0 4px' }}
+                    >
+                      🗑
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

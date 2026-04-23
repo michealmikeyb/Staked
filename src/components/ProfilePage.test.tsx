@@ -12,6 +12,8 @@ vi.mock('react-router-dom', async (importOriginal) => {
 vi.mock('../lib/lemmy', () => ({
   fetchPersonDetails: vi.fn(),
   blockPerson: vi.fn().mockResolvedValue(undefined),
+  deletePost: vi.fn().mockResolvedValue(undefined),
+  deleteComment: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
@@ -246,5 +248,83 @@ describe('ProfilePage block functionality', () => {
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     await waitFor(() => expect(screen.getByText('Failed to block. Try again.')).toBeInTheDocument());
     expect(mockNavigate).not.toHaveBeenCalledWith('/', expect.anything());
+  });
+});
+
+describe('ProfilePage delete (own profile)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { fetchPersonDetails } = await import('../lib/lemmy');
+    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValue({
+      posts: [mockPost],
+      comments: [mockComment],
+      personId: null,
+    });
+  });
+
+  it('shows delete button on post card when viewing own profile', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('My Terminal Setup'));
+    expect(screen.getByRole('button', { name: /delete post/i })).toBeInTheDocument();
+  });
+
+  it('does not show delete button when viewing another user profile', async () => {
+    render(
+      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
+        <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByText('My Terminal Setup'));
+    expect(screen.queryByRole('button', { name: /delete post/i })).not.toBeInTheDocument();
+  });
+
+  it('clicking delete post button shows inline confirmation strip', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('My Terminal Setup'));
+    fireEvent.click(screen.getByRole('button', { name: /delete post/i }));
+    expect(screen.getByText('Delete post?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+  });
+
+  it('clicking Cancel in post confirm strip reverts to normal card', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('My Terminal Setup'));
+    fireEvent.click(screen.getByRole('button', { name: /delete post/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.queryByText('Delete post?')).not.toBeInTheDocument();
+  });
+
+  it('confirming post delete calls deletePost and removes post from list', async () => {
+    const { deletePost } = await import('../lib/lemmy');
+    renderPage();
+    await waitFor(() => screen.getByText('My Terminal Setup'));
+    fireEvent.click(screen.getByRole('button', { name: /delete post/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await waitFor(() => expect(deletePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1));
+    await waitFor(() => expect(screen.queryByText('My Terminal Setup')).not.toBeInTheDocument());
+  });
+
+  it('shows delete button on comment card when viewing own profile', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('Great post!'));
+    expect(screen.getByRole('button', { name: /delete comment/i })).toBeInTheDocument();
+  });
+
+  it('clicking delete comment button shows inline confirmation strip', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('Great post!'));
+    fireEvent.click(screen.getByRole('button', { name: /delete comment/i }));
+    expect(screen.getByText('Delete comment?')).toBeInTheDocument();
+  });
+
+  it('confirming comment delete calls deleteComment and removes comment from list', async () => {
+    const { deleteComment } = await import('../lib/lemmy');
+    renderPage();
+    await waitFor(() => screen.getByText('Great post!'));
+    fireEvent.click(screen.getByRole('button', { name: /delete comment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await waitFor(() => expect(deleteComment).toHaveBeenCalledWith('lemmy.world', 'tok', 5));
+    await waitFor(() => expect(screen.queryByText('Great post!')).not.toBeInTheDocument());
   });
 });
