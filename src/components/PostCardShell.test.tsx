@@ -5,6 +5,8 @@ import type { CommentSortType } from '../lib/lemmy';
 
 vi.mock('../lib/lemmy', () => ({
   savePost: vi.fn().mockResolvedValue(undefined),
+  deletePost: vi.fn().mockResolvedValue(undefined),
+  deleteComment: vi.fn().mockResolvedValue(undefined),
   createComment: vi.fn().mockResolvedValue({
     comment: { id: 99, content: 'reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
     creator: { name: 'me', display_name: null },
@@ -97,7 +99,7 @@ describe('PostCardShell', () => {
     expect(screen.getByTestId('comment-button')).toBeInTheDocument();
   });
 
-  it('clicking Save calls savePost with correct args', async () => {
+  it('clicking Save calls savePost with save=true', async () => {
     renderShell();
     fireEvent.click(screen.getByTestId('save-button'));
     await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, true));
@@ -107,6 +109,36 @@ describe('PostCardShell', () => {
     renderShell();
     fireEvent.click(screen.getByTestId('save-button'));
     await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument());
+  });
+
+  it('save button shows "🔖 Save" when post.saved is false', () => {
+    renderShell({ post: { ...POST, saved: false } });
+    expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Save');
+  });
+
+  it('save button shows "🔖 Saved" when post.saved is true', () => {
+    renderShell({ post: { ...POST, saved: true } });
+    expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Saved');
+  });
+
+  it('clicking Saved button calls savePost with save=false', async () => {
+    renderShell({ post: { ...POST, saved: true } });
+    fireEvent.click(screen.getByTestId('save-button'));
+    await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, false));
+  });
+
+  it('save button toggles to Saved optimistically after clicking Save', async () => {
+    renderShell({ post: { ...POST, saved: false } });
+    fireEvent.click(screen.getByTestId('save-button'));
+    await waitFor(() => expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Saved'));
+  });
+
+  it('save button reverts to Save when savePost throws', async () => {
+    const { savePost: mockSave } = await import('../lib/lemmy');
+    (mockSave as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('fail'));
+    renderShell({ post: { ...POST, saved: false } });
+    fireEvent.click(screen.getByTestId('save-button'));
+    await waitFor(() => expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Save'));
   });
 
   it('renders image when post.url is an image', () => {

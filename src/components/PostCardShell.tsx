@@ -26,6 +26,7 @@ interface Post {
   thumbnail_url?: string | null;
   nsfw?: boolean;
   published: string;
+  saved?: boolean;
 }
 
 function timeAgo(published: string): string {
@@ -102,6 +103,7 @@ export default function PostCardShell({
   const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<number, string>>({});
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [localSaved, setLocalSaved] = useState(post.saved ?? false);
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
 
@@ -142,11 +144,13 @@ export default function PostCardShell({
 
   const handleSave = async () => {
     if (!auth) return;
+    const newSaved = !localSaved;
+    setLocalSaved(newSaved);
     try {
-      await savePost(auth.instance, auth.token, post.id, true);
-      setSaveToastVisible(true);
+      await savePost(auth.instance, auth.token, post.id, newSaved);
+      if (newSaved) setSaveToastVisible(true);
     } catch {
-      // suppress errors silently
+      setLocalSaved(!newSaved);
     }
   };
 
@@ -283,9 +287,10 @@ export default function PostCardShell({
             <button
               data-testid="save-button"
               className={styles.footerAction}
+              style={localSaved ? { color: '#ff6b35' } : undefined}
               onClick={(e) => { e.stopPropagation(); handleSave(); }}
             >
-              🔖 Save
+              {localSaved ? '🔖 Saved' : '🔖 Save'}
             </button>
           )}
           <button
