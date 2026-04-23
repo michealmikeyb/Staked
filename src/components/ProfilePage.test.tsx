@@ -268,6 +268,17 @@ describe('ProfilePage delete (own profile)', () => {
     expect(screen.getByRole('button', { name: /delete post/i })).toBeInTheDocument();
   });
 
+  it('does not show delete button when auth is null and no target', async () => {
+    render(
+      <MemoryRouter initialEntries={['/profile']}>
+        <ProfilePage auth={null} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getByText('My Terminal Setup'));
+    expect(screen.queryByRole('button', { name: /delete post/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete comment/i })).not.toBeInTheDocument();
+  });
+
   it('does not show delete button when viewing another user profile', async () => {
     render(
       <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>

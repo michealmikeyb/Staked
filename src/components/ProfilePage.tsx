@@ -29,7 +29,7 @@ export default function ProfilePage({ auth, target }: Props) {
     : target ? `${target.username}@${target.instance}`
     : (auth?.username ?? '');
 
-  const isOwnProfile = !target || (target.username === auth?.username && target.instance === auth?.instance);
+  const isOwnProfile = !!auth && (!target || (target.username === auth.username && target.instance === auth.instance));
   const [deleteConfirm, setDeleteConfirm] = useState<{ kind: 'post' | 'comment'; id: number } | null>(null);
   const [posts, setPosts] = useState<PostView[]>([]);
   const [comments, setComments] = useState<CommentView[]>([]);
