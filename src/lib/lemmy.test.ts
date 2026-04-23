@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts, blockPerson, blockCommunity } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, deletePost, deleteComment, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts, blockPerson, blockCommunity } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -10,6 +10,8 @@ vi.mock('lemmy-js-client', () => {
     blockPerson: vi.fn().mockResolvedValue({}),
     blockCommunity: vi.fn().mockResolvedValue({}),
     savePost: vi.fn().mockResolvedValue({}),
+    deletePost: vi.fn().mockResolvedValue({}),
+    deleteComment: vi.fn().mockResolvedValue({}),
     getComments: vi.fn().mockResolvedValue({ comments: [{ comment: { id: 1, content: 'Hello' } }] }),
     likeComment: vi.fn().mockResolvedValue({}),
     createComment: vi.fn().mockResolvedValue({
@@ -138,6 +140,18 @@ describe('upvotePost / downvotePost', () => {
 describe('savePost', () => {
   it('resolves without throwing', async () => {
     await expect(savePost('lemmy.world', 'tok', 1, true)).resolves.toBeUndefined();
+  });
+});
+
+describe('deletePost', () => {
+  it('resolves without throwing', async () => {
+    await expect(deletePost('lemmy.world', 'tok', 1)).resolves.toBeUndefined();
+  });
+});
+
+describe('deleteComment', () => {
+  it('resolves without throwing', async () => {
+    await expect(deleteComment('lemmy.world', 'tok', 5)).resolves.toBeUndefined();
   });
 });
 
