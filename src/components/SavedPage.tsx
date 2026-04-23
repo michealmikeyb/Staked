@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchSavedPosts, type PostView } from '../lib/lemmy';
+import { fetchSavedPosts, savePost, type PostView } from '../lib/lemmy';
 import { type AuthState } from '../lib/store';
 import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import MenuDrawer from './MenuDrawer';
@@ -40,6 +40,15 @@ export default function SavedPage({ auth }: Props) {
       loadingRef.current = false;
     }
   }, [auth]);
+
+  const handleUnsave = async (postId: number) => {
+    try {
+      await savePost(auth.instance, auth.token, postId, false);
+      setPosts((prev) => prev.filter((pv) => pv.post.id !== postId));
+    } catch {
+      // suppress silently
+    }
+  };
 
   useEffect(() => {
     loadPage(1);
@@ -120,9 +129,21 @@ export default function SavedPage({ auth }: Props) {
                 }}>
                   {post.name}
                 </div>
-                <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
-                  <span>▲ {counts.score}</span>
-                  <span>💬 {counts.comments}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
+                    <span>▲ {counts.score}</span>
+                    <span>💬 {counts.comments}</span>
+                  </div>
+                  <button
+                    aria-label="Unsave"
+                    onClick={(e) => { e.stopPropagation(); handleUnsave(post.id); }}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 12, color: '#888', padding: '2px 6px',
+                    }}
+                  >
+                    🔖 Unsave
+                  </button>
                 </div>
               </div>
             </div>

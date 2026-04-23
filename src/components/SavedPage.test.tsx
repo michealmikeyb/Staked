@@ -25,6 +25,7 @@ const mockPost = {
 
 vi.mock('../lib/lemmy', () => ({
   fetchSavedPosts: vi.fn(),
+  savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
@@ -92,6 +93,31 @@ describe('SavedPage', () => {
     renderPage();
     await waitFor(() =>
       expect(screen.getByText('Network error')).toBeInTheDocument(),
+    );
+  });
+
+  it('renders an Unsave button on each post card', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('A Saved Post'));
+    expect(screen.getByRole('button', { name: /unsave/i })).toBeInTheDocument();
+  });
+
+  it('clicking Unsave calls savePost with save=false', async () => {
+    const { savePost } = await import('../lib/lemmy');
+    renderPage();
+    await waitFor(() => screen.getByText('A Saved Post'));
+    fireEvent.click(screen.getByRole('button', { name: /unsave/i }));
+    await waitFor(() =>
+      expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, false),
+    );
+  });
+
+  it('clicking Unsave removes the post from the list', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('A Saved Post'));
+    fireEvent.click(screen.getByRole('button', { name: /unsave/i }));
+    await waitFor(() =>
+      expect(screen.queryByText('A Saved Post')).not.toBeInTheDocument(),
     );
   });
 });
