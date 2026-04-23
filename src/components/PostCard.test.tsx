@@ -390,7 +390,7 @@ describe('PostCard save button', () => {
       </SettingsProvider>,
     );
     fireEvent.click(screen.getByTestId('save-button'));
-    await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1));
+    await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, true));
   });
 
   it('shows Saved toast after save button is tapped', async () => {

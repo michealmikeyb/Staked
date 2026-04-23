@@ -143,7 +143,7 @@ export default function PostCardShell({
   const handleSave = async () => {
     if (!auth) return;
     try {
-      await savePost(auth.instance, auth.token, post.id);
+      await savePost(auth.instance, auth.token, post.id, true);
       setSaveToastVisible(true);
     } catch {
       // suppress errors silently

@@ -80,8 +80,25 @@ export async function savePost(
   instance: string,
   token: string,
   postId: number,
+  save: boolean,
 ): Promise<void> {
-  await client(instance, token).savePost({ post_id: postId, save: true });
+  await client(instance, token).savePost({ post_id: postId, save });
+}
+
+export async function deletePost(
+  instance: string,
+  token: string,
+  postId: number,
+): Promise<void> {
+  await client(instance, token).deletePost({ post_id: postId, deleted: true });
+}
+
+export async function deleteComment(
+  instance: string,
+  token: string,
+  commentId: number,
+): Promise<void> {
+  await client(instance, token).deleteComment({ comment_id: commentId, deleted: true });
 }
 
 export async function fetchSavedPosts(

@@ -137,7 +137,7 @@ describe('upvotePost / downvotePost', () => {
 
 describe('savePost', () => {
   it('resolves without throwing', async () => {
-    await expect(savePost('lemmy.world', 'tok', 1)).resolves.toBeUndefined();
+    await expect(savePost('lemmy.world', 'tok', 1, true)).resolves.toBeUndefined();
   });
 });
 
