@@ -11,6 +11,7 @@ import { useShare } from '../hooks/useShare';
 import { COMMENT_SORT_OPTIONS } from './HeaderBar';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
+import ReportSheet, { type ReportTarget } from './ReportSheet';
 import Toast from './Toast';
 import MarkdownRenderer from './MarkdownRenderer';
 import CreatorAvatar from './CreatorAvatar';
@@ -104,6 +105,7 @@ export default function PostCardShell({
   const [localEdits, setLocalEdits] = useState<Record<number, string>>({});
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [localSaved, setLocalSaved] = useState(post.saved ?? false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget>(null);
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
 
@@ -140,6 +142,10 @@ export default function PostCardShell({
   const handleShare = () => {
     const url = buildShareUrl(settings.shareLinkFormat, post, auth ?? null, community.actor_id);
     share(post.name, url);
+  };
+
+  const handleReport = (cv: CommentView) => {
+    setReportTarget({ type: 'comment', commentId: cv.comment.id, apId: cv.comment.ap_id });
   };
 
   const handleSave = async () => {
@@ -302,6 +308,15 @@ export default function PostCardShell({
           </button>
           {auth && (
             <button
+              data-testid="report-button"
+              className={styles.footerAction}
+              onClick={(e) => { e.stopPropagation(); setReportTarget({ type: 'post', postId: post.id }); }}
+            >
+              ⚑ Report
+            </button>
+          )}
+          {auth && (
+            <button
               data-testid="comment-button"
               className={styles.footerAction}
               onClick={() => setSheetState({ mode: 'new' })}
@@ -349,6 +364,7 @@ export default function PostCardShell({
             onSetReplyTarget={(cv) => setSheetState({ mode: 'reply', target: cv })}
             onEdit={(cv) => setSheetState({ mode: 'edit', target: cv })}
             localEdits={localEdits}
+            onReport={auth ? handleReport : undefined}
             highlightCommentId={highlightCommentId}
           />
         </div>
@@ -365,6 +381,15 @@ export default function PostCardShell({
             initialContent={initialEditContent}
             onSubmit={handleSubmit}
             onClose={() => setSheetState(null)}
+          />
+        </div>
+      )}
+      {auth && (
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+          <ReportSheet
+            target={reportTarget}
+            auth={auth}
+            onClose={() => setReportTarget(null)}
           />
         </div>
       )}

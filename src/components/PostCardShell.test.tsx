@@ -18,6 +18,8 @@ vi.mock('../lib/lemmy', () => ({
     counts: { score: 1 },
   }),
   resolveCommentId: vi.fn().mockResolvedValue(null),
+  reportPost: vi.fn().mockResolvedValue(undefined),
+  reportComment: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../lib/urlUtils', async (importOriginal) => {
@@ -295,5 +297,21 @@ describe('PostCardShell', () => {
       fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
       expect(onSortChange).toHaveBeenCalledWith('Hot');
     });
+  });
+
+  it('shows Report button when auth is provided', () => {
+    renderShell({ auth: AUTH });
+    expect(screen.getByTestId('report-button')).toBeInTheDocument();
+  });
+
+  it('hides Report button when auth is null', () => {
+    renderShell({ auth: null });
+    expect(screen.queryByTestId('report-button')).not.toBeInTheDocument();
+  });
+
+  it('clicking Report button opens the report sheet', () => {
+    renderShell({ auth: AUTH });
+    fireEvent.click(screen.getByTestId('report-button'));
+    expect(screen.getByText('Report post')).toBeInTheDocument();
   });
 });
