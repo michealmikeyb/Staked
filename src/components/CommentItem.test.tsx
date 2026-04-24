@@ -272,4 +272,34 @@ describe('CommentItem', () => {
     expect(screen.getByText('Updated text')).toBeInTheDocument();
     expect(screen.queryByText(/Bold/)).not.toBeInTheDocument();
   });
+
+  it('shows Report button on non-own comments when onReport is provided', () => {
+    renderItem({ onReport: vi.fn() });
+    expect(screen.getByRole('button', { name: /report/i })).toBeInTheDocument();
+  });
+
+  it('hides Report button on own comments even when onReport is provided', () => {
+    const ownCv = {
+      ...mockCv,
+      creator: { name: 'me', actor_id: 'https://lemmy.world/u/me', avatar: undefined },
+    };
+    render(
+      <SettingsProvider>
+        <CommentItem cv={ownCv as never} auth={mockAuth} depth={1} onReply={vi.fn()} onReport={vi.fn()} />
+      </SettingsProvider>
+    );
+    expect(screen.queryByRole('button', { name: /report/i })).not.toBeInTheDocument();
+  });
+
+  it('clicking Report button calls onReport with the comment view', () => {
+    const onReport = vi.fn();
+    renderItem({ onReport });
+    fireEvent.click(screen.getByRole('button', { name: /report/i }));
+    expect(onReport).toHaveBeenCalledWith(mockCv);
+  });
+
+  it('does not show Report button when onReport prop is absent', () => {
+    renderItem();
+    expect(screen.queryByRole('button', { name: /report/i })).not.toBeInTheDocument();
+  });
 });

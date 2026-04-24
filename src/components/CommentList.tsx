@@ -9,12 +9,13 @@ interface Props {
   auth: AuthState;
   onSetReplyTarget: (cv: CommentView) => void;
   onEdit?: (cv: CommentView) => void;
+  onReport?: (cv: CommentView) => void;
   localEdits?: Record<number, string>;
   highlightCommentId?: number;
   opActorId?: string;
 }
 
-export default function CommentList({ comments, localReplies, auth, onSetReplyTarget, onEdit, localEdits, highlightCommentId, opActorId }: Props) {
+export default function CommentList({ comments, localReplies, auth, onSetReplyTarget, onEdit, onReport, localEdits, highlightCommentId, opActorId }: Props) {
   const items = useMemo(() => {
     const allItems = [...comments, ...localReplies];
     const childMap = new Map<string, CommentView[]>();
@@ -50,6 +51,7 @@ export default function CommentList({ comments, localReplies, auth, onSetReplyTa
             depth={depth}
             onReply={onSetReplyTarget}
             onEdit={onEdit}
+            onReport={onReport}
             overrideContent={localEdits?.[cv.comment.id]}
             isHighlighted={cv.comment.id === highlightCommentId}
             opActorId={opActorId}

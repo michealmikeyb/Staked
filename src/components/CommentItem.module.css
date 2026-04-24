@@ -117,3 +117,16 @@
   font-weight: 700;
   transition: color 0.2s;
 }
+
+.reportButton {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  padding: 4px 0 0;
+  cursor: pointer;
+}
+
+.reportButton:hover {
+  color: #e55;
+}

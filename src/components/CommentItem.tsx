@@ -14,12 +14,13 @@ interface Props {
   depth: number;
   onReply: (cv: CommentView) => void;
   onEdit?: (cv: CommentView) => void;
+  onReport?: (cv: CommentView) => void;
   overrideContent?: string;
   isHighlighted?: boolean;
   opActorId?: string;
 }
 
-export default function CommentItem({ cv, auth, depth, onReply, onEdit, overrideContent, isHighlighted, opActorId }: Props) {
+export default function CommentItem({ cv, auth, depth, onReply, onEdit, onReport, overrideContent, isHighlighted, opActorId }: Props) {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const [vote, setVote] = useState<1 | 0 | -1>(0);
@@ -115,6 +116,14 @@ export default function CommentItem({ cv, auth, depth, onReply, onEdit, override
             onClick={(e) => { e.stopPropagation(); onEdit(cv); }}
           >
             ✏ Edit
+          </button>
+        )}
+        {!isOwnComment && onReport && (
+          <button
+            className={styles.reportButton}
+            onClick={(e) => { e.stopPropagation(); onReport(cv); }}
+          >
+            ⚑ Report
           </button>
         )}
       </div>
