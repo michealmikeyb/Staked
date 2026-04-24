@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, fetchPosts, upvotePost, downvotePost, savePost, deletePost, deleteComment, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts, blockPerson, blockCommunity } from './lemmy';
+import { login, fetchPosts, upvotePost, downvotePost, savePost, deletePost, deleteComment, fetchComments, likeComment, createComment, editComment, fetchPersonDetails, fetchPost, resolveCommunityId, createPost, uploadImage, searchCommunities, searchPosts, blockPerson, blockCommunity, reportPost, reportComment } from './lemmy';
 
 // Mock the entire lemmy-js-client module
 vi.mock('lemmy-js-client', () => {
@@ -92,6 +92,8 @@ vi.mock('lemmy-js-client', () => {
       comments: [],
       users: [],
     }),
+    createPostReport: vi.fn().mockResolvedValue({}),
+    createCommentReport: vi.fn().mockResolvedValue({}),
   }));
   return { LemmyHttp: MockLemmyHttp };
 });
@@ -475,5 +477,23 @@ describe('fetchPersonDetails', () => {
     const { fetchPersonDetails } = await import('./lemmy');
     const result = await fetchPersonDetails('lemmy.world', 'tok', 'alice', 1);
     expect(result.personId).toBe(77);
+  });
+});
+
+describe('reportPost', () => {
+  it('calls createPostReport with post_id and reason', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await reportPost('lemmy.world', 'tok', 42, 'Spam');
+    const instance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(instance.createPostReport).toHaveBeenCalledWith({ post_id: 42, reason: 'Spam' });
+  });
+});
+
+describe('reportComment', () => {
+  it('calls createCommentReport with comment_id and reason', async () => {
+    const { LemmyHttp } = await import('lemmy-js-client');
+    await reportComment('lemmy.world', 'tok', 7, 'Harassment — bad actor');
+    const instance = vi.mocked(LemmyHttp).mock.results.at(-1)!.value;
+    expect(instance.createCommentReport).toHaveBeenCalledWith({ comment_id: 7, reason: 'Harassment — bad actor' });
   });
 });

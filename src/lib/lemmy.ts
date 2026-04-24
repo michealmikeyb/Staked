@@ -354,3 +354,21 @@ export async function blockCommunity(
 ): Promise<void> {
   await client(instance, token).blockCommunity({ community_id: communityId, block });
 }
+
+export async function reportPost(
+  instance: string,
+  token: string,
+  postId: number,
+  reason: string,
+): Promise<void> {
+  await client(instance, token).createPostReport({ post_id: postId, reason });
+}
+
+export async function reportComment(
+  instance: string,
+  token: string,
+  commentId: number,
+  reason: string,
+): Promise<void> {
+  await client(instance, token).createCommentReport({ comment_id: commentId, reason });
+}
