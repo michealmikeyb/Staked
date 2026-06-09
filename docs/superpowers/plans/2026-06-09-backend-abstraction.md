@@ -1,6 +1,8 @@
 # Backend Abstraction Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **Branch:** `decouple` — all implementation work goes on this branch. Do not commit to `main`.
 
 **Goal:** Decouple Stakswipe's UI from the Lemmy API by introducing a neutral `Backend` interface, a Lemmy adapter that fully implements it, and a mock adapter for tests. Migrate every UI component, hook, and test off direct `lib/lemmy` imports.
 
