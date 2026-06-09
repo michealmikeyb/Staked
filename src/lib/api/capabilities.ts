@@ -1,12 +1,12 @@
 // src/lib/api/capabilities.ts
-import type { FeedOption, SortOption } from './types';
+import type { SelectOption } from './types';
 
 export interface Capabilities {
   canDownvote: boolean;
   canBrowseAnonymously: boolean;
   hasNsfwFlag: boolean;
   hasSavedPosts: boolean;
-  feedOptions: FeedOption[];
-  commentSortOptions: SortOption[];
+  feedOptions: SelectOption[];
+  commentSortOptions: SelectOption[];
   sourceNoun: string;
 }

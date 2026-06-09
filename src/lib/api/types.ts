@@ -81,17 +81,7 @@ export interface Stak {
   icon?: string;
 }
 
-export interface FeedOption {
+export interface SelectOption {
   id: string;
   label: string;
-}
-
-export interface SortOption {
-  id: string;
-  label: string;
-}
-
-export interface ActiveStakRef {
-  sessionId: string;
-  stakId: string;
 }
