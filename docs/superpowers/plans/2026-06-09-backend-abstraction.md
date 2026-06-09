@@ -21,7 +21,7 @@
 **Files:**
 - Create: `src/lib/api/types.ts`
 
-- [ ] **Step 1: Create the types file**
+- [x] **Step 1: Create the types file**
 
 ```ts
 // src/lib/api/types.ts
@@ -107,12 +107,7 @@ export interface Stak {
   icon?: string;
 }
 
-export interface FeedOption {
-  id: string;
-  label: string;
-}
-
-export interface SortOption {
+export interface SelectOption {
   id: string;
   label: string;
 }
@@ -123,12 +118,12 @@ export interface ActiveStakRef {
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS (no errors).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/types.ts
@@ -140,29 +135,29 @@ git commit -m "feat(api): add neutral domain types"
 **Files:**
 - Create: `src/lib/api/capabilities.ts`
 
-- [ ] **Step 1: Create the capabilities file**
+- [x] **Step 1: Create the capabilities file**
 
 ```ts
 // src/lib/api/capabilities.ts
-import type { FeedOption, SortOption } from './types';
+import type { SelectOption } from './types';
 
 export interface Capabilities {
   canDownvote: boolean;
   canBrowseAnonymously: boolean;
   hasNsfwFlag: boolean;
   hasSavedPosts: boolean;
-  feedOptions: FeedOption[];
-  commentSortOptions: SortOption[];
+  feedOptions: SelectOption[];
+  commentSortOptions: SelectOption[];
   sourceNoun: string;
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/capabilities.ts
@@ -174,7 +169,7 @@ git commit -m "feat(api): add Capabilities interface"
 **Files:**
 - Create: `src/lib/api/backend.ts`
 
-- [ ] **Step 1: Create the backend interface file**
+- [x] **Step 1: Create the backend interface file**
 
 ```ts
 // src/lib/api/backend.ts
@@ -260,12 +255,12 @@ export interface Backend {
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backend.ts
@@ -277,7 +272,7 @@ git commit -m "feat(api): add Backend interface with sub-services"
 **Files:**
 - Create: `src/lib/api/context.tsx`
 
-- [ ] **Step 1: Create the context module**
+- [x] **Step 1: Create the context module**
 
 ```tsx
 // src/lib/api/context.tsx
@@ -297,12 +292,12 @@ export function useBackend(): Backend {
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/context.tsx
@@ -314,7 +309,7 @@ git commit -m "feat(api): add BackendProvider and useBackend hook"
 **Files:**
 - Create: `src/lib/api/registry.ts`
 
-- [ ] **Step 1: Create the registry**
+- [x] **Step 1: Create the registry**
 
 ```ts
 // src/lib/api/registry.ts
@@ -340,17 +335,17 @@ export function clearRegistry(): void {
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Verify nothing has been wired up yet**
+- [x] **Step 3: Verify nothing has been wired up yet**
 
 Run: `npm run build`
 Expected: PASS — interfaces only, no behavior changes.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/api/registry.ts
@@ -2929,7 +2924,7 @@ git commit -m "chore: remove legacy lib/lemmy.ts; all consumers migrated"
 - [x] Compact points A–G correspond 1-to-1 with the spec's compact points.
 - [x] Each task has bite-sized steps with exact code or exact commands.
 - [x] No placeholder text ("TBD", "TODO", "implement appropriate") remains.
-- [x] Type names used in later tasks match those defined in earlier tasks (`Post`, `Comment`, `Source`, `User`, `Notification`, `Session`, `Stak`, `FeedOption`, `Capabilities`, `Backend`, sub-services).
+- [x] Type names used in later tasks match those defined in earlier tasks (`Post`, `Comment`, `Source`, `User`, `Notification`, `Session`, `Stak`, `SelectOption`, `ActiveStakRef`, `Capabilities`, `Backend`, sub-services).
 - [x] `parsePostId` is referenced in Task 30 with the note that it must accept empty `apId` — Task 30 Step 1 explicitly modifies the mapper to support this.
 - [x] `loadSessionsWithMigration` defined in Task 33; used in Task 34.
 - [x] `registerBackend` defined in Task 5; used in Task 34.

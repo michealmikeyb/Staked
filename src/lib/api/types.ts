@@ -85,3 +85,8 @@ export interface SelectOption {
   id: string;
   label: string;
 }
+
+export interface ActiveStakRef {
+  sessionId: string;
+  stakId: string;
+}
