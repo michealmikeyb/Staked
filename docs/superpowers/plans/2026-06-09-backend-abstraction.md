@@ -364,7 +364,7 @@ git commit -m "feat(api): add backend registry"
 - Create: `src/lib/api/backends/mock/state.ts`
 - Create: `src/lib/api/backends/mock/fixtures.ts`
 
-- [ ] **Step 1: Create the mutable state container**
+- [x] **Step 1: Create the mutable state container**
 
 ```ts
 // src/lib/api/backends/mock/state.ts
@@ -401,7 +401,7 @@ export function createMockState(): MockState {
 }
 ```
 
-- [ ] **Step 2: Create the fixture builders**
+- [x] **Step 2: Create the fixture builders**
 
 ```ts
 // src/lib/api/backends/mock/fixtures.ts
@@ -503,12 +503,12 @@ export interface MockFixtures {
 }
 ```
 
-- [ ] **Step 3: Verify TypeScript compiles**
+- [x] **Step 3: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/api/backends/mock/
@@ -520,7 +520,7 @@ git commit -m "feat(mock): add fixtures and state container"
 **Files:**
 - Create: `src/lib/api/backends/mock/index.ts`
 
-- [ ] **Step 1: Create the mock backend factory**
+- [x] **Step 1: Create the mock backend factory**
 
 ```ts
 // src/lib/api/backends/mock/index.ts
@@ -753,12 +753,12 @@ export function createMockBackend(
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backends/mock/index.ts
@@ -770,7 +770,7 @@ git commit -m "feat(mock): implement Backend interface"
 **Files:**
 - Create: `src/lib/api/backends/mock/index.test.ts`
 
-- [ ] **Step 1: Write the sanity test**
+- [x] **Step 1: Write the sanity test**
 
 ```ts
 // src/lib/api/backends/mock/index.test.ts
@@ -864,12 +864,12 @@ describe('createMockBackend', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test**
+- [x] **Step 2: Run the test**
 
 Run: `npx vitest run src/lib/api/backends/mock/index.test.ts`
 Expected: PASS, all assertions green.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backends/mock/index.test.ts
