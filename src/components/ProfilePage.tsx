@@ -1,20 +1,20 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchPersonDetails, blockPerson, deletePost, deleteComment, type PostView, type CommentView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { useBackend } from '../lib/api/context';
+import type { Post, Comment, User } from '../lib/api/types';
 import { isImageUrl, placeholderColor } from '../lib/urlUtils';
 import ProfileHeader from './ProfileHeader';
 
 interface Props {
-  auth: AuthState | null;
+  auth?: unknown; // kept for App.tsx compat — backend provides session
   target?: { username: string; instance: string };
 }
 
 type Tab = 'all' | 'posts' | 'comments';
 
 type FeedItem =
-  | { kind: 'post'; data: PostView; published: string }
-  | { kind: 'comment'; data: CommentView; published: string };
+  | { kind: 'post'; data: Post; published: string }
+  | { kind: 'comment'; data: Comment; published: string };
 
 function ConfirmStrip({ label, onCancel, onConfirm, style }: {
   label: string;
@@ -35,77 +35,49 @@ function ConfirmStrip({ label, onCancel, onConfirm, style }: {
   );
 }
 
-export default function ProfilePage({ auth, target }: Props) {
+export default function ProfilePage({ target }: Props) {
   const navigate = useNavigate();
-  const displayUsername = target?.username ?? auth?.username ?? '';
-  const displayInstance = target?.instance ?? auth?.instance ?? '';
-  const fetchInstance = auth ? auth.instance : (target?.instance ?? '');
-  const fetchToken = auth?.token ?? '';
-  const fetchUsername = !auth && target ? target.username
-    : target ? `${target.username}@${target.instance}`
-    : (auth?.username ?? '');
+  const backend = useBackend();
 
-  const isOwnProfile = !!auth && (!target || (target.username === auth.username && target.instance === auth.instance));
-  const [deleteConfirm, setDeleteConfirm] = useState<{ kind: 'post' | 'comment'; id: number } | null>(null);
-  const [posts, setPosts] = useState<PostView[]>([]);
-  const [comments, setComments] = useState<CommentView[]>([]);
+  const viewerHandle = backend.session?.viewer?.handle ?? '';
+  const handle = target ? `${target.username}@${target.instance}` : viewerHandle;
+  const displayUsername = target?.username ?? (viewerHandle.includes('@') ? viewerHandle.split('@')[0] : viewerHandle);
+  const displayInstance = target?.instance ?? (viewerHandle.includes('@') ? viewerHandle.split('@')[1] : '');
+
+  const isOwnProfile = !!backend.session && (!target || backend.session.viewer?.handle === handle);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ kind: 'post' | 'comment'; id: string } | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [tab, setTab] = useState<Tab>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [canLoadMore, setCanLoadMore] = useState(true);
-  const [personId, setPersonId] = useState<number | null>(null);
-  const loadingRef = useRef(false);
-  const pageRef = useRef(1);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const loadPage = useCallback(async (pageNum: number) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    try {
-      const result = await fetchPersonDetails(fetchInstance, fetchToken, fetchUsername, pageNum);
-      if (result.posts.length === 0 && result.comments.length === 0) {
-        setCanLoadMore(false);
-      } else {
-        setPosts((prev) => [...prev, ...result.posts]);
-        setComments((prev) => [...prev, ...result.comments]);
-      }
-      if (pageNum === 1 && result.personId !== null) {
-        setPersonId(result.personId);
-      }
-    } catch (err) {
-      if (pageNum === 1) {
-        setError(err instanceof Error ? err.message : 'Failed to load profile');
-      } else {
-        setCanLoadMore(false);
-      }
-    } finally {
+  useEffect(() => {
+    if (!handle) {
       setLoading(false);
-      loadingRef.current = false;
+      return;
     }
-  }, [fetchInstance, fetchToken, fetchUsername]);
-
-  useEffect(() => {
-    loadPage(1);
-  }, [loadPage]);
-
-  useEffect(() => {
-    if (!canLoadMore) return;
-    if (typeof IntersectionObserver === 'undefined') return;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !loadingRef.current && canLoadMore) {
-        pageRef.current += 1;
-        loadPage(pageRef.current);
-      }
-    }, { threshold: 0.1 });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [canLoadMore, loadPage]);
+    Promise.all([
+      backend.users.get(handle),
+      backend.users.getPosts(handle, { cursor: null }),
+      backend.users.getComments(handle, { cursor: null }),
+    ]).then(([u, postsPage, commentsPage]) => {
+      setUser(u);
+      setPosts(postsPage.items);
+      setComments(commentsPage.items);
+      setLoading(false);
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Failed to load profile');
+      setLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const allItems = useMemo<FeedItem[]>(() => [
-    ...posts.map((pv): FeedItem => ({ kind: 'post', data: pv, published: pv.post.published })),
-    ...comments.map((cv): FeedItem => ({ kind: 'comment', data: cv, published: cv.comment.published })),
+    ...posts.map((p): FeedItem => ({ kind: 'post', data: p, published: p.publishedAt })),
+    ...comments.map((c): FeedItem => ({ kind: 'comment', data: c, published: c.publishedAt })),
   ].sort((a, b) => b.published.localeCompare(a.published)), [posts, comments]);
 
   const visibleItems = useMemo<FeedItem[]>(() =>
@@ -116,15 +88,14 @@ export default function ProfilePage({ auth, target }: Props) {
 
   const isEmpty = !loading && !error && posts.length === 0 && comments.length === 0;
 
-  async function handleDelete(kind: 'post' | 'comment', id: number) {
-    if (!auth) return;
+  async function handleDelete(kind: 'post' | 'comment', id: string) {
     try {
       if (kind === 'post') {
-        await deletePost(auth.instance, auth.token, id);
-        setPosts((prev) => prev.filter((pv) => pv.post.id !== id));
+        await backend.posts.delete(id);
+        setPosts((prev) => prev.filter((p) => p.id !== id));
       } else {
-        await deleteComment(auth.instance, auth.token, id);
-        setComments((prev) => prev.filter((cv) => cv.comment.id !== id));
+        await backend.comments.delete(id);
+        setComments((prev) => prev.filter((c) => c.id !== id));
       }
     } catch {
     } finally {
@@ -132,10 +103,9 @@ export default function ProfilePage({ auth, target }: Props) {
     }
   }
 
-  // throws on failure — ProfileHeader.handleBlock is responsible for catching
   async function handleBlockPerson() {
-    if (!personId || !auth) return;
-    await blockPerson(auth.instance, auth.token, personId, true);
+    if (!user) return;
+    await backend.users.block(user.id, true);
     navigate('/', { state: { toast: `Blocked u/${displayUsername}` } });
   }
 
@@ -154,8 +124,8 @@ export default function ProfilePage({ auth, target }: Props) {
         username={displayUsername}
         instance={displayInstance}
         onBack={() => navigate(-1)}
-        onBlock={!!auth && !!target && !isOwnProfile ? handleBlockPerson : undefined}
-        blockDisabled={!personId}
+        onBlock={!!backend.session && !!target && !isOwnProfile ? handleBlockPerson : undefined}
+        blockDisabled={!user}
       />
 
       <div style={{ display: 'flex', borderBottom: '2px solid #2a2d35', background: '#1a1d24' }}>
@@ -177,20 +147,20 @@ export default function ProfilePage({ auth, target }: Props) {
 
         {visibleItems.map((item) => {
           if (item.kind === 'post') {
-            const { post, community, counts } = item.data;
-            const isImage = !!post.url && isImageUrl(post.url);
-            const bannerSrc = isImage ? post.url : post.thumbnail_url;
+            const post = item.data;
+            const isImage = !!post.externalUrl && isImageUrl(post.externalUrl);
+            const bannerSrc = isImage ? post.externalUrl : post.mediaUrl;
             return (
               <div
                 key={`post-${post.id}`}
-                onClick={() => navigate(`/profile/${post.id}`, { state: { post: item.data } })}
+                onClick={() => navigate(`/profile/${post.id}`, { state: { post } })}
                 style={{ margin: '6px 12px', background: '#1e2128', borderRadius: 12, overflow: 'hidden', cursor: 'pointer' }}
               >
                 {bannerSrc ? (
                   <img src={bannerSrc} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
                 ) : (
                   <div style={{
-                    width: '100%', height: 120, background: placeholderColor(post.name),
+                    width: '100%', height: 120, background: placeholderColor(post.title ?? ''),
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 32, color: 'rgba(255,255,255,0.15)',
                   }}>👤</div>
@@ -198,12 +168,12 @@ export default function ProfilePage({ auth, target }: Props) {
                 <div style={{ padding: '10px 12px 12px' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ fontSize: 8, background: '#ff6b35', color: '#fff', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>POST</span>
-                    <span style={{ fontSize: 10, color: '#ff6b35', fontWeight: 600 }}>c/{community.name}</span>
+                    <span style={{ fontSize: 10, color: '#ff6b35', fontWeight: 600 }}>c/{post.source.name}</span>
                   </div>
                   <div style={{
                     fontSize: 14, fontWeight: 600, color: '#f0f0f0', lineHeight: 1.35, marginBottom: 8,
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>{post.name}</div>
+                  }}>{post.title}</div>
                   {deleteConfirm?.kind === 'post' && deleteConfirm.id === post.id ? (
                     <ConfirmStrip
                       label="Delete post?"
@@ -213,8 +183,8 @@ export default function ProfilePage({ auth, target }: Props) {
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
-                        <span>▲ {counts.score}</span>
-                        <span>💬 {counts.comments}</span>
+                        <span>▲ {post.counts.score}</span>
+                        <span>💬 {post.counts.comments}</span>
                       </div>
                       {isOwnProfile && (
                         <button
@@ -232,31 +202,25 @@ export default function ProfilePage({ auth, target }: Props) {
             );
           }
 
-          const { comment, post, community, counts } = item.data;
+          const comment = item.data;
           return (
             <div
               key={`comment-${comment.id}`}
-              onClick={() => navigate(`/profile/${post.id}`, {
+              onClick={() => navigate(`/profile/${comment.postId}`, {
                 state: {
-                  postId: post.id,
-                  commentApId: comment.ap_id,
+                  postId: comment.postId,
+                  commentApId: comment.permalink,
                 },
               })}
               style={{ margin: '6px 12px', background: '#1e2128', borderRadius: 12, padding: '10px 12px', cursor: 'pointer' }}
             >
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 8, background: '#4a9eff', color: '#fff', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>COMMENT</span>
-                <span style={{ fontSize: 10, color: '#ff6b35', fontWeight: 600 }}>c/{community.name}</span>
               </div>
-              <div style={{
-                fontSize: 11, color: '#666', borderLeft: '2px solid #2a2d35', paddingLeft: 8, marginBottom: 6,
-                fontStyle: 'italic',
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>{post.name}</div>
               <div style={{
                 fontSize: 13, color: '#d0d0d0', lineHeight: 1.4,
                 display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>{comment.content}</div>
+              }}>{comment.body}</div>
               {deleteConfirm?.kind === 'comment' && deleteConfirm.id === comment.id ? (
                 <ConfirmStrip
                   label="Delete comment?"
@@ -266,7 +230,7 @@ export default function ProfilePage({ auth, target }: Props) {
                 />
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                  <div style={{ fontSize: 10, color: '#555' }}>▲ {counts.score}</div>
+                  <div style={{ fontSize: 10, color: '#555' }}>▲ {comment.counts.score}</div>
                   {isOwnProfile && (
                     <button
                       aria-label="Delete comment"
@@ -281,8 +245,6 @@ export default function ProfilePage({ auth, target }: Props) {
             </div>
           );
         })}
-
-        {canLoadMore && !error && <div ref={sentinelRef} style={{ height: 1 }} />}
       </div>
     </div>
   );

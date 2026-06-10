@@ -1,28 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchPost, type PostView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { useBackend } from '../lib/api/context';
+import type { Post } from '../lib/api/types';
 import MenuDrawer from './MenuDrawer';
 import PostDetailCard from './PostDetailCard';
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 interface Props {
-  auth: AuthState;
+  auth?: unknown; // kept for App.tsx compat
 }
 
-export default function ProfilePostDetailPage({ auth }: Props) {
+export default function ProfilePostDetailPage({ auth: _auth }: Props) {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const backend = useBackend();
   const commentApId = state?.commentApId as string | undefined;
-  const [postView, setPostView] = useState<PostView | undefined>(state?.post as PostView | undefined);
+  const [neutralPost, setNeutralPost] = useState<Post | undefined>(
+    state?.post ? (state.post as Post) : undefined,
+  );
 
   useEffect(() => {
-    if (postView || !state?.postId) return;
-    fetchPost(auth.instance, state.postId).then(setPostView).catch(() => {});
-  }, [auth.instance, state?.postId, postView]);
+    if (neutralPost || !state?.postId) return;
+    backend.posts.get(state.postId as string)
+      .then(setNeutralPost)
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (!postView) {
+  if (!neutralPost) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
         <MenuDrawer onNavigate={navigate} onLogoClick={() => navigate('/')} />
@@ -33,7 +39,26 @@ export default function ProfilePostDetailPage({ auth }: Props) {
     );
   }
 
-  const { post, community, creator, counts } = postView;
+  // Convert neutral Post to legacy PostDetailCard props (PostDetailCard migrates in a later task)
+  const authorHandle = neutralPost.author.handle;
+  const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
+  const post = {
+    id: 0,
+    name: neutralPost.title ?? '',
+    ap_id: neutralPost.permalink,
+    url: neutralPost.externalUrl ?? null,
+    body: neutralPost.body ?? null,
+    thumbnail_url: neutralPost.mediaUrl ?? null,
+    nsfw: neutralPost.nsfw,
+    published: neutralPost.publishedAt,
+  };
+  const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+  const creator = {
+    name: authorName,
+    display_name: neutralPost.author.displayName ?? null,
+    actor_id: neutralPost.author.profileUrl,
+  };
+  const counts = { score: neutralPost.counts.score, comments: neutralPost.counts.comments };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
@@ -60,7 +85,6 @@ export default function ProfilePostDetailPage({ auth }: Props) {
           community={community}
           creator={creator}
           counts={counts}
-          auth={auth}
           notifCommentApId={commentApId}
         />
       </div>

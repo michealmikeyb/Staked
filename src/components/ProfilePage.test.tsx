@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  renderWithBackend, makePost, makeComment, makeUser, makeSource,
+} from '../test-utils';
+import { createMockBackend } from '../lib/api/backends/mock';
+import { BackendProvider } from '../lib/api/context';
 import ProfilePage from './ProfilePage';
 
 const mockNavigate = vi.fn();
@@ -9,47 +14,49 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../lib/lemmy', () => ({
-  fetchPersonDetails: vi.fn(),
-  blockPerson: vi.fn().mockResolvedValue(undefined),
-  deletePost: vi.fn().mockResolvedValue(undefined),
-  deleteComment: vi.fn().mockResolvedValue(undefined),
-}));
+// Default mock viewer handle from createMockBackend
+const VIEWER = makeUser({ handle: 'viewer@mock.test' });
+const BOB = makeUser({ id: 'bob-id', handle: 'bob@beehaw.org' });
 
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
+const LINUX_SOURCE = makeSource({ name: 'linux', id: 'https://lemmy.world/c/linux', handle: 'linux@lemmy.world' });
 
-const mockPost = {
-  post: { id: 1, name: 'My Terminal Setup', ap_id: 'https://lemmy.world/post/1', url: null, thumbnail_url: null, body: null, published: '2026-03-29T15:30:00Z' },
-  community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' },
-  creator: { name: 'alice', display_name: null },
+const mockPost = makePost({
+  id: '1',
+  title: 'My Terminal Setup',
+  author: VIEWER,
+  source: LINUX_SOURCE,
+  publishedAt: '2026-03-29T15:30:00Z',
+  permalink: 'https://lemmy.world/post/1',
+  externalUrl: null,
   counts: { score: 42, comments: 7 },
-};
+});
 
-const mockComment = {
-  comment: { id: 5, content: 'Great post!', ap_id: 'https://lemmy.world/comment/5', path: '0.5', published: '2026-03-28T10:00:00Z' },
-  post: { id: 2, name: 'Ask Lemmy: best editors?', ap_id: 'https://lemmy.world/post/2', url: null, body: null, thumbnail_url: null },
-  community: { name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
-  creator: { name: 'alice', display_name: null },
+const mockComment = makeComment({
+  id: 'c-5',
+  body: 'Great post!',
+  author: VIEWER,
+  postId: '2',
+  permalink: 'https://lemmy.world/comment/5',
+  publishedAt: '2026-03-28T10:00:00Z',
   counts: { score: 8 },
+});
+
+const DEFAULT_FIXTURES = {
+  users: [VIEWER],
+  posts: [mockPost],
+  comments: { '2': [mockComment] },
 };
 
-function renderPage() {
-  return render(
+function renderPage(fixtureOverrides = {}) {
+  return renderWithBackend(
     <MemoryRouter initialEntries={['/profile']}>
-      <ProfilePage auth={mockAuth} />
+      <ProfilePage />
     </MemoryRouter>,
+    { fixtures: { ...DEFAULT_FIXTURES, ...fixtureOverrides } },
   );
 }
 
-beforeEach(async () => {
-  vi.clearAllMocks();
-  const { fetchPersonDetails } = await import('../lib/lemmy');
-  (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValue({
-    posts: [mockPost],
-    comments: [mockComment],
-    personId: null,
-  });
-});
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('ProfilePage', () => {
   it('shows loading state initially', () => {
@@ -60,7 +67,7 @@ describe('ProfilePage', () => {
   it('renders username and instance', async () => {
     renderPage();
     await waitFor(() => screen.getByText('My Terminal Setup'));
-    expect(screen.getByText('u/alice@lemmy.world')).toBeInTheDocument();
+    expect(screen.getByText('u/viewer@mock.test')).toBeInTheDocument();
   });
 
   it('All tab is active by default and shows both post and comment', async () => {
@@ -99,47 +106,53 @@ describe('ProfilePage', () => {
     fireEvent.click(screen.getByText('Great post!'));
     expect(mockNavigate).toHaveBeenCalledWith('/profile/2', {
       state: {
-        postId: mockComment.post.id,
-        commentApId: 'https://lemmy.world/comment/5',
+        postId: mockComment.postId,
+        commentApId: mockComment.permalink,
       },
     });
   });
 
   it('shows empty state when no posts or comments', async () => {
-    const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [], personId: null });
-    renderPage();
+    renderWithBackend(
+      <MemoryRouter initialEntries={['/profile']}>
+        <ProfilePage />
+      </MemoryRouter>,
+      { fixtures: { users: [VIEWER], posts: [], comments: {} } },
+    );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
   });
 
   it('shows error when fetch fails', async () => {
-    const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
-    renderPage();
+    const backend = createMockBackend({});
+    vi.spyOn(backend.users, 'get').mockRejectedValue(new Error('Network error'));
+    render(
+      <BackendProvider value={backend}>
+        <MemoryRouter>
+          <ProfilePage />
+        </MemoryRouter>
+      </BackendProvider>,
+    );
     await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 });
 
 describe('ProfilePage with target prop', () => {
-  it('fetches via auth.instance using user@instance format when target is provided', async () => {
-    const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [], personId: null });
-    render(
-      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
-        <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+  it('loads profile using handle format when target is provided', async () => {
+    renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'bob', instance: 'beehaw.org' }} />
       </MemoryRouter>,
+      { fixtures: { users: [BOB] } },
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
-    expect(fetchPersonDetails).toHaveBeenCalledWith('lemmy.world', 'tok', 'bob@beehaw.org', 1);
   });
 
   it('shows target username and instance in header', async () => {
-    const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ posts: [], comments: [], personId: null });
-    render(
-      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
-        <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+    renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'bob', instance: 'beehaw.org' }} />
       </MemoryRouter>,
+      { fixtures: { users: [BOB] } },
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
     expect(screen.getByText('u/bob@beehaw.org')).toBeInTheDocument();
@@ -147,51 +160,45 @@ describe('ProfilePage with target prop', () => {
 });
 
 describe('ProfilePage block functionality', () => {
-  const targetAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
-
   function renderTarget() {
-    return render(
-      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
-        <ProfilePage auth={targetAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+    return renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'bob', instance: 'beehaw.org' }} />
       </MemoryRouter>,
+      { fixtures: { users: [BOB] } },
     );
   }
 
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValue({
-      posts: [],
-      comments: [],
-      personId: 77,
-    });
-  });
-
   it('does not show hamburger menu button when viewing own profile', async () => {
-    render(
+    renderWithBackend(
       <MemoryRouter initialEntries={['/profile']}>
-        <ProfilePage auth={targetAuth} />
+        <ProfilePage />
       </MemoryRouter>,
+      { fixtures: { users: [VIEWER] } },
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /profile menu/i })).not.toBeInTheDocument();
   });
 
-  it('does not show hamburger menu button when target matches own username and instance', async () => {
-    render(
-      <MemoryRouter initialEntries={['/user/lemmy.world/alice']}>
-        <ProfilePage auth={targetAuth} target={{ username: 'alice', instance: 'lemmy.world' }} />
+  it('does not show hamburger menu button when target matches own handle', async () => {
+    const SELF = makeUser({ handle: 'viewer@mock.test' });
+    renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'viewer', instance: 'mock.test' }} />
       </MemoryRouter>,
+      { fixtures: { users: [SELF] } },
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /profile menu/i })).not.toBeInTheDocument();
   });
 
   it('shows hamburger menu button when same username but different instance', async () => {
-    render(
-      <MemoryRouter initialEntries={['/user/beehaw.org/alice']}>
-        <ProfilePage auth={targetAuth} target={{ username: 'alice', instance: 'beehaw.org' }} />
+    const OTHER = makeUser({ handle: 'viewer@other.org' });
+    renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'viewer', instance: 'other.org' }} />
       </MemoryRouter>,
+      { fixtures: { users: [OTHER] } },
     );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /profile menu/i })).toBeInTheDocument();
@@ -227,21 +234,27 @@ describe('ProfilePage block functionality', () => {
     expect(screen.queryByText('Block u/bob?')).not.toBeInTheDocument();
   });
 
-  it('confirming block calls blockPerson and navigates with toast', async () => {
-    const { blockPerson } = await import('../lib/lemmy');
-    renderTarget();
+  it('confirming block calls backend.users.block and navigates with toast', async () => {
+    const { backend } = renderTarget();
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
+    const spy = vi.spyOn(backend.users, 'block');
     fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
-    await waitFor(() => expect(blockPerson).toHaveBeenCalledWith('lemmy.world', 'tok', 77, true));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('bob-id', true));
     expect(mockNavigate).toHaveBeenCalledWith('/', { state: { toast: 'Blocked u/bob' } });
   });
 
-  it('shows inline error when blockPerson rejects', async () => {
-    const { blockPerson } = await import('../lib/lemmy');
-    (blockPerson as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Server error'));
-    renderTarget();
+  it('shows inline error when block rejects', async () => {
+    const backend = createMockBackend({ users: [BOB] });
+    vi.spyOn(backend.users, 'block').mockRejectedValue(new Error('Server error'));
+    render(
+      <BackendProvider value={backend}>
+        <MemoryRouter>
+          <ProfilePage target={{ username: 'bob', instance: 'beehaw.org' }} />
+        </MemoryRouter>
+      </BackendProvider>,
+    );
     await waitFor(() => expect(screen.getByText('No activity yet')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /profile menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
@@ -252,27 +265,21 @@ describe('ProfilePage block functionality', () => {
 });
 
 describe('ProfilePage delete (own profile)', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    const { fetchPersonDetails } = await import('../lib/lemmy');
-    (fetchPersonDetails as ReturnType<typeof vi.fn>).mockResolvedValue({
-      posts: [mockPost],
-      comments: [mockComment],
-      personId: null,
-    });
-  });
-
   it('shows delete button on post card when viewing own profile', async () => {
     renderPage();
     await waitFor(() => screen.getByText('My Terminal Setup'));
     expect(screen.getByRole('button', { name: /delete post/i })).toBeInTheDocument();
   });
 
-  it('does not show delete button when auth is null and no target', async () => {
-    render(
-      <MemoryRouter initialEntries={['/profile']}>
-        <ProfilePage auth={null} />
+  it('does not show delete button when anonymous (no session)', async () => {
+    renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'viewer', instance: 'mock.test' }} />
       </MemoryRouter>,
+      {
+        fixtures: { users: [VIEWER], posts: [mockPost], comments: { '2': [mockComment] } },
+        anonymous: true,
+      },
     );
     await waitFor(() => screen.getByText('My Terminal Setup'));
     expect(screen.queryByRole('button', { name: /delete post/i })).not.toBeInTheDocument();
@@ -280,10 +287,12 @@ describe('ProfilePage delete (own profile)', () => {
   });
 
   it('does not show delete button when viewing another user profile', async () => {
-    render(
-      <MemoryRouter initialEntries={['/user/beehaw.org/bob']}>
-        <ProfilePage auth={mockAuth} target={{ username: 'bob', instance: 'beehaw.org' }} />
+    const bobPost = makePost({ title: 'My Terminal Setup', author: BOB, source: LINUX_SOURCE });
+    renderWithBackend(
+      <MemoryRouter>
+        <ProfilePage target={{ username: 'bob', instance: 'beehaw.org' }} />
       </MemoryRouter>,
+      { fixtures: { users: [BOB], posts: [bobPost] } },
     );
     await waitFor(() => screen.getByText('My Terminal Setup'));
     expect(screen.queryByRole('button', { name: /delete post/i })).not.toBeInTheDocument();
@@ -306,13 +315,13 @@ describe('ProfilePage delete (own profile)', () => {
     expect(screen.queryByText('Delete post?')).not.toBeInTheDocument();
   });
 
-  it('confirming post delete calls deletePost and removes post from list', async () => {
-    const { deletePost } = await import('../lib/lemmy');
-    renderPage();
+  it('confirming post delete calls backend.posts.delete and removes post from list', async () => {
+    const { backend } = renderPage();
     await waitFor(() => screen.getByText('My Terminal Setup'));
+    const spy = vi.spyOn(backend.posts, 'delete');
     fireEvent.click(screen.getByRole('button', { name: /delete post/i }));
     fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
-    await waitFor(() => expect(deletePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('1'));
     await waitFor(() => expect(screen.queryByText('My Terminal Setup')).not.toBeInTheDocument());
   });
 
@@ -329,13 +338,13 @@ describe('ProfilePage delete (own profile)', () => {
     expect(screen.getByText('Delete comment?')).toBeInTheDocument();
   });
 
-  it('confirming comment delete calls deleteComment and removes comment from list', async () => {
-    const { deleteComment } = await import('../lib/lemmy');
-    renderPage();
+  it('confirming comment delete calls backend.comments.delete and removes comment from list', async () => {
+    const { backend } = renderPage();
     await waitFor(() => screen.getByText('Great post!'));
+    const spy = vi.spyOn(backend.comments, 'delete');
     fireEvent.click(screen.getByRole('button', { name: /delete comment/i }));
     fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
-    await waitFor(() => expect(deleteComment).toHaveBeenCalledWith('lemmy.world', 'tok', 5));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('c-5'));
     await waitFor(() => expect(screen.queryByText('Great post!')).not.toBeInTheDocument());
   });
 });

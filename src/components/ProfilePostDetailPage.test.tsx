@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { renderWithBackend, makePost, makeSource, makeUser } from '../test-utils';
 import ProfilePostDetailPage from './ProfilePostDetailPage';
 
 const mockNavigate = vi.fn();
@@ -9,36 +10,30 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../lib/lemmy', () => ({
-  fetchComments: vi.fn().mockResolvedValue([]),
-  resolvePostId: vi.fn().mockResolvedValue(null),
-  resolveCommentId: vi.fn().mockResolvedValue(null),
-  createComment: vi.fn(),
+vi.mock('./PostDetailCard', () => ({
+  default: ({ post, community }: { post: { name: string }; community?: { name: string } }) => (
+    <div data-testid="post-detail-card">
+      {post.name}
+      {community && <span>c/{community.name}</span>}
+    </div>
+  ),
 }));
 
-vi.mock('../hooks/useCommentLoader', () => ({
-  useCommentLoader: vi.fn().mockReturnValue({
-    comments: [],
-    commentsLoaded: true,
-    resolvedInstanceRef: { current: 'lemmy.world' },
-    resolvedTokenRef: { current: 'tok' },
-  }),
-}));
-
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'alice' };
-
-const mockPostView = {
-  post: { id: 1, name: 'Profile Post Title', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null },
-  community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' },
-  creator: { name: 'alice', display_name: null },
+// Neutral Post fixture (sent by ProfilePage via navigation state)
+const mockNeutralPost = makePost({
+  id: '1',
+  title: 'Profile Post Title',
+  permalink: 'https://lemmy.world/post/1',
+  source: makeSource({ name: 'linux', id: 'https://lemmy.world/c/linux' }),
+  author: makeUser({ handle: 'alice@lemmy.world' }),
   counts: { score: 42, comments: 7 },
-};
+});
 
 function renderPage(state?: object | false) {
-  return render(
-    <MemoryRouter initialEntries={[{ pathname: '/profile/1', state: state ?? { post: mockPostView } }]}>
+  return renderWithBackend(
+    <MemoryRouter initialEntries={[{ pathname: '/profile/1', state: state ?? { post: mockNeutralPost } }]}>
       <Routes>
-        <Route path="/profile/:postId" element={<ProfilePostDetailPage auth={mockAuth} />} />
+        <Route path="/profile/:postId" element={<ProfilePostDetailPage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -63,8 +58,7 @@ describe('ProfilePostDetailPage', () => {
   });
 
   it('passes commentApId from state to PostDetailCard', () => {
-    renderPage({ post: mockPostView, commentApId: 'https://lemmy.world/comment/5' });
-    // PostDetailCard receives notifCommentApId; useCommentLoader is called — just verify no crash
+    renderPage({ post: mockNeutralPost, commentApId: 'https://lemmy.world/comment/5' });
     expect(screen.getByText('Profile Post Title')).toBeInTheDocument();
   });
 });
