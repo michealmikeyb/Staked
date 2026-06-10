@@ -1,21 +1,20 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { type PostView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import type { Post } from '../lib/api/types';
 import MenuDrawer from './MenuDrawer';
 import PostDetailCard from './PostDetailCard';
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 interface Props {
-  auth: AuthState;
+  auth?: unknown; // kept for App.tsx compat
 }
 
-export default function SavedPostDetailPage({ auth }: Props) {
+export default function SavedPostDetailPage({ auth: _auth }: Props) {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const postView = state?.post as PostView | undefined;
+  const neutralPost = state?.post as Post | undefined;
 
-  if (!postView) {
+  if (!neutralPost) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
         <MenuDrawer onNavigate={navigate} onLogoClick={() => navigate('/')} />
@@ -26,7 +25,26 @@ export default function SavedPostDetailPage({ auth }: Props) {
     );
   }
 
-  const { post, community, creator, counts } = postView;
+  // Convert neutral Post to legacy PostDetailCard props (PostDetailCard migrates in a later task)
+  const authorHandle = neutralPost.author.handle;
+  const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
+  const post = {
+    id: 0,
+    name: neutralPost.title ?? '',
+    ap_id: neutralPost.permalink,
+    url: neutralPost.externalUrl ?? null,
+    body: neutralPost.body ?? null,
+    thumbnail_url: neutralPost.mediaUrl ?? null,
+    nsfw: neutralPost.nsfw,
+    published: neutralPost.publishedAt,
+  };
+  const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+  const creator = {
+    name: authorName,
+    display_name: neutralPost.author.displayName ?? null,
+    actor_id: neutralPost.author.profileUrl,
+  };
+  const counts = { score: neutralPost.counts.score, comments: neutralPost.counts.comments };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
@@ -53,7 +71,6 @@ export default function SavedPostDetailPage({ auth }: Props) {
           community={community}
           creator={creator}
           counts={counts}
-          auth={auth}
         />
       </div>
     </div>

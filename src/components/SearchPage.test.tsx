@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { renderWithBackend, makePost, makeSource } from '../test-utils';
+import type { MockBackend } from '../lib/api/backends/mock';
 import SearchPage from './SearchPage';
 
 const mockNavigate = vi.fn();
@@ -9,55 +11,36 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../lib/lemmy', () => ({
-  searchCommunities: vi.fn(),
-  searchPosts: vi.fn(),
-}));
+const mockSource = makeSource({
+  id: 'https://lemmy.world/c/rust',
+  name: 'rust',
+  handle: 'rust@lemmy.world',
+  description: 'The Rust programming language',
+  counts: { members: 5000, posts: 0 },
+});
 
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
-
-const mockCommunity = {
-  community: {
-    id: 10,
-    name: 'rust',
-    actor_id: 'https://lemmy.world/c/rust',
-    icon: undefined,
-    description: 'The Rust programming language',
-  },
-  counts: { subscribers: 5000 },
-  subscribed: 'NotSubscribed',
-  blocked: false,
-  banned_from_community: false,
-};
-
-const mockPost = {
-  post: {
-    id: 99,
-    name: 'Rust is great',
-    ap_id: 'https://lemmy.world/post/99',
-    url: null,
-    thumbnail_url: null,
-    body: null,
-  },
-  community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
-  creator: { name: 'alice', display_name: null },
-  counts: { score: 50, comments: 10, child_count: 10 },
-};
+const mockPost = makePost({
+  id: '99',
+  title: 'Rust is great',
+  permalink: 'https://lemmy.world/post/99',
+  source: mockSource,
+  counts: { score: 50, comments: 10 },
+});
 
 function renderPage() {
-  return render(
+  return renderWithBackend(
     <MemoryRouter initialEntries={['/search']}>
-      <SearchPage auth={mockAuth} />
+      <SearchPage />
     </MemoryRouter>,
   );
 }
 
-beforeEach(async () => {
-  vi.clearAllMocks();
-  const { searchCommunities, searchPosts } = await import('../lib/lemmy');
-  (searchCommunities as ReturnType<typeof vi.fn>).mockResolvedValue([mockCommunity]);
-  (searchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([mockPost]);
-});
+function setupSearchMocks(backend: MockBackend) {
+  vi.spyOn(backend.search, 'sources').mockResolvedValue({ items: [mockSource], nextCursor: null });
+  vi.spyOn(backend.search, 'posts').mockResolvedValue({ items: [mockPost], nextCursor: null });
+}
+
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('SearchPage', () => {
   it('shows initial prompt before any search', () => {
@@ -66,28 +49,26 @@ describe('SearchPage', () => {
   });
 
   it('shows loading state while searching', async () => {
-    const { searchCommunities } = await import('../lib/lemmy');
-    (searchCommunities as ReturnType<typeof vi.fn>).mockImplementation(
-      () => new Promise(() => {}),
-    );
-    renderPage();
+    const { backend } = renderPage();
+    vi.spyOn(backend.search, 'sources').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(backend.search, 'posts').mockImplementation(() => new Promise(() => {}));
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rust' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
     expect(screen.getByText('Loading…')).toBeInTheDocument();
   });
 
   it('renders community results after searching', async () => {
-    renderPage();
+    const { backend } = renderPage();
+    setupSearchMocks(backend);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rust' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
-    await waitFor(() =>
-      expect(screen.getByText('c/rust')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('c/rust')).toBeInTheDocument());
     expect(screen.getByText('5,000 subscribers')).toBeInTheDocument();
   });
 
   it('switches to Posts tab and shows post results', async () => {
-    renderPage();
+    const { backend } = renderPage();
+    setupSearchMocks(backend);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rust' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
     await waitFor(() => screen.getByText('Communities'));
@@ -96,29 +77,26 @@ describe('SearchPage', () => {
   });
 
   it('shows empty state when no community results', async () => {
-    const { searchCommunities } = await import('../lib/lemmy');
-    (searchCommunities as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
-    renderPage();
+    const { backend } = renderPage();
+    vi.spyOn(backend.search, 'sources').mockResolvedValue({ items: [], nextCursor: null });
+    vi.spyOn(backend.search, 'posts').mockResolvedValue({ items: [], nextCursor: null });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'xyzzy' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
-    await waitFor(() =>
-      expect(screen.getByText(/No results for/)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/No results for/)).toBeInTheDocument());
   });
 
   it('shows error state when search fails', async () => {
-    const { searchCommunities } = await import('../lib/lemmy');
-    (searchCommunities as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
-    renderPage();
+    const { backend } = renderPage();
+    vi.spyOn(backend.search, 'sources').mockRejectedValue(new Error('Network error'));
+    vi.spyOn(backend.search, 'posts').mockRejectedValue(new Error('Network error'));
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rust' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
-    await waitFor(() =>
-      expect(screen.getByText('Network error')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
   it('navigates to community when community result is clicked', async () => {
-    renderPage();
+    const { backend } = renderPage();
+    setupSearchMocks(backend);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rust' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
     await waitFor(() => screen.getByText('c/rust'));
@@ -127,7 +105,8 @@ describe('SearchPage', () => {
   });
 
   it('navigates to /view/:instance/:postId when post result is clicked', async () => {
-    renderPage();
+    const { backend } = renderPage();
+    setupSearchMocks(backend);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rust' } });
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
     await waitFor(() => screen.getByText('Communities'));

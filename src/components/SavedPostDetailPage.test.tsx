@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { renderWithBackend, makePost, makeSource, makeUser } from '../test-utils';
 import SavedPostDetailPage from './SavedPostDetailPage';
 
 const mockNavigate = vi.fn();
@@ -9,43 +10,31 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../lib/lemmy', () => ({
-  fetchComments: vi.fn().mockResolvedValue([]),
-  resolvePostId: vi.fn().mockResolvedValue(null),
-  resolveCommentId: vi.fn().mockResolvedValue(null),
-  createComment: vi.fn(),
+vi.mock('./PostDetailCard', () => ({
+  default: ({ post, community }: { post: { name: string }; community?: { name: string } }) => (
+    <div data-testid="post-detail-card">
+      {post.name}
+      {community && <span>c/{community.name}</span>}
+    </div>
+  ),
 }));
 
-vi.mock('../hooks/useCommentLoader', () => ({
-  useCommentLoader: vi.fn().mockReturnValue({
-    comments: [],
-    commentsLoaded: true,
-    resolvedInstanceRef: { current: 'lemmy.world' },
-    resolvedTokenRef: { current: 'tok' },
-  }),
-}));
-
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
-
-const mockPostView = {
-  post: {
-    id: 1,
-    name: 'Saved Post Title',
-    ap_id: 'https://lemmy.world/post/1',
-    url: null,
-    body: 'Some body text',
-    thumbnail_url: null,
-  },
-  community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-  creator: { name: 'alice', display_name: null },
+// Neutral Post fixture (sent by SavedPage via navigation state)
+const mockNeutralPost = makePost({
+  id: '1',
+  title: 'Saved Post Title',
+  permalink: 'https://lemmy.world/post/1',
+  source: makeSource({ name: 'technology', id: 'https://lemmy.world/c/technology' }),
+  author: makeUser({ handle: 'alice@lemmy.world' }),
+  body: 'Some body text',
   counts: { score: 55, comments: 3 },
-};
+});
 
 function renderPage(withState = true) {
-  return render(
-    <MemoryRouter initialEntries={[{ pathname: '/saved/1', state: withState ? { post: mockPostView } : undefined }]}>
+  return renderWithBackend(
+    <MemoryRouter initialEntries={[{ pathname: '/saved/1', state: withState ? { post: mockNeutralPost } : undefined }]}>
       <Routes>
-        <Route path="/saved/:postId" element={<SavedPostDetailPage auth={mockAuth} />} />
+        <Route path="/saved/:postId" element={<SavedPostDetailPage />} />
       </Routes>
     </MemoryRouter>,
   );

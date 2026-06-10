@@ -1,30 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { renderWithBackend, makeSource } from '../test-utils';
 import CreatePostPage from './CreatePostPage';
-import * as lemmy from '../lib/lemmy';
 
-vi.mock('../lib/lemmy', () => ({
-  resolveCommunityId: vi.fn(),
-  createPost: vi.fn(),
-  uploadImage: vi.fn(),
-}));
-
-const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-const auth = { instance: 'lemmy.world', token: 'tok', username: 'user' };
+const mockNavigate = vi.fn();
 
 function renderPage(locationState: unknown = null) {
-  return render(
+  return renderWithBackend(
     <MemoryRouter initialEntries={[{ pathname: '/create-post', state: locationState }]}>
       <Routes>
-        <Route path="/create-post" element={<CreatePostPage auth={auth} />} />
+        <Route path="/create-post" element={<CreatePostPage />} />
       </Routes>
     </MemoryRouter>,
+    { fixtures: { sources: [makeSource({ handle: 'programming@lemmy.world', name: 'programming' })] } },
   );
 }
 
@@ -67,43 +61,37 @@ describe('CreatePostPage', () => {
     expect(screen.getByRole('button', { name: /^post$/i })).toBeEnabled();
   });
 
-  it('resolves community id, calls createPost, and navigates back on success', async () => {
-    vi.mocked(lemmy.resolveCommunityId).mockResolvedValue(42);
-    vi.mocked(lemmy.createPost).mockResolvedValue(undefined);
-    renderPage({ community: 'programming@lemmy.world' });
+  it('calls backend.posts.create and navigates back on success', async () => {
+    const { backend } = renderPage({ community: 'programming@lemmy.world' });
+    const spy = vi.spyOn(backend.posts, 'create').mockResolvedValue({} as never);
     fireEvent.change(screen.getByPlaceholderText('Post title'), { target: { value: 'My post' } });
     fireEvent.change(screen.getByPlaceholderText('https://...'), { target: { value: 'https://example.com' } });
     fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
-    await waitFor(() =>
-      expect(lemmy.resolveCommunityId).toHaveBeenCalledWith('lemmy.world', 'tok', 'programming@lemmy.world'),
-    );
-    expect(lemmy.createPost).toHaveBeenCalledWith('lemmy.world', 'tok', {
-      name: 'My post',
-      community_id: 42,
+    await waitFor(() => expect(spy).toHaveBeenCalledWith({
+      sourceHandle: 'programming@lemmy.world',
+      title: 'My post',
       url: 'https://example.com',
       body: undefined,
-    });
+    }));
     expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('omits url and body when empty', async () => {
-    vi.mocked(lemmy.resolveCommunityId).mockResolvedValue(1);
-    vi.mocked(lemmy.createPost).mockResolvedValue(undefined);
-    renderPage({ community: 'tech@lemmy.world' });
+    const { backend } = renderPage({ community: 'tech@lemmy.world' });
+    const spy = vi.spyOn(backend.posts, 'create').mockResolvedValue({} as never);
     fireEvent.change(screen.getByPlaceholderText('Post title'), { target: { value: 'Title only' } });
     fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
-    await waitFor(() => expect(lemmy.createPost).toHaveBeenCalled());
-    expect(lemmy.createPost).toHaveBeenCalledWith('lemmy.world', 'tok', {
-      name: 'Title only',
-      community_id: 1,
+    await waitFor(() => expect(spy).toHaveBeenCalledWith({
+      sourceHandle: 'tech@lemmy.world',
+      title: 'Title only',
       url: undefined,
       body: undefined,
-    });
+    }));
   });
 
   it('shows error message when submit fails', async () => {
-    vi.mocked(lemmy.resolveCommunityId).mockRejectedValue(new Error('Community not found'));
-    renderPage({ community: 'bad@lemmy.world' });
+    const { backend } = renderPage({ community: 'bad@lemmy.world' });
+    vi.spyOn(backend.posts, 'create').mockRejectedValue(new Error('Community not found'));
     fireEvent.change(screen.getByPlaceholderText('Post title'), { target: { value: 'My post' } });
     fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
     await waitFor(() => expect(screen.getByText('Community not found')).toBeInTheDocument());
@@ -111,8 +99,8 @@ describe('CreatePostPage', () => {
   });
 
   it('shows upload error when image upload fails', async () => {
-    vi.mocked(lemmy.uploadImage).mockRejectedValue(new Error('Upload failed: 413'));
-    renderPage();
+    const { backend } = renderPage();
+    vi.spyOn(backend.media, 'uploadImage').mockRejectedValue(new Error('Upload failed: 413'));
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
     fireEvent.change(fileInput, { target: { files: [file] } });
@@ -120,8 +108,8 @@ describe('CreatePostPage', () => {
   });
 
   it('auto-fills URL field after successful image upload', async () => {
-    vi.mocked(lemmy.uploadImage).mockResolvedValue('https://lemmy.world/pictrs/image/abc.jpg');
-    renderPage();
+    const { backend } = renderPage();
+    vi.spyOn(backend.media, 'uploadImage').mockResolvedValue({ url: 'https://lemmy.world/pictrs/image/abc.jpg' });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
     fireEvent.change(fileInput, { target: { files: [file] } });

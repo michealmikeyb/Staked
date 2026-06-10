@@ -91,6 +91,7 @@ export interface MockFixtures {
   users?: User[];
   sources?: Source[];
   posts?: Post[];
+  savedPosts?: Post[];  // posts added to both state.posts and state.saves
   comments?: Record<ID, Comment[]>;
   notifications?: Notification[];
   unreadCount?: number;

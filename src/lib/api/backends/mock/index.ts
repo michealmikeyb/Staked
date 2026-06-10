@@ -31,11 +31,13 @@ export interface MockBackend extends Backend {
 export function createMockBackend(
   fixtures: MockFixtures = {},
   capabilitiesOverride: Partial<Capabilities> = {},
+  anonymous = false,
 ): MockBackend {
   const state = createMockState();
   fixtures.users?.forEach((u) => state.users.set(u.handle, u));
   fixtures.sources?.forEach((s) => state.sources.set(s.handle, s));
   fixtures.posts?.forEach((p) => state.posts.set(p.id, p));
+  fixtures.savedPosts?.forEach((p) => { state.posts.set(p.id, p); state.saves[p.id] = true; });
   if (fixtures.comments) {
     for (const [postId, comments] of Object.entries(fixtures.comments)) {
       state.comments.set(postId, comments);
@@ -44,7 +46,7 @@ export function createMockBackend(
   state.notifications = fixtures.notifications ?? [];
   state.unreadCount = fixtures.unreadCount ?? 0;
 
-  const session: Session = {
+  const session: Session | null = anonymous ? null : {
     id: 'mock-session',
     backendId: 'mock',
     viewer: { id: 'viewer', handle: 'viewer@mock.test', profileUrl: 'https://mock.test/u/viewer' },
@@ -62,11 +64,17 @@ export function createMockBackend(
     state,
 
     listStaks(): Stak[] {
-      return [{ sessionId: session.id, id: 'all', label: 'All' }];
+      const sid = session?.id ?? '';
+      const base: Stak[] = [
+        { sessionId: sid, id: 'all', label: 'All' },
+        { sessionId: sid, id: 'local', label: 'Local' },
+      ];
+      if (session) base.push({ sessionId: sid, id: 'subscribed', label: 'Subscribed' });
+      return base;
     },
 
     auth: {
-      async login(_credentials) { return session; },
+      async login(_credentials) { return session!; },
       async logout() {},
     },
 
@@ -100,7 +108,7 @@ export function createMockBackend(
         const post: Post = {
           id,
           source,
-          author: session.viewer!,
+          author: session?.viewer ?? { id: 'anon', handle: 'anon@mock.test', profileUrl: 'https://mock.test/u/anon' },
           title: input.title,
           body: input.body,
           externalUrl: input.url,
@@ -128,7 +136,7 @@ export function createMockBackend(
           postId: input.postId,
           parentId: input.parentId ?? null,
           depth: parent ? parent.depth + 1 : 0,
-          author: session.viewer!,
+          author: session?.viewer ?? { id: 'anon', handle: 'anon@mock.test', profileUrl: 'https://mock.test/u/anon' },
           body: input.body,
           publishedAt: new Date().toISOString(),
           permalink: `https://mock.test/c/${id}`,

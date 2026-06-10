@@ -1,11 +1,10 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { type AuthState } from '../lib/store';
-import { resolveCommunityId, createPost, uploadImage } from '../lib/lemmy';
+import { useBackend } from '../lib/api/context';
 import InstanceInput from './InstanceInput';
 
 interface Props {
-  auth: AuthState;
+  auth?: unknown; // kept for App.tsx compat — backend provides session
 }
 
 const inputStyle: React.CSSProperties = {
@@ -19,9 +18,10 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.08em', marginBottom: 6, display: 'block',
 };
 
-export default function CreatePostPage({ auth }: Props) {
+export default function CreatePostPage({ auth: _auth }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
+  const backend = useBackend();
   const prefill = (location.state as { community?: string } | null)?.community ?? '';
 
   const [community, setCommunity] = useState(prefill);
@@ -42,7 +42,7 @@ export default function CreatePostPage({ auth }: Props) {
     setUploadError('');
     setUploading(true);
     try {
-      const imageUrl = await uploadImage(auth.instance, auth.token, file);
+      const { url: imageUrl } = await backend.media.uploadImage(file);
       setUrl(imageUrl);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -56,10 +56,9 @@ export default function CreatePostPage({ auth }: Props) {
     setSubmitError('');
     setSubmitting(true);
     try {
-      const communityId = await resolveCommunityId(auth.instance, auth.token, community.trim());
-      await createPost(auth.instance, auth.token, {
-        name: title.trim(),
-        community_id: communityId,
+      await backend.posts.create({
+        sourceHandle: community.trim(),
+        title: title.trim(),
         url: url.trim() || undefined,
         body: body.trim() || undefined,
       });

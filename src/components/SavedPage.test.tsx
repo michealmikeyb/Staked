@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { renderWithBackend, makePost, makeSource } from '../test-utils';
+import { createMockBackend } from '../lib/api/backends/mock';
+import { BackendProvider } from '../lib/api/context';
+import { render } from '@testing-library/react';
 import SavedPage from './SavedPage';
 
 const mockNavigate = vi.fn();
@@ -9,40 +13,24 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-const mockPost = {
-  post: {
-    id: 1,
-    name: 'A Saved Post',
-    ap_id: 'https://lemmy.world/post/1',
-    url: null,
-    thumbnail_url: null,
-    body: null,
-  },
-  community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-  creator: { name: 'alice', display_name: null },
-  counts: { score: 100, comments: 5, child_count: 5 },
-};
+const TECH_SOURCE = makeSource({ name: 'technology', handle: 'technology@lemmy.world' });
+const savedPost = makePost({
+  id: '1',
+  title: 'A Saved Post',
+  source: TECH_SOURCE,
+  counts: { score: 100, comments: 5 },
+});
 
-vi.mock('../lib/lemmy', () => ({
-  fetchSavedPosts: vi.fn(),
-  savePost: vi.fn().mockResolvedValue(undefined),
-}));
-
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
-
-function renderPage() {
-  return render(
+function renderPage(fixtures = {}) {
+  return renderWithBackend(
     <MemoryRouter initialEntries={['/saved']}>
-      <SavedPage auth={mockAuth} />
+      <SavedPage />
     </MemoryRouter>,
+    { fixtures: { savedPosts: [savedPost], ...fixtures } },
   );
 }
 
-beforeEach(async () => {
-  vi.clearAllMocks();
-  const { fetchSavedPosts } = await import('../lib/lemmy');
-  (fetchSavedPosts as ReturnType<typeof vi.fn>).mockResolvedValue([mockPost]);
-});
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('SavedPage', () => {
   it('shows loading state initially', () => {
@@ -52,16 +40,12 @@ describe('SavedPage', () => {
 
   it('renders saved post title after loading', async () => {
     renderPage();
-    await waitFor(() =>
-      expect(screen.getByText('A Saved Post')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('A Saved Post')).toBeInTheDocument());
   });
 
   it('renders community name', async () => {
     renderPage();
-    await waitFor(() =>
-      expect(screen.getByText('c/technology')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('c/technology')).toBeInTheDocument());
   });
 
   it('renders score and comment count', async () => {
@@ -72,28 +56,29 @@ describe('SavedPage', () => {
   });
 
   it('shows empty state when no saved posts', async () => {
-    const { fetchSavedPosts } = await import('../lib/lemmy');
-    (fetchSavedPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
-    renderPage();
-    await waitFor(() =>
-      expect(screen.getByText('No saved posts')).toBeInTheDocument(),
+    renderWithBackend(
+      <MemoryRouter initialEntries={['/saved']}><SavedPage /></MemoryRouter>,
+      { fixtures: {} },
     );
+    await waitFor(() => expect(screen.getByText('No saved posts')).toBeInTheDocument());
   });
 
   it('navigates to saved post detail on click', async () => {
     renderPage();
     await waitFor(() => screen.getByText('A Saved Post'));
     fireEvent.click(screen.getByText('A Saved Post'));
-    expect(mockNavigate).toHaveBeenCalledWith('/saved/1', { state: { post: mockPost } });
+    expect(mockNavigate).toHaveBeenCalledWith('/saved/1', { state: { post: savedPost } });
   });
 
   it('shows error message when fetch fails', async () => {
-    const { fetchSavedPosts } = await import('../lib/lemmy');
-    (fetchSavedPosts as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
-    renderPage();
-    await waitFor(() =>
-      expect(screen.getByText('Network error')).toBeInTheDocument(),
+    const backend = createMockBackend({});
+    vi.spyOn(backend.feed, 'getSavedPosts').mockRejectedValue(new Error('Network error'));
+    render(
+      <BackendProvider value={backend}>
+        <MemoryRouter><SavedPage /></MemoryRouter>
+      </BackendProvider>,
     );
+    await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
   it('renders an Unsave button on each post card', async () => {
@@ -102,22 +87,18 @@ describe('SavedPage', () => {
     expect(screen.getByRole('button', { name: /unsave/i })).toBeInTheDocument();
   });
 
-  it('clicking Unsave calls savePost with save=false', async () => {
-    const { savePost } = await import('../lib/lemmy');
-    renderPage();
+  it('clicking Unsave calls backend.posts.save with false', async () => {
+    const { backend } = renderPage();
     await waitFor(() => screen.getByText('A Saved Post'));
+    const spy = vi.spyOn(backend.posts, 'save');
     fireEvent.click(screen.getByRole('button', { name: /unsave/i }));
-    await waitFor(() =>
-      expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, false),
-    );
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('1', false));
   });
 
   it('clicking Unsave removes the post from the list', async () => {
     renderPage();
     await waitFor(() => screen.getByText('A Saved Post'));
     fireEvent.click(screen.getByRole('button', { name: /unsave/i }));
-    await waitFor(() =>
-      expect(screen.queryByText('A Saved Post')).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText('A Saved Post')).not.toBeInTheDocument());
   });
 });

@@ -1,30 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { searchCommunities, searchPosts, type CommunityView, type PostView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
-import { instanceFromActorId, sourceFromApId, isImageUrl, placeholderColor, parsePostUrl } from '../lib/urlUtils';
+import { useBackend } from '../lib/api/context';
+import type { Source, Post } from '../lib/api/types';
+import { sourceFromApId, isImageUrl, placeholderColor, parsePostUrl } from '../lib/urlUtils';
 import MenuDrawer from './MenuDrawer';
 import CommunityAvatar from './CommunityAvatar';
 
 type Tab = 'communities' | 'posts';
 
 interface Props {
-  auth: AuthState;
+  auth?: unknown; // kept for App.tsx compat — backend provides session
 }
 
-export default function SearchPage({ auth }: Props) {
+export default function SearchPage({ auth: _auth }: Props) {
   const navigate = useNavigate();
+  const backend = useBackend();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('communities');
-  const [communities, setCommunities] = useState<CommunityView[]>([]);
-  const [posts, setPosts] = useState<PostView[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
-  const [communityPage, setCommunityPage] = useState(1);
-  const [postPage, setPostPage] = useState(1);
+  const [sourcesCursor, setSourcesCursor] = useState<string | null>(null);
+  const [postsCursor, setPostsCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [canLoadMoreCommunities, setCanLoadMoreCommunities] = useState(false);
+  const [canLoadMoreSources, setCanLoadMoreSources] = useState(false);
   const [canLoadMorePosts, setCanLoadMorePosts] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
 
@@ -36,21 +37,21 @@ export default function SearchPage({ auth }: Props) {
     setLoading(true);
     setError('');
     setSearched(false);
-    setCommunities([]);
+    setSources([]);
     setPosts([]);
-    setCommunityPage(1);
-    setPostPage(1);
     const q = query.trim();
     setLastQuery(q);
     try {
-      const [comms, ps] = await Promise.all([
-        searchCommunities(auth.instance, auth.token, q, 1),
-        searchPosts(auth.instance, auth.token, q, 1),
+      const [srcsPage, psPage] = await Promise.all([
+        backend.search.sources(q, { cursor: null }),
+        backend.search.posts(q, { cursor: null }),
       ]);
-      setCommunities(comms);
-      setPosts(ps);
-      setCanLoadMoreCommunities(comms.length === 20);
-      setCanLoadMorePosts(ps.length === 20);
+      setSources(srcsPage.items);
+      setPosts(psPage.items);
+      setSourcesCursor(srcsPage.nextCursor);
+      setPostsCursor(psPage.nextCursor);
+      setCanLoadMoreSources(srcsPage.nextCursor !== null);
+      setCanLoadMorePosts(psPage.nextCursor !== null);
       setSearched(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -63,17 +64,15 @@ export default function SearchPage({ auth }: Props) {
     setLoadingMore(true);
     try {
       if (activeTab === 'communities') {
-        const nextPage = communityPage + 1;
-        const more = await searchCommunities(auth.instance, auth.token, lastQuery, nextPage);
-        setCommunities((prev) => [...prev, ...more]);
-        setCommunityPage(nextPage);
-        setCanLoadMoreCommunities(more.length === 20);
+        const morePage = await backend.search.sources(lastQuery, { cursor: sourcesCursor });
+        setSources((prev) => [...prev, ...morePage.items]);
+        setSourcesCursor(morePage.nextCursor);
+        setCanLoadMoreSources(morePage.nextCursor !== null);
       } else {
-        const nextPage = postPage + 1;
-        const more = await searchPosts(auth.instance, auth.token, lastQuery, nextPage);
-        setPosts((prev) => [...prev, ...more]);
-        setPostPage(nextPage);
-        setCanLoadMorePosts(more.length === 20);
+        const morePage = await backend.search.posts(lastQuery, { cursor: postsCursor });
+        setPosts((prev) => [...prev, ...morePage.items]);
+        setPostsCursor(morePage.nextCursor);
+        setCanLoadMorePosts(morePage.nextCursor !== null);
       }
     } catch {
       // silently fail on load more
@@ -82,7 +81,7 @@ export default function SearchPage({ auth }: Props) {
     }
   }
 
-  const canLoadMore = activeTab === 'communities' ? canLoadMoreCommunities : canLoadMorePosts;
+  const canLoadMore = activeTab === 'communities' ? canLoadMoreSources : canLoadMorePosts;
 
   const tabStyle = (tab: Tab): React.CSSProperties => ({
     flex: 1, padding: '10px 0', background: 'none', border: 'none',
@@ -158,35 +157,36 @@ export default function SearchPage({ auth }: Props) {
         )}
 
         {!loading && !error && searched && activeTab === 'communities' && (
-          communities.length === 0 ? (
+          sources.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#888', padding: 32 }}>No results for "{lastQuery}"</div>
           ) : (
-            communities.map((cv) => {
-              const { community, counts } = cv;
-              const instance = instanceFromActorId(community.actor_id);
+            sources.map((source) => {
+              const atIdx = source.handle.indexOf('@');
+              const srcName = atIdx >= 0 ? source.handle.slice(0, atIdx) : source.handle;
+              const srcInstance = atIdx >= 0 ? source.handle.slice(atIdx + 1) : '';
               return (
                 <div
-                  key={community.id}
-                  onClick={() => navigate(`/community/${instance}/${community.name}`)}
+                  key={source.id}
+                  onClick={() => navigate(`/community/${srcInstance}/${srcName}`)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     margin: '6px 12px', padding: 12,
                     background: '#1e2128', borderRadius: 12, cursor: 'pointer',
                   }}
                 >
-                  <CommunityAvatar name={community.name} icon={community.icon} size={40} />
+                  <CommunityAvatar name={source.name} icon={source.icon} size={40} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#ff6b35' }}>c/{community.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#ff6b35' }}>c/{source.name}</div>
                     <div style={{ fontSize: 11, color: '#777', marginTop: 2 }}>
-                      {counts.subscribers.toLocaleString()} subscribers
+                      {source.counts.members.toLocaleString()} subscribers
                     </div>
-                    {community.description && (
+                    {source.description && (
                       <div style={{
                         fontSize: 12, color: '#aaa', marginTop: 4, lineHeight: 1.4,
                         display: '-webkit-box', WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical', overflow: 'hidden',
                       }}>
-                        {community.description}
+                        {source.description}
                       </div>
                     )}
                   </div>
@@ -200,11 +200,10 @@ export default function SearchPage({ auth }: Props) {
           posts.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#888', padding: 32 }}>No results for "{lastQuery}"</div>
           ) : (
-            posts.map((pv) => {
-              const { post, community, counts } = pv;
-              const source = sourceFromApId(post.ap_id);
-              const isImage = !!post.url && isImageUrl(post.url);
-              const bannerSrc = isImage ? post.url : post.thumbnail_url;
+            posts.map((post) => {
+              const source = sourceFromApId(post.permalink);
+              const isImage = !!post.externalUrl && isImageUrl(post.externalUrl);
+              const bannerSrc = isImage ? post.externalUrl : post.mediaUrl;
               return (
                 <div
                   key={post.id}
@@ -225,7 +224,7 @@ export default function SearchPage({ auth }: Props) {
                   ) : (
                     <div style={{
                       width: '100%', height: 120,
-                      background: placeholderColor(post.name),
+                      background: placeholderColor(post.title ?? ''),
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 32, color: 'rgba(255,255,255,0.15)',
                     }}>
@@ -234,18 +233,18 @@ export default function SearchPage({ auth }: Props) {
                   )}
                   <div style={{ padding: '10px 12px 12px' }}>
                     <div style={{ fontSize: 10, color: '#ff6b35', fontWeight: 600, marginBottom: 5 }}>
-                      c/{community.name}
+                      c/{post.source.name}
                     </div>
                     <div style={{
                       fontSize: 14, fontWeight: 600, color: '#f0f0f0', lineHeight: 1.35, marginBottom: 8,
                       display: '-webkit-box', WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical', overflow: 'hidden',
                     }}>
-                      {post.name}
+                      {post.title}
                     </div>
                     <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#777' }}>
-                      <span>▲ {counts.score}</span>
-                      <span>💬 {counts.comments}</span>
+                      <span>▲ {post.counts.score}</span>
+                      <span>💬 {post.counts.comments}</span>
                     </div>
                   </div>
                 </div>
