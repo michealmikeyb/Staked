@@ -1,29 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchPost, type PostView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { useBackend } from '../lib/api/context';
+import type { Post } from '../lib/api/types';
 import MenuDrawer from './MenuDrawer';
 import PostDetailCard from './PostDetailCard';
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 interface Props {
-  auth: AuthState;
+  auth?: unknown; // kept for App.tsx compat — backend provides session
 }
 
-export default function PostViewPage({ auth }: Props) {
+export default function PostViewPage({ auth: _auth }: Props) {
   const { instance, postId } = useParams<{ instance: string; postId: string }>();
   const navigate = useNavigate();
-  const [postView, setPostView] = useState<PostView | null>(null);
+  const backend = useBackend();
+  const [neutralPost, setNeutralPost] = useState<Post | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!instance || !postId) { setError(true); return; }
-    const id = parseInt(postId, 10);
-    if (isNaN(id)) { setError(true); return; }
-    fetchPost(instance, id)
-      .then(setPostView)
+    const permalink = `https://${instance}/post/${postId}`;
+    backend.posts.getByPermalink(permalink)
+      .then((p) => {
+        if (!p) { setError(true); return; }
+        setNeutralPost(p);
+      })
       .catch(() => setError(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance, postId]);
 
   return (
@@ -46,7 +50,7 @@ export default function PostViewPage({ auth }: Props) {
         }
       />
       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-        {!postView && !error && (
+        {!neutralPost && !error && (
           <div style={{ marginTop: 80, color: '#888' }}>Loading…</div>
         )}
         {error && (
@@ -54,15 +58,26 @@ export default function PostViewPage({ auth }: Props) {
             <div style={{ fontSize: '1rem' }}>Post not found</div>
           </div>
         )}
-        {postView && (
-          <PostDetailCard
-            post={postView.post}
-            community={postView.community}
-            creator={postView.creator}
-            counts={{ score: postView.counts.score, comments: postView.counts.comments }}
-            auth={auth}
-          />
-        )}
+        {neutralPost && (() => {
+          const authorHandle = neutralPost.author.handle;
+          const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
+          const post = {
+            id: 0,
+            name: neutralPost.title ?? '',
+            ap_id: neutralPost.permalink,
+            url: neutralPost.externalUrl ?? null,
+            body: neutralPost.body ?? null,
+            thumbnail_url: neutralPost.mediaUrl ?? null,
+            nsfw: neutralPost.nsfw,
+            published: neutralPost.publishedAt,
+          };
+          const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+          const creator = { name: authorName, display_name: neutralPost.author.displayName ?? null, actor_id: neutralPost.author.profileUrl };
+          const counts = { score: neutralPost.counts.score, comments: neutralPost.counts.comments };
+          return (
+            <PostDetailCard post={post} community={community} creator={creator} counts={counts} />
+          );
+        })()}
       </div>
     </div>
   );

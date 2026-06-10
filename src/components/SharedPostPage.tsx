@@ -1,21 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchPost, type PostView } from '../lib/lemmy';
+import { useBackend } from '../lib/api/context';
+import type { Post } from '../lib/api/types';
 import Logo from './Logo';
 import PostDetailCard from './PostDetailCard';
 
 export default function SharedPostPage() {
   const { instance, postId } = useParams<{ instance: string; postId: string }>();
-  const [postView, setPostView] = useState<PostView | null>(null);
+  const backend = useBackend();
+  const [neutralPost, setNeutralPost] = useState<Post | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!instance || !postId) { setError(true); return; }
-    const id = parseInt(postId, 10);
-    if (isNaN(id)) { setError(true); return; }
-    fetchPost(instance, id)
-      .then(setPostView)
+    const permalink = `https://${instance}/post/${postId}`;
+    backend.posts.getByPermalink(permalink)
+      .then((p) => {
+        if (!p) { setError(true); return; }
+        setNeutralPost(p);
+      })
       .catch(() => setError(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance, postId]);
 
   return (
@@ -30,7 +35,7 @@ export default function SharedPostPage() {
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '0 0 32px' }}>
-        {!postView && !error && (
+        {!neutralPost && !error && (
           <div data-testid="shared-post-loading" style={{ marginTop: 80, color: '#888', fontSize: '0.9rem' }}>
             Loading…
           </div>
@@ -43,21 +48,33 @@ export default function SharedPostPage() {
           </div>
         )}
 
-        {postView && (
-          <>
-            <PostDetailCard
-              post={postView.post}
-              community={postView.community}
-              creator={postView.creator}
-              counts={{ score: postView.counts.score, comments: postView.counts.comments }}
-            />
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <a href="/#/" style={{ color: '#ff6b35', fontSize: '0.85rem', textDecoration: 'none' }}>
-                Log in to interact →
-              </a>
-            </div>
-          </>
-        )}
+        {neutralPost && (() => {
+          const authorHandle = neutralPost.author.handle;
+          const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
+          const post = {
+            id: 0,
+            name: neutralPost.title ?? '',
+            ap_id: neutralPost.permalink,
+            url: neutralPost.externalUrl ?? null,
+            body: neutralPost.body ?? null,
+            thumbnail_url: neutralPost.mediaUrl ?? null,
+            nsfw: neutralPost.nsfw,
+            published: neutralPost.publishedAt,
+          };
+          const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+          const creator = { name: authorName, display_name: neutralPost.author.displayName ?? null, actor_id: neutralPost.author.profileUrl };
+          const counts = { score: neutralPost.counts.score, comments: neutralPost.counts.comments };
+          return (
+            <>
+              <PostDetailCard post={post} community={community} creator={creator} counts={counts} />
+              <div style={{ marginTop: 16, textAlign: 'center' }}>
+                <a href="/#/" style={{ color: '#ff6b35', fontSize: '0.85rem', textDecoration: 'none' }}>
+                  Log in to interact →
+                </a>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );

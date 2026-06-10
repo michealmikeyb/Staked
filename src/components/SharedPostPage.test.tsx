@@ -1,34 +1,29 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-
-vi.mock('../lib/lemmy', () => ({
-  fetchPost: vi.fn().mockResolvedValue({
-    post: { id: 42, name: 'Hello from Lemmy', ap_id: 'https://lemmy.world/post/42', url: null, body: 'Post body text', thumbnail_url: null },
-    community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' },
-    creator: { name: 'carol', display_name: null },
-    counts: { score: 77, comments: 5 },
-  }),
-  fetchComments: vi.fn().mockResolvedValue([]),
-  resolvePostId: vi.fn().mockResolvedValue(null),
-  resolveCommentId: vi.fn().mockResolvedValue(null),
-}));
-
-vi.mock('../hooks/useCommentLoader', () => ({
-  useCommentLoader: () => ({ comments: [], commentsLoaded: true, resolvedInstanceRef: { current: '' }, resolvedTokenRef: { current: '' } }),
-}));
-
+import { renderWithBackend, makePost } from '../test-utils';
 import SharedPostPage from './SharedPostPage';
 
-function renderAt(path: string) {
-  return render(
+vi.mock('./PostDetailCard', () => ({
+  default: ({ post }: { post: { name: string } }) => (
+    <div data-testid="post-detail-card">{post.name}</div>
+  ),
+}));
+
+const POST = makePost({ id: '42', title: 'Hello from Lemmy', permalink: 'https://lemmy.world/post/42' });
+
+function renderAt(path: string, withPost = true) {
+  return renderWithBackend(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/post/:instance/:postId" element={<SharedPostPage />} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
+    withPost ? { fixtures: { posts: [POST] } } : {},
   );
 }
+
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('SharedPostPage', () => {
   it('renders post title after loading', async () => {
@@ -39,14 +34,11 @@ describe('SharedPostPage', () => {
   it('shows loading state initially', async () => {
     renderAt('/post/lemmy.world/42');
     expect(screen.getByTestId('shared-post-loading')).toBeInTheDocument();
-    // Wait for loading to complete
     await waitFor(() => expect(screen.queryByTestId('shared-post-loading')).not.toBeInTheDocument());
   });
 
-  it('shows error when fetchPost rejects', async () => {
-    const { fetchPost } = await import('../lib/lemmy');
-    (fetchPost as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('not found'));
-    renderAt('/post/lemmy.world/99');
+  it('shows error when post is not found', async () => {
+    renderAt('/post/lemmy.world/99', false);
     await waitFor(() => expect(screen.getByTestId('shared-post-error')).toBeInTheDocument());
   });
 });
