@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
+import { renderWithBackend } from '../test-utils';
 import LoginPage from './LoginPage';
-
-vi.mock('../lib/lemmy', () => ({
-  login: vi.fn().mockResolvedValue('mock-jwt'),
-}));
 
 vi.mock('../lib/store', () => ({
   saveAuth: vi.fn(),
@@ -23,7 +20,7 @@ const mockOnLogin = vi.fn();
 beforeEach(() => { vi.clearAllMocks(); });
 
 function renderLogin() {
-  return render(
+  return renderWithBackend(
     <MemoryRouter>
       <LoginPage onLogin={mockOnLogin} />
     </MemoryRouter>,
@@ -50,15 +47,23 @@ describe('LoginPage', () => {
   });
 
   it('calls onLogin with instance and username after successful login', async () => {
-    const { login } = await import('../lib/lemmy');
-    renderLogin();
+    const { backend } = renderLogin();
+    vi.spyOn(backend.auth, 'login').mockResolvedValue({
+      id: 'mock-session', backendId: 'mock',
+      viewer: { id: '1', handle: 'alice@lemmy.world', profileUrl: '' },
+      data: { token: 'mock-jwt' },
+    });
 
     await userEvent.type(screen.getByPlaceholderText('Username'), 'alice');
     await userEvent.type(screen.getByPlaceholderText('Password'), 'secret');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(login).toHaveBeenCalledWith('lemmy.world', 'alice', 'secret');
+      expect(backend.auth.login).toHaveBeenCalledWith({
+        instance: 'lemmy.world',
+        usernameOrEmail: 'alice',
+        password: 'secret',
+      });
       expect(mockOnLogin).toHaveBeenCalledWith({
         token: 'mock-jwt',
         instance: 'lemmy.world',
@@ -68,10 +73,9 @@ describe('LoginPage', () => {
   });
 
   it('displays an error message on login failure', async () => {
-    const { login } = await import('../lib/lemmy');
-    vi.mocked(login).mockRejectedValueOnce(new Error('Invalid credentials'));
+    const { backend } = renderLogin();
+    vi.spyOn(backend.auth, 'login').mockRejectedValueOnce(new Error('Invalid credentials'));
 
-    renderLogin();
     await userEvent.type(screen.getByPlaceholderText('Username'), 'alice');
     await userEvent.type(screen.getByPlaceholderText('Password'), 'wrong');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../lib/lemmy';
+import { useBackend } from '../lib/api/context';
 import { saveAuth, type AuthState } from '../lib/store';
 import styles from './LoginPage.module.css';
 import Logo from './Logo';
@@ -21,6 +21,7 @@ interface Props {
 
 export default function LoginPage({ onLogin }: Props) {
   const navigate = useNavigate();
+  const backend = useBackend();
   const [selectedInstance, setSelectedInstance] = useState(POPULAR_INSTANCES[0]);
   const [customInstance, setCustomInstance] = useState('');
   const [username, setUsername] = useState('');
@@ -36,8 +37,9 @@ export default function LoginPage({ onLogin }: Props) {
     setError('');
     setLoading(true);
     try {
-      const token = await login(instance, username, password);
-      const auth: AuthState = { token, instance, username };
+      const session = await backend.auth.login({ instance, usernameOrEmail: username, password });
+      const data = session.data as { token?: string };
+      const auth: AuthState = { token: data.token ?? '', instance, username };
       saveAuth(auth);
       onLogin(auth);
       navigate('/');
