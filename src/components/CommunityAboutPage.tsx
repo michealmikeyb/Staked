@@ -1,30 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { fetchCommunityInfo, type CommunityInfo } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { useBackend } from '../lib/api/context';
+import type { Source } from '../lib/api/types';
 import MarkdownRenderer from './MarkdownRenderer';
 import CommunityAvatar from './CommunityAvatar';
 
 interface Props {
-  auth: AuthState;
+  auth?: unknown; // kept for App.tsx compat — backend provides session
 }
 
-export default function CommunityAboutPage({ auth }: Props) {
+export default function CommunityAboutPage({ auth: _auth }: Props) {
   const { instance, name } = useParams<{ instance: string; name: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const backend = useBackend();
 
-  const stateInfo = (location.state as { communityInfo?: CommunityInfo } | null)?.communityInfo;
-  const [info, setInfo] = useState<CommunityInfo | null>(stateInfo ?? null);
+  const stateInfo = (location.state as { communityInfo?: Source } | null)?.communityInfo;
+  const [info, setInfo] = useState<Source | null>(stateInfo ?? null);
   const [loading, setLoading] = useState(!stateInfo);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (stateInfo) return;
-    fetchCommunityInfo(auth.instance, auth.token, `${name}@${instance}`)
+    backend.sources.get(`${name}@${instance}`)
       .then((data) => { setInfo(data); setLoading(false); })
       .catch((e) => { setError(e instanceof Error ? e.message : 'Failed to load'); setLoading(false); });
-  }, [auth.instance, auth.token, name, instance]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a', color: '#f5f5f5' }}>
@@ -69,7 +71,7 @@ export default function CommunityAboutPage({ auth }: Props) {
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{name}</div>
                 <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-                  {info.counts.subscribers.toLocaleString()} members · {info.counts.posts.toLocaleString()} posts
+                  {info.counts.members.toLocaleString()} members · {info.counts.posts.toLocaleString()} posts
                 </div>
               </div>
             </div>

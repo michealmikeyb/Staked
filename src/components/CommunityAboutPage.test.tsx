@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { renderWithBackend, makeSource } from '../test-utils';
+import { createMockBackend } from '../lib/api/backends/mock';
+import { BackendProvider } from '../lib/api/context';
+import type { Source } from '../lib/api/types';
 import CommunityAboutPage from './CommunityAboutPage';
-
-vi.mock('../lib/lemmy', () => ({
-  fetchCommunityInfo: vi.fn(),
-}));
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -14,29 +13,27 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
-
-const INFO = {
-  id: 42,
-  icon: undefined,
-  banner: undefined,
+const INFO: Source = makeSource({
+  id: '42',
+  handle: 'linux@lemmy.world',
+  name: 'linux',
   description: 'Hello community',
-  counts: { subscribers: 12400, posts: 3200, comments: 8900 },
-  subscribed: 'NotSubscribed' as const,
-};
+  counts: { members: 12400, posts: 3200 },
+});
 
 function renderPage(locationState?: object) {
-  return render(
+  return renderWithBackend(
     <MemoryRouter
       initialEntries={[{ pathname: '/community/lemmy.world/linux/about', state: locationState }]}
     >
       <Routes>
         <Route
           path="/community/:instance/:name/about"
-          element={<CommunityAboutPage auth={AUTH} />}
+          element={<CommunityAboutPage />}
         />
       </Routes>
     </MemoryRouter>,
+    { fixtures: { sources: [INFO] } },
   );
 }
 
@@ -44,29 +41,50 @@ beforeEach(() => { vi.clearAllMocks(); mockNavigate.mockClear(); });
 
 describe('CommunityAboutPage', () => {
   it('renders title and community info from location state without fetching', async () => {
-    const { fetchCommunityInfo } = await import('../lib/lemmy');
-    renderPage({ communityInfo: INFO });
+    const backend = createMockBackend({ sources: [INFO] });
+    const spy = vi.spyOn(backend.sources, 'get');
+    render(
+      <BackendProvider value={backend}>
+        <MemoryRouter initialEntries={[{ pathname: '/community/lemmy.world/linux/about', state: { communityInfo: INFO } }]}>
+          <Routes>
+            <Route path="/community/:instance/:name/about" element={<CommunityAboutPage />} />
+          </Routes>
+        </MemoryRouter>
+      </BackendProvider>,
+    );
     expect(screen.getByText('About c/linux')).toBeInTheDocument();
     expect(screen.getByText(/12,400 members/)).toBeInTheDocument();
-    expect(fetchCommunityInfo).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('fetches community info when no location state is provided', async () => {
-    const { fetchCommunityInfo } = await import('../lib/lemmy');
-    (fetchCommunityInfo as ReturnType<typeof vi.fn>).mockResolvedValueOnce(INFO);
-    renderPage();
-    await screen.findByText(/12,400 members/);
-    expect(fetchCommunityInfo).toHaveBeenCalledWith(
-      'lemmy.world', 'tok', 'linux@lemmy.world',
+    const backend = createMockBackend({ sources: [INFO] });
+    const spy = vi.spyOn(backend.sources, 'get');
+    render(
+      <BackendProvider value={backend}>
+        <MemoryRouter initialEntries={[{ pathname: '/community/lemmy.world/linux/about' }]}>
+          <Routes>
+            <Route path="/community/:instance/:name/about" element={<CommunityAboutPage />} />
+          </Routes>
+        </MemoryRouter>
+      </BackendProvider>,
     );
+    await screen.findByText(/12,400 members/);
+    expect(spy).toHaveBeenCalledWith('linux@lemmy.world');
   });
 
   it('shows error message when fetch fails', async () => {
-    const { fetchCommunityInfo } = await import('../lib/lemmy');
-    (fetchCommunityInfo as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-      new Error('Network error'),
+    const backend = createMockBackend({});
+    vi.spyOn(backend.sources, 'get').mockRejectedValue(new Error('Network error'));
+    render(
+      <BackendProvider value={backend}>
+        <MemoryRouter initialEntries={[{ pathname: '/community/lemmy.world/linux/about' }]}>
+          <Routes>
+            <Route path="/community/:instance/:name/about" element={<CommunityAboutPage />} />
+          </Routes>
+        </MemoryRouter>
+      </BackendProvider>,
     );
-    renderPage();
     await screen.findByText('Network error');
   });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { Source } from '../lib/api/types';
 import CommunityHeader from './CommunityHeader';
 
 const mockNavigate = vi.fn();
@@ -15,6 +16,15 @@ const BASE_PROPS = {
   onSortChange: vi.fn(),
   onBack: vi.fn(),
 };
+
+const BASE_SOURCE: Source = {
+  id: '1',
+  handle: 'asklemmy@lemmy.world',
+  name: 'asklemmy',
+  counts: { members: 100, posts: 50 },
+};
+
+const SUBSCRIBED_SOURCE: Source = { ...BASE_SOURCE, viewer: { subscribed: 'yes' } };
 
 beforeEach(() => { vi.clearAllMocks(); mockNavigate.mockClear(); });
 
@@ -58,31 +68,21 @@ describe('CommunityHeader', () => {
   });
 
   it('navigates to about page with communityInfo state when About is clicked', () => {
-    const communityInfo = {
-      id: 1, icon: undefined, banner: undefined, description: 'desc',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^about$/i }));
     expect(mockNavigate).toHaveBeenCalledWith(
       '/community/lemmy.world/asklemmy/about',
-      { state: { communityInfo } },
+      { state: { communityInfo: BASE_SOURCE } },
     );
   });
 
   it('calls onSubscribeToggle when Subscribe is clicked and communityInfo is loaded', () => {
     const onSubscribeToggle = vi.fn();
-    const communityInfo = {
-      id: 1, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
     render(
       <CommunityHeader
         {...BASE_PROPS}
-        communityInfo={communityInfo}
+        communityInfo={BASE_SOURCE}
         onSubscribeToggle={onSubscribeToggle}
       />,
     );
@@ -92,12 +92,7 @@ describe('CommunityHeader', () => {
   });
 
   it('shows "Subscribed" label and subscribe button is highlighted when already subscribed', () => {
-    const communityInfo = {
-      id: 1, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'Subscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={SUBSCRIBED_SOURCE} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     expect(screen.getByRole('button', { name: /^subscribed$/i })).toBeInTheDocument();
   });
@@ -109,24 +104,15 @@ describe('CommunityHeader', () => {
   });
 
   it('shows community icon image when communityInfo.icon is provided', () => {
-    const communityInfo = {
-      id: 1, icon: 'https://lemmy.world/icon.png', banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    const withIcon: Source = { ...BASE_SOURCE, icon: 'https://lemmy.world/icon.png' };
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={withIcon} />);
     const img = document.querySelector('[data-testid="community-avatar-img"]') as HTMLImageElement;
     expect(img).not.toBeNull();
     expect(img.src).toBe('https://lemmy.world/icon.png');
   });
 
   it('shows Block button in the hamburger menu', () => {
-    const communityInfo = {
-      id: 99, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     expect(screen.getByRole('button', { name: /^block$/i })).toBeInTheDocument();
   });
@@ -138,12 +124,7 @@ describe('CommunityHeader', () => {
   });
 
   it('clicking Block in menu closes menu and shows confirmation panel', () => {
-    const communityInfo = {
-      id: 99, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     expect(screen.queryByRole('button', { name: /^post$/i })).not.toBeInTheDocument();
@@ -151,12 +132,7 @@ describe('CommunityHeader', () => {
   });
 
   it('Cancel in confirmation panel closes the panel', () => {
-    const communityInfo = {
-      id: 99, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
@@ -165,12 +141,7 @@ describe('CommunityHeader', () => {
 
   it('confirming block calls onBlock prop', async () => {
     const onBlock = vi.fn().mockResolvedValue(undefined);
-    const communityInfo = {
-      id: 99, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} onBlock={onBlock} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} onBlock={onBlock} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
@@ -179,12 +150,7 @@ describe('CommunityHeader', () => {
 
   it('shows inline error when onBlock rejects', async () => {
     const onBlock = vi.fn().mockRejectedValue(new Error('Network error'));
-    const communityInfo = {
-      id: 99, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} onBlock={onBlock} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} onBlock={onBlock} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
@@ -193,12 +159,7 @@ describe('CommunityHeader', () => {
 
   it('confirmation panel closes after successful block', async () => {
     const onBlock = vi.fn().mockResolvedValue(undefined);
-    const communityInfo = {
-      id: 99, icon: undefined, banner: undefined, description: '',
-      counts: { subscribers: 100, posts: 50, comments: 200 },
-      subscribed: 'NotSubscribed' as const,
-    };
-    render(<CommunityHeader {...BASE_PROPS} communityInfo={communityInfo} onBlock={onBlock} />);
+    render(<CommunityHeader {...BASE_PROPS} communityInfo={BASE_SOURCE} onBlock={onBlock} />);
     fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^block$/i }));

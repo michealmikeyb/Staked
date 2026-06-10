@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type SortType, type CommunityInfo } from '../lib/lemmy';
+import type { Source } from '../lib/api/types';
 import { SORT_OPTIONS } from './HeaderBar';
 import CommunityAvatar from './CommunityAvatar';
 
 interface Props {
   name: string;
   instance: string;
-  sortType: SortType;
-  onSortChange: (sort: SortType) => void;
+  sortType: string;
+  onSortChange: (sort: string) => void;
   onBack: () => void;
-  communityInfo?: CommunityInfo | null;
+  communityInfo?: Source | null;
   onSubscribeToggle?: () => void;
   onBlock?: () => Promise<void>;
 }
@@ -25,9 +25,9 @@ export default function CommunityHeader({
   const [blocking, setBlocking] = useState(false);
   const [blockError, setBlockError] = useState('');
   const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType;
-  const isSubscribed = communityInfo?.subscribed === 'Subscribed';
+  const isSubscribed = communityInfo?.viewer?.subscribed === 'yes';
 
-  function handleSortSelect(sort: SortType) {
+  function handleSortSelect(sort: string) {
     setShowSortDropdown(false);
     onSortChange(sort);
   }
