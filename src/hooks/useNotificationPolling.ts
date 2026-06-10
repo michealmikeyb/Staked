@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { fetchUnreadCount } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import type { Backend } from '../lib/api/backend';
 import { readNotifState, writeNotifState, clearNotifState } from '../lib/notifStore';
 
 const POLL_INTERVAL = 5 * 60 * 1000;
@@ -8,14 +7,14 @@ const SYNC_TAG = 'check-notifications';
 const SYNC_MIN_INTERVAL = 15 * 60 * 1000;
 
 export function useNotificationPolling(
-  auth: AuthState | null,
+  backend: Backend | null,
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>,
   permission: NotificationPermission,
 ): void {
   const lastCountRef = useRef<number>(-1); // -1 = baseline not yet established
 
   useEffect(() => {
-    if (!auth || permission !== 'granted') return;
+    if (!backend?.session || permission !== 'granted') return;
 
     let cancelled = false;
 
@@ -31,9 +30,11 @@ export function useNotificationPolling(
       }).catch(() => {});
     }
 
+    const { instance = '', token = '' } = (backend.session.data ?? {}) as { instance?: string; token?: string };
+
     function poll() {
       if (document.visibilityState !== 'visible') return;
-      fetchUnreadCount(auth!.instance, auth!.token)
+      backend!.notifications.unreadCount()
         .then((count) => {
           if (cancelled) return;
           if (count !== lastCountRef.current) setUnreadCount(count);
@@ -44,7 +45,7 @@ export function useNotificationPolling(
             });
           }
           lastCountRef.current = count;
-          writeNotifState({ instance: auth!.instance, token: auth!.token, lastCount: count }).catch(() => {});
+          writeNotifState({ instance, token, lastCount: count }).catch(() => {});
         })
         .catch(() => {});
     }
@@ -52,16 +53,19 @@ export function useNotificationPolling(
     poll();
     const id = setInterval(poll, POLL_INTERVAL);
     return () => { cancelled = true; clearInterval(id); };
-  }, [auth, setUnreadCount, permission]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend?.session, permission]);
 
   useEffect(() => {
-    if (!auth) {
+    if (!backend?.session) {
       lastCountRef.current = -1;
       clearNotifState().catch(() => {});
       return;
     }
+    const { instance = '', token = '' } = (backend.session.data ?? {}) as { instance?: string; token?: string };
     readNotifState().then((state) => {
-      writeNotifState({ instance: auth.instance, token: auth.token, lastCount: state?.lastCount ?? 0 });
+      writeNotifState({ instance, token, lastCount: state?.lastCount ?? 0 });
     }).catch(() => {});
-  }, [auth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend?.session]);
 }

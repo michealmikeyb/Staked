@@ -3,7 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 vi.mock('./lib/store', () => {
-  const DEFAULT_SETTINGS = { nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'All', anonInstance: '' };
+  const DEFAULT_SETTINGS = {
+    nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true,
+    defaultSort: 'TopTwelveHour', activeStak: 'All',
+    lemmy: { anonInstance: '' },
+    defaultFeedId: 'Active', activeStakId: 'all',
+  };
   return {
     loadAuth: vi.fn().mockReturnValue(null),
     clearAuth: vi.fn(),
@@ -158,7 +163,7 @@ describe('App routing', () => {
     render(<App />);
 
     expect(useNotificationPolling).toHaveBeenCalledWith(
-      expect.objectContaining({ instance: 'lemmy.world', token: 'tok' }),
+      expect.objectContaining({ backendId: 'lemmy' }),
       expect.any(Function),
       expect.any(String),
     );

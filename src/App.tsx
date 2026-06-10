@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { loadAuth, clearAuth, type AuthState } from './lib/store';
-import { SettingsProvider } from './lib/SettingsContext';
+import { SettingsProvider, useSettings } from './lib/SettingsContext';
+import { BackendProvider } from './lib/api/context';
+import { createLemmyBackend } from './lib/api/backends/lemmy';
+import type { Session } from './lib/api/types';
 import { useNotificationPolling } from './hooks/useNotificationPolling';
 import LoginPage from './components/LoginPage';
 import FeedStack from './components/FeedStack';
@@ -18,13 +21,33 @@ import CommunityAboutPage from './components/CommunityAboutPage';
 import SearchPage from './components/SearchPage';
 import PostViewPage from './components/PostViewPage';
 
-function RequireAuth({ auth, children }: { auth: AuthState | null; children: React.ReactNode }) {
-  if (!auth) return <Navigate to="/" replace />;
+function authToSession(auth: AuthState | null): Session {
+  if (!auth) {
+    return {
+      id: 'anon',
+      backendId: 'lemmy',
+      viewer: null,
+      data: { instance: '', token: null },
+    };
+  }
+  return {
+    id: auth.token,
+    backendId: 'lemmy',
+    viewer: {
+      id: auth.username,
+      handle: `${auth.username}@${auth.instance}`,
+      profileUrl: `https://${auth.instance}/u/${auth.username}`,
+    },
+    data: { instance: auth.instance, token: auth.token },
+  };
+}
+
+function RequireAuth({ session, children }: { session: Session | null; children: React.ReactNode }) {
+  if (!session?.viewer) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
-function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
-  auth: AuthState;
+function CommunityFeedRoute({ onLogout, unreadCount, setUnreadCount }: {
   onLogout: () => void;
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
@@ -32,7 +55,6 @@ function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
   const { instance, name } = useParams<{ instance: string; name: string }>();
   return (
     <FeedStack
-      auth={auth}
       onLogout={onLogout}
       unreadCount={unreadCount}
       setUnreadCount={setUnreadCount}
@@ -41,9 +63,122 @@ function CommunityFeedRoute({ auth, onLogout, unreadCount, setUnreadCount }: {
   );
 }
 
-function UserProfileRoute({ auth }: { auth: AuthState | null }) {
+function UserProfileRoute() {
   const { instance, username } = useParams<{ instance: string; username: string }>();
-  return <ProfilePage auth={auth} target={{ instance: instance!, username: username! }} />;
+  return <ProfilePage target={{ instance: instance!, username: username! }} />;
+}
+
+interface AppRoutesProps {
+  auth: AuthState | null;
+  onLogin: (auth: AuthState) => void;
+  onLogout: () => void;
+  unreadCount: number;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  notifPermission: NotificationPermission;
+  setNotifPermission: React.Dispatch<React.SetStateAction<NotificationPermission>>;
+}
+
+function AppRoutes({
+  auth, onLogin, onLogout, unreadCount, setUnreadCount, notifPermission, setNotifPermission,
+}: AppRoutesProps) {
+  const { settings } = useSettings();
+  const backend = useMemo(
+    () => createLemmyBackend(authToSession(auth), {
+      anonInstanceSetting: () => settings.lemmy?.anonInstance || undefined,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [auth, settings.lemmy?.anonInstance],
+  );
+
+  useNotificationPolling(backend, setUnreadCount, notifPermission);
+
+  const session = backend.session;
+
+  return (
+    <BackendProvider value={backend}>
+      <Routes>
+        <Route path="/post/:instance/:postId" element={<SharedPostPage />} />
+        <Route path="/login" element={<LoginPage onLogin={onLogin} />} />
+        <Route
+          path="/"
+          element={
+            <FeedStack
+              onLogout={onLogout}
+              unreadCount={unreadCount}
+              setUnreadCount={setUnreadCount}
+            />
+          }
+        />
+        <Route path="/settings" element={<SettingsPage isAuthenticated={!!session?.viewer} onPermissionChange={setNotifPermission} />} />
+        <Route
+          path="/inbox"
+          element={
+            <RequireAuth session={session}>
+              <InboxPage setUnreadCount={setUnreadCount} unreadCount={unreadCount} />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/inbox/:notifId"
+          element={
+            <RequireAuth session={session}>
+              <PostDetailPage setUnreadCount={setUnreadCount} unreadCount={unreadCount} />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/saved"
+          element={<RequireAuth session={session}><SavedPage /></RequireAuth>}
+        />
+        <Route
+          path="/saved/:postId"
+          element={<RequireAuth session={session}><SavedPostDetailPage /></RequireAuth>}
+        />
+        <Route
+          path="/profile"
+          element={<RequireAuth session={session}><ProfilePage /></RequireAuth>}
+        />
+        <Route
+          path="/profile/:postId"
+          element={<RequireAuth session={session}><ProfilePostDetailPage /></RequireAuth>}
+        />
+        <Route
+          path="/create-post"
+          element={<RequireAuth session={session}><CreatePostPage /></RequireAuth>}
+        />
+        <Route
+          path="/community/:instance/:name"
+          element={
+            <RequireAuth session={session}>
+              <CommunityFeedRoute
+                onLogout={onLogout}
+                unreadCount={unreadCount}
+                setUnreadCount={setUnreadCount}
+              />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/community/:instance/:name/about"
+          element={
+            <RequireAuth session={session}><CommunityAboutPage /></RequireAuth>
+          }
+        />
+        <Route
+          path="/user/:instance/:username"
+          element={<UserProfileRoute />}
+        />
+        <Route
+          path="/search"
+          element={<RequireAuth session={session}><SearchPage /></RequireAuth>}
+        />
+        <Route
+          path="/view/:instance/:postId"
+          element={<RequireAuth session={session}><PostViewPage /></RequireAuth>}
+        />
+      </Routes>
+    </BackendProvider>
+  );
 }
 
 export default function App() {
@@ -52,7 +187,6 @@ export default function App() {
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
-  useNotificationPolling(auth, setUnreadCount, notifPermission);
 
   function handleLogin(newAuth: AuthState) {
     setAuth(newAuth);
@@ -66,89 +200,15 @@ export default function App() {
   return (
     <HashRouter>
       <SettingsProvider>
-        <Routes>
-          <Route path="/post/:instance/:postId" element={<SharedPostPage />} />
-          <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-          <Route
-            path="/"
-            element={
-              <FeedStack
-                auth={auth}
-                onLogout={handleLogout}
-                unreadCount={unreadCount}
-                setUnreadCount={setUnreadCount}
-              />
-            }
-          />
-          <Route path="/settings" element={<SettingsPage isAuthenticated={auth !== null} onPermissionChange={setNotifPermission} />} />
-          <Route
-            path="/inbox"
-            element={
-              <RequireAuth auth={auth}>
-                <InboxPage auth={auth!} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/inbox/:notifId"
-            element={
-              <RequireAuth auth={auth}>
-                <PostDetailPage auth={auth!} setUnreadCount={setUnreadCount} unreadCount={unreadCount} />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/saved"
-            element={<RequireAuth auth={auth}><SavedPage auth={auth!} /></RequireAuth>}
-          />
-          <Route
-            path="/saved/:postId"
-            element={<RequireAuth auth={auth}><SavedPostDetailPage auth={auth!} /></RequireAuth>}
-          />
-          <Route
-            path="/profile"
-            element={<RequireAuth auth={auth}><ProfilePage auth={auth!} /></RequireAuth>}
-          />
-          <Route
-            path="/profile/:postId"
-            element={<RequireAuth auth={auth}><ProfilePostDetailPage auth={auth!} /></RequireAuth>}
-          />
-          <Route
-            path="/create-post"
-            element={<RequireAuth auth={auth}><CreatePostPage auth={auth!} /></RequireAuth>}
-          />
-          <Route
-            path="/community/:instance/:name"
-            element={
-              <RequireAuth auth={auth}>
-                <CommunityFeedRoute
-                  auth={auth!}
-                  onLogout={handleLogout}
-                  unreadCount={unreadCount}
-                  setUnreadCount={setUnreadCount}
-                />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/community/:instance/:name/about"
-            element={
-              <RequireAuth auth={auth}><CommunityAboutPage auth={auth!} /></RequireAuth>
-            }
-          />
-          <Route
-            path="/user/:instance/:username"
-            element={<UserProfileRoute auth={auth} />}
-          />
-          <Route
-            path="/search"
-            element={<RequireAuth auth={auth}><SearchPage auth={auth!} /></RequireAuth>}
-          />
-          <Route
-            path="/view/:instance/:postId"
-            element={<RequireAuth auth={auth}><PostViewPage auth={auth!} /></RequireAuth>}
-          />
-        </Routes>
+        <AppRoutes
+          auth={auth}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          unreadCount={unreadCount}
+          setUnreadCount={setUnreadCount}
+          notifPermission={notifPermission}
+          setNotifPermission={setNotifPermission}
+        />
       </SettingsProvider>
     </HashRouter>
   );
