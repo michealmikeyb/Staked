@@ -1,5 +1,3 @@
-import { type SortType, type StakType, type CommentSortType } from './lemmy';
-
 const KEYS = {
   TOKEN: 'stakswipe_token',
   INSTANCE: 'stakswipe_instance',
@@ -58,12 +56,12 @@ export interface AppSettings {
   nonUpvoteSwipeAction: 'downvote' | 'dismiss';
   swapGestures: boolean;
   blurNsfw: boolean;
-  defaultSort: SortType;
-  activeStak: StakType;
-  anonInstance: string;
-  commentSort: CommentSortType;
+  defaultFeedId: string;
+  activeStakId: string;
+  defaultCommentSortId: string;
   showCommentSortBar: boolean;
   shareLinkFormat: 'stakswipe' | 'source' | 'home';
+  lemmy: { anonInstance: string };
 }
 
 const SETTINGS_KEY = 'stakswipe_settings';
@@ -72,29 +70,45 @@ export const DEFAULT_SETTINGS: AppSettings = {
   nonUpvoteSwipeAction: 'downvote',
   swapGestures: false,
   blurNsfw: true,
-  defaultSort: 'TopTwelveHour',
-  activeStak: 'All',
-  anonInstance: '',
-  commentSort: 'Top',
+  defaultFeedId: 'TopTwelveHour',
+  activeStakId: 'All',
+  defaultCommentSortId: 'Top',
   showCommentSortBar: true,
   shareLinkFormat: 'stakswipe',
+  lemmy: { anonInstance: '' },
 };
 
 export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
+    if (!raw) return { ...DEFAULT_SETTINGS, lemmy: { ...DEFAULT_SETTINGS.lemmy } };
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if ('leftSwipe' in parsed && !('nonUpvoteSwipeAction' in parsed)) {
       parsed.nonUpvoteSwipeAction = parsed.leftSwipe;
       delete parsed.leftSwipe;
-      const migrated = { ...DEFAULT_SETTINGS, ...parsed } as AppSettings;
-      saveSettings(migrated);
-      return migrated;
     }
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    if ('defaultSort' in parsed && !('defaultFeedId' in parsed)) {
+      parsed.defaultFeedId = parsed.defaultSort;
+    }
+    if ('activeStak' in parsed && !('activeStakId' in parsed)) {
+      const v = parsed.activeStak as string;
+      parsed.activeStakId = v === 'Anonymous' ? 'All' : v;
+    }
+    if ('commentSort' in parsed && !('defaultCommentSortId' in parsed)) {
+      parsed.defaultCommentSortId = parsed.commentSort;
+    }
+    if ('anonInstance' in parsed && !('lemmy' in parsed)) {
+      parsed.lemmy = { anonInstance: parsed.anonInstance as string };
+    }
+    const merged = { ...DEFAULT_SETTINGS, ...parsed };
+    if (!merged.lemmy || typeof merged.lemmy !== 'object') {
+      merged.lemmy = { anonInstance: '' };
+    } else {
+      merged.lemmy = { ...DEFAULT_SETTINGS.lemmy, ...(merged.lemmy as Record<string, unknown>) };
+    }
+    return merged as AppSettings;
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, lemmy: { ...DEFAULT_SETTINGS.lemmy } };
   }
 }
 

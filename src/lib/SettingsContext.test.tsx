@@ -11,11 +11,11 @@ function TestConsumer() {
       <span data-testid="non-upvote-swipe-action">{settings.nonUpvoteSwipeAction}</span>
       <span data-testid="swap-gestures">{String(settings.swapGestures)}</span>
       <span data-testid="blur-nsfw">{String(settings.blurNsfw)}</span>
-      <span data-testid="default-sort">{settings.defaultSort}</span>
+      <span data-testid="default-feed-id">{settings.defaultFeedId}</span>
       <button onClick={() => updateSetting('nonUpvoteSwipeAction', 'dismiss')}>set-dismiss</button>
       <button onClick={() => updateSetting('swapGestures', true)}>set-swap</button>
       <button onClick={() => updateSetting('blurNsfw', false)}>set-no-blur</button>
-      <button onClick={() => updateSetting('defaultSort', 'Hot')}>set-hot</button>
+      <button onClick={() => updateSetting('defaultFeedId', 'Hot')}>set-hot</button>
     </div>
   );
 }
@@ -26,7 +26,7 @@ describe('SettingsContext', () => {
     expect(screen.getByTestId('non-upvote-swipe-action').textContent).toBe('downvote');
     expect(screen.getByTestId('swap-gestures').textContent).toBe('false');
     expect(screen.getByTestId('blur-nsfw').textContent).toBe('true');
-    expect(screen.getByTestId('default-sort').textContent).toBe('TopTwelveHour');
+    expect(screen.getByTestId('default-feed-id').textContent).toBe('TopTwelveHour');
   });
 
   it('updateSetting updates nonUpvoteSwipeAction in context', () => {
@@ -45,18 +45,18 @@ describe('SettingsContext', () => {
     render(<SettingsProvider><TestConsumer /></SettingsProvider>);
     fireEvent.click(screen.getByText('set-hot'));
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
-    expect(stored.defaultSort).toBe('Hot');
+    expect(stored.defaultFeedId).toBe('Hot');
   });
 
   it('initialises from localStorage on mount', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
-      nonUpvoteSwipeAction: 'dismiss', swapGestures: true, blurNsfw: false, defaultSort: 'New',
+      nonUpvoteSwipeAction: 'dismiss', swapGestures: true, blurNsfw: false, defaultFeedId: 'New',
     }));
     render(<SettingsProvider><TestConsumer /></SettingsProvider>);
     expect(screen.getByTestId('non-upvote-swipe-action').textContent).toBe('dismiss');
     expect(screen.getByTestId('swap-gestures').textContent).toBe('true');
     expect(screen.getByTestId('blur-nsfw').textContent).toBe('false');
-    expect(screen.getByTestId('default-sort').textContent).toBe('New');
+    expect(screen.getByTestId('default-feed-id').textContent).toBe('New');
   });
 
   it('useSettings returns default context value when used outside a provider', () => {

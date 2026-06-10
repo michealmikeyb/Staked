@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useBackend } from '../lib/api/context';
+import { useAsync } from '../hooks/useAsync';
 import { instanceFromActorId } from '../lib/urlUtils';
-import { useCommentLoader } from '../hooks/useCommentLoader';
-import { type AuthState } from '../lib/store';
-import { type CommentSortType } from '../lib/lemmy';
+import type { AuthState } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
+import type { Post as NeutralPost } from '../lib/api/types';
 import PostCardShell from './PostCardShell';
 
 interface Post {
@@ -14,7 +15,7 @@ interface Post {
   body?: string | null;
   thumbnail_url?: string | null;
   nsfw?: boolean;
-  published: string;
+  published?: string;
 }
 
 interface Community {
@@ -25,6 +26,7 @@ interface Community {
 interface Creator {
   name: string;
   display_name?: string | null;
+  actor_id?: string;
 }
 
 interface Counts {
@@ -44,26 +46,55 @@ interface Props {
 export default function PostDetailCard({
   post, community, creator, counts, auth, notifCommentApId,
 }: Props) {
-  const anonAuth: AuthState = useMemo(() => ({
-    instance: instanceFromActorId(community.actor_id),
-    token: '',
-    username: '',
-  }), [community.actor_id]);
-
+  const backend = useBackend();
   const { settings } = useSettings();
-  const [activeSort, setActiveSort] = useState<CommentSortType>(() => settings.commentSort);
+  const [activeSort, setActiveSort] = useState<string>(() => settings.defaultCommentSortId);
 
-  const { comments, commentsLoaded } = useCommentLoader(
-    { ap_id: post.ap_id, id: post.id },
-    { actor_id: community.actor_id },
-    auth ?? anonAuth,
-    activeSort,
+  const neutralPost = useMemo<NeutralPost>(() => {
+    const srcInstance = instanceFromActorId(community.actor_id);
+    const authorInstance = creator.actor_id ? instanceFromActorId(creator.actor_id) : '';
+    return {
+      id: post.ap_id ? `${post.id}|${post.ap_id}` : String(post.id),
+      source: {
+        id: community.actor_id,
+        handle: `${community.name}@${srcInstance}`,
+        name: community.name,
+        icon: undefined,
+        counts: { members: 0, posts: 0 },
+      },
+      author: {
+        id: creator.actor_id ?? creator.name,
+        handle: authorInstance ? `${creator.name}@${authorInstance}` : creator.name,
+        displayName: creator.display_name ?? undefined,
+        avatar: undefined,
+        profileUrl: creator.actor_id ?? '',
+      },
+      title: post.name,
+      body: post.body ?? undefined,
+      externalUrl: post.url ?? undefined,
+      mediaUrl: post.thumbnail_url ?? undefined,
+      nsfw: post.nsfw ?? false,
+      publishedAt: post.published ?? new Date().toISOString(),
+      permalink: post.ap_id,
+      counts: { score: counts.score, comments: counts.comments },
+      viewer: undefined,
+    };
+  }, [post, community, creator, counts]);
+
+  const { data: commentsData, loading: commentsLoading } = useAsync(
+    () => backend.comments.list(neutralPost.id, { sortId: activeSort }),
+    [neutralPost.id, activeSort],
   );
+  const comments = commentsData ?? [];
+  const commentsLoaded = !commentsLoading;
 
   const highlightCommentId = useMemo(() => {
     if (!commentsLoaded || !notifCommentApId) return undefined;
-    return comments.find((c) => c.comment.ap_id === notifCommentApId)?.comment.id;
+    return comments.find((c) => c.permalink === notifCommentApId)?.id;
   }, [comments, commentsLoaded, notifCommentApId]);
+
+  // Suppress unused auth warning — kept in props for caller backward compat
+  void auth;
 
   return (
     <div style={{
@@ -74,11 +105,7 @@ export default function PostDetailCard({
       display: 'flex', flexDirection: 'column',
     }}>
       <PostCardShell
-        post={post}
-        community={community}
-        creator={creator}
-        counts={counts}
-        auth={auth}
+        post={neutralPost}
         comments={comments}
         commentsLoaded={commentsLoaded}
         highlightCommentId={highlightCommentId}

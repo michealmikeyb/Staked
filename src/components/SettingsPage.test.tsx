@@ -1,11 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingsProvider } from '../lib/SettingsContext';
+import { renderWithBackend } from '../test-utils';
 import SettingsPage from './SettingsPage';
 import type React from 'react';
+
+const FEED_OPTIONS = [
+  { id: 'Hot', label: 'Hot' },
+  { id: 'New', label: 'New' },
+  { id: 'TopTwelveHour', label: 'Top 12h' },
+  { id: 'TopDay', label: 'Top Day' },
+];
+
+const COMMENT_SORT_OPTIONS = [
+  { id: 'Top', label: 'Top' },
+  { id: 'Hot', label: 'Hot' },
+  { id: 'New', label: 'New' },
+];
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -19,12 +33,13 @@ beforeEach(() => {
 });
 
 function renderPage(props: Partial<React.ComponentProps<typeof SettingsPage>> = {}) {
-  return render(
+  return renderWithBackend(
     <MemoryRouter>
       <SettingsProvider>
         <SettingsPage isAuthenticated={true} {...props} />
       </SettingsProvider>
     </MemoryRouter>,
+    { capabilities: { feedOptions: FEED_OPTIONS, commentSortOptions: COMMENT_SORT_OPTIONS } },
   );
 }
 
@@ -79,12 +94,12 @@ describe('SettingsPage', () => {
     expect(stored.blurNsfw).toBe(false);
   });
 
-  it('sort pill updates defaultSort setting', () => {
+  it('sort pill updates defaultFeedId setting', () => {
     renderPage();
     const sortCard = screen.getByTestId('default-sort-card');
     fireEvent.click(within(sortCard).getByRole('button', { name: /^hot$/i }));
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
-    expect(stored.defaultSort).toBe('Hot');
+    expect(stored.defaultFeedId).toBe('Hot');
   });
 
   it('active sort pill has distinct styling (orange background)', () => {
@@ -108,7 +123,7 @@ describe('SettingsPage', () => {
     const input = screen.getByPlaceholderText('Auto (top-ranked per sort)');
     fireEvent.change(input, { target: { value: 'lemmy.ml' } });
     const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
-    expect(stored.anonInstance).toBe('lemmy.ml');
+    expect(stored.lemmy.anonInstance).toBe('lemmy.ml');
   });
 
   describe('Comment Sort Bar card', () => {
@@ -141,12 +156,12 @@ describe('SettingsPage', () => {
       expect(screen.getByText('Default Comment Sort')).toBeInTheDocument();
     });
 
-    it('New pill updates commentSort to New', () => {
+    it('New pill updates defaultCommentSortId to New', () => {
       renderPage();
       const card = screen.getByTestId('comment-sort-card');
       fireEvent.click(within(card).getByRole('button', { name: /^new$/i }));
       const stored = JSON.parse(localStorage.getItem('stakswipe_settings')!);
-      expect(stored.commentSort).toBe('New');
+      expect(stored.defaultCommentSortId).toBe('New');
     });
 
     it('active commentSort pill has orange background', () => {

@@ -108,12 +108,12 @@ describe('loadSettings', () => {
       nonUpvoteSwipeAction: 'downvote',
       swapGestures: false,
       blurNsfw: true,
-      defaultSort: 'TopTwelveHour',
-      activeStak: 'All',
-      anonInstance: '',
-      commentSort: 'Top',
+      defaultFeedId: 'TopTwelveHour',
+      activeStakId: 'All',
+      defaultCommentSortId: 'Top',
       showCommentSortBar: true,
       shareLinkFormat: 'stakswipe',
+      lemmy: { anonInstance: '' },
     });
   });
 
@@ -122,12 +122,12 @@ describe('loadSettings', () => {
       nonUpvoteSwipeAction: 'dismiss',
       swapGestures: true,
       blurNsfw: false,
-      defaultSort: 'Hot',
-      activeStak: 'Local',
-      anonInstance: '',
-      commentSort: 'New',
+      defaultFeedId: 'Hot',
+      activeStakId: 'Local',
+      defaultCommentSortId: 'New',
       showCommentSortBar: false,
       shareLinkFormat: 'stakswipe',
+      lemmy: { anonInstance: '' },
     };
     saveSettings(s);
     expect(loadSettings()).toEqual(s);
@@ -139,8 +139,8 @@ describe('loadSettings', () => {
     expect(s.blurNsfw).toBe(false);
     expect(s.nonUpvoteSwipeAction).toBe('downvote');
     expect(s.swapGestures).toBe(false);
-    expect(s.defaultSort).toBe('TopTwelveHour');
-    expect(s.activeStak).toBe('All');
+    expect(s.defaultFeedId).toBe('TopTwelveHour');
+    expect(s.activeStakId).toBe('All');
   });
 
   it('returns defaults when stored value is invalid JSON', () => {
@@ -149,46 +149,46 @@ describe('loadSettings', () => {
       nonUpvoteSwipeAction: 'downvote',
       swapGestures: false,
       blurNsfw: true,
-      defaultSort: 'TopTwelveHour',
-      activeStak: 'All',
-      anonInstance: '',
-      commentSort: 'Top',
+      defaultFeedId: 'TopTwelveHour',
+      activeStakId: 'All',
+      defaultCommentSortId: 'Top',
       showCommentSortBar: true,
       shareLinkFormat: 'stakswipe',
+      lemmy: { anonInstance: '' },
     });
   });
 
-  it('persists and reloads activeStak: Subscribed', () => {
+  it('persists and reloads activeStakId: Subscribed', () => {
     saveSettings({
       nonUpvoteSwipeAction: 'downvote',
       swapGestures: false,
       blurNsfw: true,
-      defaultSort: 'TopTwelveHour',
-      activeStak: 'Subscribed',
-      anonInstance: '',
-      commentSort: 'Top',
+      defaultFeedId: 'TopTwelveHour',
+      activeStakId: 'Subscribed',
+      defaultCommentSortId: 'Top',
       showCommentSortBar: true,
       shareLinkFormat: 'stakswipe',
+      lemmy: { anonInstance: '' },
     });
-    expect(loadSettings().activeStak).toBe('Subscribed');
+    expect(loadSettings().activeStakId).toBe('Subscribed');
   });
 
-  it('loadSettings returns anonInstance empty string by default', () => {
+  it('loadSettings returns lemmy.anonInstance empty string by default', () => {
     localStorage.clear();
     const settings = loadSettings();
-    expect(settings.anonInstance).toBe('');
+    expect(settings.lemmy.anonInstance).toBe('');
   });
 
-  it('loadSettings merges anonInstance from stored JSON', () => {
-    localStorage.setItem('stakswipe_settings', JSON.stringify({ anonInstance: 'lemmy.ml' }));
+  it('loadSettings merges lemmy.anonInstance from stored JSON', () => {
+    localStorage.setItem('stakswipe_settings', JSON.stringify({ lemmy: { anonInstance: 'lemmy.ml' } }));
     const settings = loadSettings();
-    expect(settings.anonInstance).toBe('lemmy.ml');
+    expect(settings.lemmy.anonInstance).toBe('lemmy.ml');
   });
 
-  it('loadSettings fills missing anonInstance from defaults when not in stored JSON', () => {
+  it('loadSettings fills missing lemmy.anonInstance from defaults when not in stored JSON', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({ nonUpvoteSwipeAction: 'dismiss' }));
     const settings = loadSettings();
-    expect(settings.anonInstance).toBe('');
+    expect(settings.lemmy.anonInstance).toBe('');
   });
 
   it('migrates old leftSwipe value to nonUpvoteSwipeAction', () => {
@@ -206,11 +206,38 @@ describe('loadSettings', () => {
     expect(loadSettings().nonUpvoteSwipeAction).toBe('downvote');
   });
 
-  it('returns commentSort: Top by default', () => {
-    expect(loadSettings().commentSort).toBe('Top');
+  it('returns defaultCommentSortId: Top by default', () => {
+    expect(loadSettings().defaultCommentSortId).toBe('Top');
   });
 
   it('returns showCommentSortBar: true by default', () => {
     expect(loadSettings().showCommentSortBar).toBe(true);
+  });
+
+  describe('migrations from old field names', () => {
+    it('migrates defaultSort → defaultFeedId', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ defaultSort: 'Hot' }));
+      expect(loadSettings().defaultFeedId).toBe('Hot');
+    });
+
+    it('migrates activeStak → activeStakId (keeps value)', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ activeStak: 'Subscribed' }));
+      expect(loadSettings().activeStakId).toBe('Subscribed');
+    });
+
+    it('migrates activeStak Anonymous → All', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ activeStak: 'Anonymous' }));
+      expect(loadSettings().activeStakId).toBe('All');
+    });
+
+    it('migrates commentSort → defaultCommentSortId', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ commentSort: 'New' }));
+      expect(loadSettings().defaultCommentSortId).toBe('New');
+    });
+
+    it('migrates anonInstance → lemmy.anonInstance', () => {
+      localStorage.setItem('stakswipe_settings', JSON.stringify({ anonInstance: 'lemmy.ml' }));
+      expect(loadSettings().lemmy.anonInstance).toBe('lemmy.ml');
+    });
   });
 });

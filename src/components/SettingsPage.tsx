@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../lib/SettingsContext';
-import { SORT_OPTIONS, COMMENT_SORT_OPTIONS } from './HeaderBar';
+import { useBackend } from '../lib/api/context';
 import InstanceInput from './InstanceInput';
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
 export default function SettingsPage({ isAuthenticated, onPermissionChange }: Props) {
   const navigate = useNavigate();
   const { settings, updateSetting } = useSettings();
+  const { capabilities } = useBackend();
 
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(() => {
     if (typeof Notification === 'undefined') return 'unsupported';
@@ -119,11 +120,11 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
         <div data-testid="default-sort-card" style={card}>
           <div style={sectionLabel}>Default Sort</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {SORT_OPTIONS.map(({ sort, label }) => (
+            {capabilities.feedOptions.map(({ id, label }) => (
               <button
-                key={sort}
-                style={settings.defaultSort === sort ? active : inactive}
-                onClick={() => updateSetting('defaultSort', sort)}
+                key={id}
+                style={settings.defaultFeedId === id ? active : inactive}
+                onClick={() => updateSetting('defaultFeedId', id)}
               >
                 {label}
               </button>
@@ -153,11 +154,11 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
         <div data-testid="comment-sort-card" style={card}>
           <div style={sectionLabel}>Default Comment Sort</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {COMMENT_SORT_OPTIONS.map(({ sort, label }) => (
+            {capabilities.commentSortOptions.map(({ id, label }) => (
               <button
-                key={sort}
-                style={settings.commentSort === sort ? active : inactive}
-                onClick={() => updateSetting('commentSort', sort)}
+                key={id}
+                style={settings.defaultCommentSortId === id ? active : inactive}
+                onClick={() => updateSetting('defaultCommentSortId', id)}
               >
                 {label}
               </button>
@@ -198,8 +199,8 @@ export default function SettingsPage({ isAuthenticated, onPermissionChange }: Pr
           </div>
           <InstanceInput
             placeholder="Auto (top-ranked per sort)"
-            value={settings.anonInstance}
-            onChange={(v) => updateSetting('anonInstance', v)}
+            value={settings.lemmy.anonInstance}
+            onChange={(v) => updateSetting('lemmy', { ...settings.lemmy, anonInstance: v })}
             style={{
               width: '100%', boxSizing: 'border-box',
               background: '#1a1d24', border: '1px solid #3a3d45',

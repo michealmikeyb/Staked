@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
-import { type PostView, type CommentSortType } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
-import { useCommentLoader } from '../hooks/useCommentLoader';
+import type { Post } from '../lib/api/types';
+import { useBackend } from '../lib/api/context';
+import { useAsync } from '../hooks/useAsync';
 import { useSettings } from '../lib/SettingsContext';
 import PostCardShell from './PostCardShell';
 import styles from './PostCard.module.css';
@@ -13,8 +13,7 @@ const VELOCITY_THRESHOLD = 0.5;
 const EMPTY_MOTION_PROPS = {};
 
 interface Props {
-  post: PostView;
-  auth: AuthState | null;
+  post: Post;
   zIndex: number;
   scale: number;
   onSwipeRight: () => void;
@@ -25,18 +24,24 @@ interface Props {
 }
 
 export default function PostCard({
-  post, auth, zIndex, scale,
+  post, zIndex, scale,
   onSwipeRight, onSwipeLeft, onUndo,
   isReturning = false,
   onReturnAnimationComplete,
 }: Props) {
-  const { post: p, community, creator, counts } = post;
+  const backend = useBackend();
   const { settings } = useSettings();
-  const [activeSort, setActiveSort] = useState<CommentSortType>(() => settings.commentSort);
-  const { comments, commentsLoaded } = useCommentLoader(p, community, auth, activeSort);
+  const [activeSort, setActiveSort] = useState<string>(() => settings.defaultCommentSortId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const [pullDelta, setPullDelta] = useState(0);
+
+  const { data: commentsData, loading: commentsLoading } = useAsync(
+    () => backend.comments.list(post.id, { sortId: activeSort }),
+    [post.id, activeSort],
+  );
+  const comments = commentsData ?? [];
+  const commentsLoaded = !commentsLoading;
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-150, 0, 150], [12, 0, -12]);
@@ -100,11 +105,7 @@ export default function PostCard({
         <span style={{ fontSize: '3rem' }}>↩</span>
       </motion.div>
       <PostCardShell
-        post={p}
-        community={community}
-        creator={creator}
-        counts={counts}
-        auth={auth ?? undefined}
+        post={post}
         comments={comments}
         commentsLoaded={commentsLoaded}
         scrollRef={scrollRef}

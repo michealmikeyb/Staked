@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { fetchPosts, fetchCommunityPosts, fetchUnreadCount, upvotePost, downvotePost, fetchCommunityInfo, followCommunity, blockCommunity, type PostView, type SortType, type StakType, type CommunityInfo } from '../lib/lemmy';
-import { type AuthState, loadSeen, addSeen, clearSeen } from '../lib/store';
+import type { Post, Source } from '../lib/api/types';
+import { useBackend } from '../lib/api/context';
+import { loadSeen, addSeen, clearSeen } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
-import { getAnonInstance } from '../lib/instanceRankings';
 import PostCard from './PostCard';
 import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
@@ -12,7 +12,7 @@ import Toast from './Toast';
 import { SORT_OPTIONS, STAKS } from './HeaderBar';
 
 interface Props {
-  auth: AuthState | null;
+  auth?: unknown; // kept for App.tsx backward compat — not used internally
   onLogout?: () => void;
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
@@ -22,137 +22,144 @@ interface Props {
 const STACK_VISIBLE = 3;
 const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
-export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount, community }: Props) {
+export default function FeedStack({ onLogout, unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { settings, updateSetting } = useSettings();
-  const [posts, setPosts] = useState<PostView[]>([]);
-  const [undoStack, setUndoStack] = useState<PostView[]>([]);
-  const [returningPostId, setReturningPostId] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
+  const backend = useBackend();
+  const isLoggedIn = backend.session !== null;
+
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [undoStack, setUndoStack] = useState<Post[]>([]);
+  const [returningPostId, setReturningPostId] = useState<string | null>(null);
   const seenRef = useRef<Set<number>>(community ? new Set() : loadSeen());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
-  const [sortType, setSortType] = useState<SortType>(community ? 'Active' : settings.defaultSort);
-  const [stak, setStak] = useState<StakType>(auth === null ? 'All' : settings.activeStak);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [sortType, setSortType] = useState<string>(community ? 'Active' : settings.defaultFeedId);
+  const [stak, setStak] = useState<string>(isLoggedIn ? settings.activeStakId : 'All');
 
-  const isAnonymousMode = auth === null || stak === 'Anonymous';
+  const isAnonymousMode = !isLoggedIn || stak === 'Anonymous';
 
-  const [communityInfo, setCommunityInfo] = useState<CommunityInfo | null>(null);
+  const [communityInfo, setCommunityInfo] = useState<Source | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (community) return;
-    if (!auth) return;
-    fetchUnreadCount(auth.instance, auth.token)
-      .then(setUnreadCount)
-      .catch(() => {});
-  }, [auth, setUnreadCount, community]);
+    if (!isLoggedIn) return;
+    backend.notifications.unreadCount().then(setUnreadCount).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!community) return;
-    if (!auth) return;
-    fetchCommunityInfo(auth.instance, auth.token, `${community.name}@${community.instance}`)
+    if (!isLoggedIn) return;
+    backend.sources.get(`${community.name}@${community.instance}`)
       .then(setCommunityInfo)
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // mount-only: community and auth are stable for the lifetime of this route
+  }, []); // mount-only
 
   useEffect(() => {
     const msg = (location.state as { toast?: string } | null)?.toast;
     if (msg) setToast(msg);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // mount-only: read once from navigation state
+  }, []); // mount-only
 
-  const loadMore = useCallback(async (nextPage: number, sort: SortType, currentStak: StakType) => {
+  const loadMore = useCallback(async (sort: string, currentStak: string, nextCursor: string | null) => {
     setLoading(true);
-    const isAnonymous = auth === null || currentStak === 'Anonymous';
-    const instance = isAnonymous ? (settings.anonInstance || getAnonInstance(sort)) : auth!.instance;
-    const token = isAnonymous ? '' : auth!.token;
-    const stakForApi: StakType = currentStak === 'Anonymous' ? 'All' : currentStak;
     try {
-      const newPosts = community
-        ? await fetchCommunityPosts(instance, token, `${community.name}@${community.instance}`, nextPage, sort)
-        : await fetchPosts(instance, token, nextPage, sort, stakForApi);
-      if (newPosts.length === 0) {
+      const page = community
+        ? await backend.feed.getSourceFeed(`${community.name}@${community.instance}`, { feedId: sort, cursor: nextCursor })
+        : await backend.feed.getTimeline({ feedId: sort, stakId: currentStak, cursor: nextCursor });
+
+      const unseen = page.items.filter((p) => {
+        const localId = parseInt(p.id.split('|')[0], 10) || parseInt(p.id, 10);
+        return !seenRef.current.has(localId);
+      });
+
+      if (unseen.length === 0 && page.nextCursor === null) {
         setCanLoadMore(false);
       } else {
-        const unseen = newPosts.filter((p) => !seenRef.current.has(p.post.id));
-        setPosts((prev) => [...prev, ...unseen]);
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          return [...prev, ...unseen.filter((p) => !existingIds.has(p.id))];
+        });
+        setCursor(page.nextCursor);
       }
     } catch (err) {
       setCanLoadMore(false);
-      if (nextPage === 1) {
+      if (!nextCursor) {
         setError(err instanceof Error ? err.message : 'Failed to load posts');
       }
     } finally {
       setLoading(false);
     }
-  // Use primitive values (not the community object) as deps to avoid re-creating
-  // loadMore every render when the parent passes `community={{ ... }}` inline.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, community?.name, community?.instance, settings.anonInstance]);
+  }, [backend, community?.name, community?.instance]);
 
   useEffect(() => {
-    loadMore(1, sortType, stak);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadMore(sortType, stak, null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadMore]);
 
   useEffect(() => {
     if (posts.length <= 3 && !loading && canLoadMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      loadMore(nextPage, sortType, stak);
+      loadMore(sortType, stak, cursor);
     }
-  // stak excluded: handleStakChange already calls loadMore directly on stak change
+  // stak excluded: handleStakChange calls loadMore directly on change
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posts.length, loading, page, loadMore, canLoadMore, sortType]);
+  }, [posts.length, loading, canLoadMore, sortType, cursor]);
 
-  function resetAndLoad(sort: SortType, newStak: StakType) {
+  function resetAndLoad(sort: string, newStak: string) {
     setPosts([]);
-    setPage(1);
+    setCursor(null);
     setCanLoadMore(true);
-    loadMore(1, sort, newStak);
+    loadMore(sort, newStak, null);
   }
 
   async function handleSubscribeToggle() {
-    if (!communityInfo || !auth) return;
-    const follow = communityInfo.subscribed !== 'Subscribed';
+    if (!communityInfo) return;
+    const follow = communityInfo.viewer?.subscribed !== 'yes';
     const previous = communityInfo;
-    setCommunityInfo({ ...communityInfo, subscribed: follow ? 'Subscribed' : 'NotSubscribed' });
+    setCommunityInfo({ ...communityInfo, viewer: { subscribed: follow ? 'yes' : 'no' } });
     try {
-      await followCommunity(auth.instance, auth.token, communityInfo.id, follow);
+      await backend.sources.subscribe(communityInfo.id, follow);
     } catch {
       setCommunityInfo(previous);
     }
   }
 
   async function handleBlock() {
-    if (!auth || !communityInfo || !community) return;
-    await blockCommunity(auth.instance, auth.token, communityInfo.id, true);
+    if (!communityInfo || !community) return;
+    await backend.sources.block(communityInfo.id, true);
     navigate('/', { state: { toast: `Blocked c/${community.name}` } });
   }
 
-  function handleSortChange(newSort: SortType) {
+  function handleSortChange(newSort: string) {
     setSortType(newSort);
     resetAndLoad(newSort, stak);
   }
 
-  function handleStakChange(newStak: StakType) {
-    updateSetting('activeStak', newStak);
+  function handleStakChange(newStak: string) {
+    updateSetting('activeStakId', newStak);
     setStak(newStak);
     seenRef.current = new Set();
     resetAndLoad(sortType, newStak);
   }
 
-  function dismissTop(postId: number) {
+  function getLocalId(postId: string): number {
+    return parseInt(postId.split('|')[0], 10) || parseInt(postId, 10);
+  }
+
+  function dismissTop(postId: string) {
     const topPost = posts[0];
     if (topPost) setUndoStack((stack) => [...stack, topPost]);
     setPosts((prev) => prev.slice(1));
     if (returningPostId !== null) setReturningPostId(null);
-    if (!community) addSeen(postId);
-    seenRef.current.add(postId);
+    if (!community) addSeen(getLocalId(postId));
+    seenRef.current.add(getLocalId(postId));
     window.dispatchEvent(new CustomEvent('stakswipe:swiped'));
   }
 
@@ -161,14 +168,14 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     const post = undoStack[undoStack.length - 1];
     setUndoStack(undoStack.slice(0, -1));
     setPosts((prev) => [post, ...prev]);
-    setReturningPostId(post.post.id);
+    setReturningPostId(post.id);
   }
 
-  function voteForSwipe(isRight: boolean, postId: number): Promise<void> {
+  function voteForSwipe(isRight: boolean, postId: string): Promise<void> {
     if (isAnonymousMode) return Promise.resolve();
     const isUpvote = isRight !== settings.swapGestures;
-    if (isUpvote) return upvotePost(auth!.instance, auth!.token, postId).catch(() => {});
-    if (settings.nonUpvoteSwipeAction === 'downvote') return downvotePost(auth!.instance, auth!.token, postId).catch(() => {});
+    if (isUpvote) return backend.posts.vote(postId, 1).catch(() => {});
+    if (settings.nonUpvoteSwipeAction === 'downvote') return backend.posts.vote(postId, -1).catch(() => {});
     return Promise.resolve();
   }
 
@@ -178,11 +185,11 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') {
-        voteForSwipe(true, topPost.post.id);
-        dismissTop(topPost.post.id);
+        voteForSwipe(true, topPost.id);
+        dismissTop(topPost.id);
       } else if (e.key === 'ArrowLeft') {
-        voteForSwipe(false, topPost.post.id);
-        dismissTop(topPost.post.id);
+        voteForSwipe(false, topPost.id);
+        dismissTop(topPost.id);
       } else if (e.key === 'ArrowDown') {
         handleUndo();
       }
@@ -190,7 +197,8 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [posts, auth, settings, isAnonymousMode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts, isAnonymousMode, settings]);
 
   if (loading && posts.length === 0) {
     return (
@@ -204,8 +212,8 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
     return (
       <div style={screenStyle}>
         <div style={{ color: '#ff4444' }}>{error}</div>
-        <button onClick={auth !== null ? onLogout : () => navigate('/login')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
-          {auth !== null ? 'Log out' : 'Log in'}
+        <button onClick={isLoggedIn ? onLogout : () => navigate('/login')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
+          {isLoggedIn ? 'Log out' : 'Log in'}
         </button>
       </div>
     );
@@ -230,7 +238,7 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           <>
             <div style={sectionLabel}>Switch stak</div>
             <div style={pillRow}>
-              {(auth !== null ? STAKS : STAKS.filter((s) => s.stak === 'All' || s.stak === 'Anonymous')).map(({ stak: s, label, icon }) => (
+              {(isLoggedIn ? STAKS : STAKS.filter((s) => s.stak === 'All' || s.stak === 'Anonymous')).map(({ stak: s, label, icon }) => (
                 <button key={s} onClick={() => handleStakChange(s)} style={s === stak ? pillActive : pillInactive}>
                   {icon} {label}
                 </button>
@@ -268,10 +276,10 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
         <CommunityHeader
           name={community.name}
           instance={community.instance}
-          sortType={sortType}
-          onSortChange={handleSortChange}
+          sortType={sortType as any}
+          onSortChange={handleSortChange as any}
           onBack={() => navigate(-1)}
-          communityInfo={communityInfo}
+          communityInfo={communityInfo as any}
           onSubscribeToggle={handleSubscribeToggle}
           onBlock={handleBlock}
         />
@@ -282,9 +290,9 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           onNavigate={navigate}
           onLogoClick={() => navigate('/')}
           unreadCount={unreadCount}
-          activeStak={auth !== null ? stak : undefined}
-          onStakChange={auth !== null ? handleStakChange : undefined}
-          isAuthenticated={auth !== null}
+          activeStak={isLoggedIn ? stak : undefined}
+          onStakChange={isLoggedIn ? handleStakChange : undefined}
+          isAuthenticated={isLoggedIn}
         />
       )}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -294,23 +302,22 @@ export default function FeedStack({ auth, onLogout, unreadCount, setUnreadCount,
           const zIndex = STACK_VISIBLE - i;
           return (
             <PostCard
-              key={post.post.id}
+              key={post.id}
               post={post}
-              auth={auth}
               zIndex={zIndex}
               scale={isTop ? 1 : scale}
               onSwipeRight={isTop ? async () => {
-                await voteForSwipe(true, post.post.id);
-                dismissTop(post.post.id);
+                await voteForSwipe(true, post.id);
+                dismissTop(post.id);
               } : () => {}}
               onSwipeLeft={isTop ? async () => {
-                await voteForSwipe(false, post.post.id);
-                dismissTop(post.post.id);
+                await voteForSwipe(false, post.id);
+                dismissTop(post.id);
               } : () => {}}
               onUndo={isTop ? handleUndo : () => {}}
-              isReturning={isTop && post.post.id === returningPostId}
+              isReturning={isTop && post.id === returningPostId}
               onReturnAnimationComplete={
-                isTop && post.post.id === returningPostId
+                isTop && post.id === returningPostId
                   ? () => setReturningPostId(null)
                   : undefined
               }
