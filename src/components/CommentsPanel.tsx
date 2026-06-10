@@ -1,35 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { fetchComments, type PostView, type CommentView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { useBackend } from '../lib/api/context';
+import type { Post, Comment } from '../lib/api/types';
 import styles from './CommentsPanel.module.css';
 
 interface Props {
-  post: PostView;
-  auth: AuthState;
+  post: Post;
+  auth?: unknown; // kept for caller compat — backend provides session
   onClose: () => void;
   onSave: () => void;
 }
 
-function depthFromPath(path: string): number {
-  // Path format: "0.parentId.childId"
-  return path.split('.').length - 1;
-}
-
-export default function CommentsPanel({ post, auth, onClose, onSave }: Props) {
-  const { post: p, counts } = post;
-  const [comments, setComments] = useState<CommentView[]>([]);
+export default function CommentsPanel({ post, onClose, onSave }: Props) {
+  const backend = useBackend();
+  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
-    fetchComments(auth.instance, auth.token, p.id)
+    backend.comments.list(post.id, { sortId: 'Top' })
       .then((c) => { if (!cancelled) setComments(c); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [auth, p.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id]);
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartY.current = e.touches[0].clientY;
@@ -55,8 +51,8 @@ export default function CommentsPanel({ post, auth, onClose, onSave }: Props) {
     >
       <div className={styles.header}>
         <button className={styles.closeBtn} onClick={onClose} aria-label="Close comments">←</button>
-        <div className={styles.headerTitle}>{p.name}</div>
-        <div className={styles.headerMeta}>▲ {counts.score} · 💬 {counts.comments}</div>
+        <div className={styles.headerTitle}>{post.title}</div>
+        <div className={styles.headerMeta}>▲ {post.counts.score} · 💬 {post.counts.comments}</div>
       </div>
 
       <div
@@ -69,20 +65,19 @@ export default function CommentsPanel({ post, auth, onClose, onSave }: Props) {
 
         {loading && <div className={styles.loading}>Loading comments…</div>}
 
-        {comments.map((cv) => {
-          const depth = depthFromPath(cv.comment.path);
-          return (
-            <div
-              key={cv.comment.id}
-              className={styles.comment}
-              data-depth={depth}
-              style={{ paddingLeft: `${16 + (depth - 1) * 14}px` }}
-            >
-              <div className={styles.commentAuthor}>@{cv.creator.display_name ?? cv.creator.name} · ▲ {cv.counts.score}</div>
-              <div className={styles.commentBody}>{cv.comment.content}</div>
+        {comments.map((comment) => (
+          <div
+            key={comment.id}
+            className={styles.comment}
+            data-depth={comment.depth}
+            style={{ paddingLeft: `${16 + (comment.depth - 1) * 14}px` }}
+          >
+            <div className={styles.commentAuthor}>
+              @{comment.author.displayName ?? comment.author.handle} · ▲ {comment.counts.score}
             </div>
-          );
-        })}
+            <div className={styles.commentBody}>{comment.body}</div>
+          </div>
+        ))}
       </div>
     </motion.div>
   );

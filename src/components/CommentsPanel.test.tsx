@@ -1,48 +1,37 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithBackend, makePost, makeComment } from '../test-utils';
 import CommentsPanel from './CommentsPanel';
-import { type PostView } from '../lib/lemmy';
 
-const MOCK_POST = {
-  post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null },
-  community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-  creator: { name: 'alice' },
-  counts: { score: 847, comments: 2 },
-} as unknown as PostView;
+const MOCK_POST = makePost({ id: '1', title: 'Test Post', counts: { score: 847, comments: 2 } });
+const COMMENTS = [
+  makeComment({ id: '10', postId: '1', body: 'Great article!', depth: 1 }),
+  makeComment({ id: '11', postId: '1', body: 'I disagree.', depth: 2 }),
+];
 
-vi.mock('../lib/lemmy', () => ({
-  fetchComments: vi.fn().mockResolvedValue([
-    {
-      comment: { id: 10, content: 'Great article!', path: '0.10', published: '' },
-      creator: { name: 'bob' },
-      counts: { score: 42 },
-    },
-    {
-      comment: { id: 11, content: 'I disagree.', path: '0.10.11', published: '' },
-      creator: { name: 'carol' },
-      counts: { score: 5 },
-    },
-  ]),
-}));
-
-const AUTH = { token: 't', instance: 'lemmy.world', username: 'u' };
+function renderPanel() {
+  return renderWithBackend(
+    <CommentsPanel post={MOCK_POST} onClose={vi.fn()} onSave={vi.fn()} />,
+    { fixtures: { comments: { '1': COMMENTS } } },
+  );
+}
 
 describe('CommentsPanel', () => {
   it('shows post title in pinned header', () => {
-    render(<CommentsPanel post={MOCK_POST} auth={AUTH} onClose={vi.fn()} onSave={vi.fn()} />);
+    renderPanel();
     expect(screen.getByText('Test Post')).toBeInTheDocument();
   });
 
   it('loads and renders comments', async () => {
-    render(<CommentsPanel post={MOCK_POST} auth={AUTH} onClose={vi.fn()} onSave={vi.fn()} />);
+    renderPanel();
     await waitFor(() => {
       expect(screen.getByText('Great article!')).toBeInTheDocument();
       expect(screen.getByText('I disagree.')).toBeInTheDocument();
     });
   });
 
-  it('indents replies based on path depth', async () => {
-    const { container } = render(<CommentsPanel post={MOCK_POST} auth={AUTH} onClose={vi.fn()} onSave={vi.fn()} />);
+  it('indents replies based on depth', async () => {
+    const { container } = renderPanel();
     await waitFor(() => screen.getByText('I disagree.'));
     const comments = container.querySelectorAll('[data-depth]');
     expect(Number(comments[0].getAttribute('data-depth'))).toBe(1);
