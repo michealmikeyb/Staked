@@ -1,10 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  resolveCommentId, createComment, editComment, savePost,
-  type CommentView, type CommentSortType,
-} from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import { useBackend } from '../lib/api/context';
+import type { Post, Comment } from '../lib/api/types';
 import { useSettings } from '../lib/SettingsContext';
 import { instanceFromActorId, isImageUrl, buildShareUrl } from '../lib/urlUtils';
 import { useShare } from '../hooks/useShare';
@@ -18,18 +15,6 @@ import CreatorAvatar from './CreatorAvatar';
 import CommunityAvatar from './CommunityAvatar';
 import styles from './PostCard.module.css';
 
-interface Post {
-  id: number;
-  name: string;
-  ap_id: string;
-  url?: string | null;
-  body?: string | null;
-  thumbnail_url?: string | null;
-  nsfw?: boolean;
-  published: string;
-  saved?: boolean;
-}
-
 function timeAgo(published: string): string {
   const seconds = Math.floor((Date.now() - new Date(published).getTime()) / 1000);
   if (seconds < 60) return `${seconds}s`;
@@ -42,52 +27,31 @@ function timeAgo(published: string): string {
   return `${Math.floor(days / 7)}w`;
 }
 
-interface Community {
-  name: string;
-  actor_id: string;
-  icon?: string | null;
-}
-
-interface Creator {
-  name: string;
-  display_name?: string | null;
-  avatar?: string | null;
-  actor_id?: string;
-}
-
-interface Counts {
-  score: number;
-  comments: number;
-}
-
 interface Props {
   post: Post;
-  community: Community;
-  creator: Creator;
-  counts: Counts;
-  auth?: AuthState;
-  comments: CommentView[];
+  comments: Comment[];
   commentsLoaded: boolean;
-  highlightCommentId?: number;
+  highlightCommentId?: string;
   scrollRef?: React.RefObject<HTMLDivElement>;
   onTouchStart?: React.TouchEventHandler<HTMLDivElement>;
   onTouchMove?: React.TouchEventHandler<HTMLDivElement>;
   onTouchEnd?: React.TouchEventHandler<HTMLDivElement>;
   blurNsfw?: boolean;
-  activeSort?: CommentSortType;
-  onSortChange?: (sort: CommentSortType) => void;
+  activeSort?: string;
+  onSortChange?: (sort: string) => void;
 }
 
 const noop = () => {};
 
 type SheetState =
-  | { mode: 'reply'; target: CommentView }
-  | { mode: 'edit'; target: CommentView }
+  | { mode: 'reply'; target: Comment }
+  | { mode: 'edit'; target: Comment }
   | { mode: 'new' }
   | null;
 
+
 export default function PostCardShell({
-  post, community, creator, counts, auth,
+  post,
   comments, commentsLoaded, highlightCommentId,
   scrollRef: scrollRefProp, onTouchStart, onTouchMove, onTouchEnd,
   blurNsfw = true,
@@ -95,25 +59,36 @@ export default function PostCardShell({
   onSortChange = noop,
 }: Props) {
   const navigate = useNavigate();
+  const backend = useBackend();
   const { settings } = useSettings();
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollRefProp ?? internalRef;
 
+  const isLoggedIn = backend.session !== null;
+
+  const srcParts = post.source.handle.split('@');
+  const srcName = srcParts[0] ?? post.source.handle;
+  const srcInstance = srcParts[1] ?? '';
+
+  const authorParts = post.author.handle.split('@');
+  const authorName = authorParts[0] ?? post.author.handle;
+  const authorInstance = authorParts[1] ?? '';
+
+  const isImage = !!post.externalUrl && isImageUrl(post.externalUrl);
+  const imageSrc = isImage ? post.externalUrl : (post.mediaUrl ?? null);
+  const showLinkBanner = !!post.externalUrl && !isImage;
+
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [sheetState, setSheetState] = useState<SheetState>(null);
-  const [localReplies, setLocalReplies] = useState<CommentView[]>([]);
-  const [localEdits, setLocalEdits] = useState<Record<number, string>>({});
+  const [localReplies, setLocalReplies] = useState<Comment[]>([]);
+  const [localEdits, setLocalEdits] = useState<Record<string, string>>({});
   const [keyboardOffset, setKeyboardOffset] = useState(0);
-  const [localSaved, setLocalSaved] = useState(post.saved ?? false);
+  const [localSaved, setLocalSaved] = useState(post.viewer?.saved ?? false);
   const [reportTarget, setReportTarget] = useState<ReportTarget>(null);
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const { share, toastVisible, setToastVisible } = useShare();
 
-  const instance = instanceFromActorId(community.actor_id);
-  const isImage = !!post.url && isImageUrl(post.url);
-  const imageSrc = isImage ? post.url : post.thumbnail_url;
-  const showLinkBanner = !!post.url && !isImage;
-  const showNsfwBlur = !!post.nsfw && blurNsfw && !nsfwRevealed;
+  const showNsfwBlur = post.nsfw && blurNsfw && !nsfwRevealed;
 
   useEffect(() => {
     if (!sheetState || !window.visualViewport) return;
@@ -135,49 +110,49 @@ export default function PostCardShell({
 
   useEffect(() => {
     if (sheetState?.mode !== 'reply') return;
-    const el = scrollRef.current?.querySelector(`[data-comment-id="${sheetState.target.comment.id}"]`);
+    const el = scrollRef.current?.querySelector(`[data-comment-id="${sheetState.target.id}"]`);
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   }, [sheetState, scrollRef]);
 
   const handleShare = () => {
-    const url = buildShareUrl(settings.shareLinkFormat, post, auth ?? null, community.actor_id);
-    share(post.name, url);
+    const pipeIdx = post.id.indexOf('|');
+    const localId = pipeIdx >= 0 ? parseInt(post.id.slice(0, pipeIdx), 10) : 0;
+    const communityActorId = srcInstance ? `https://${srcInstance}/c/${srcName}` : '';
+    const viewerHandle = backend.session?.viewer?.handle ?? '';
+    const viewerInstance = viewerHandle.includes('@') ? viewerHandle.split('@')[1] : '';
+    const shareAuth = viewerInstance ? { instance: viewerInstance } : null;
+    const url = buildShareUrl(settings.shareLinkFormat, { id: localId, ap_id: post.permalink }, shareAuth, communityActorId);
+    share(post.title ?? '', url);
   };
 
-  const handleReport = (cv: CommentView) => {
-    setReportTarget({ type: 'comment', commentId: cv.comment.id, apId: cv.comment.ap_id });
+  const handleReport = (comment: Comment) => {
+    setReportTarget({ type: 'comment', commentId: comment.id });
   };
 
   const handleSave = async () => {
-    if (!auth) return;
+    if (!isLoggedIn) return;
     const newSaved = !localSaved;
     setLocalSaved(newSaved);
     try {
-      await savePost(auth.instance, auth.token, post.id, newSaved);
+      await backend.posts.save(post.id, newSaved);
       if (newSaved) setSaveToastVisible(true);
     } catch {
       setLocalSaved(!newSaved);
     }
   };
 
-  const handleCommentCreate = async (content: string, parentComment?: CommentView) => {
-    if (!auth) return;
-    const parentId = parentComment
-      ? await resolveCommentId(auth.instance, auth.token, parentComment.comment.ap_id).catch(() => null) ?? parentComment.comment.id
-      : undefined;
-    const newComment = await createComment(auth.instance, auth.token, post.id, content, parentId);
-    const pathPrefix = parentComment?.comment.path ?? '0';
-    setLocalReplies(prev => [...prev, {
-      ...newComment,
-      comment: { ...newComment.comment, path: pathPrefix + '.' + newComment.comment.id },
-    }]);
+  const handleCommentCreate = async (content: string, parentComment?: Comment) => {
+    const newComment = await backend.comments.create({
+      postId: post.id,
+      parentId: parentComment?.id,
+      body: content,
+    });
+    setLocalReplies(prev => [...prev, newComment]);
   };
 
-  const handleEditSubmit = async (content: string, target: CommentView) => {
-    if (!auth) return;
-    const localId = await resolveCommentId(auth.instance, auth.token, target.comment.ap_id).catch(() => null) ?? target.comment.id;
-    await editComment(auth.instance, auth.token, localId, content);
-    setLocalEdits(prev => ({ ...prev, [target.comment.id]: content }));
+  const handleEditSubmit = async (content: string, target: Comment) => {
+    await backend.comments.edit(target.id, content);
+    setLocalEdits(prev => ({ ...prev, [target.id]: content }));
   };
 
   const handleSubmit = async (content: string) => {
@@ -189,7 +164,7 @@ export default function PostCardShell({
   };
 
   const initialEditContent = sheetState?.mode === 'edit'
-    ? (localEdits[sheetState.target.comment.id] ?? sheetState.target.comment.content)
+    ? (localEdits[sheetState.target.id] ?? sheetState.target.body)
     : undefined;
 
   return (
@@ -203,49 +178,49 @@ export default function PostCardShell({
         onTouchEnd={onTouchEnd}
       >
         <div className={styles.meta}>
-          <CommunityAvatar name={community.name} icon={community.icon} size={32} />
+          <CommunityAvatar name={srcName} icon={post.source.icon} size={32} />
           <div>
             <div
               className={styles.communityName}
               style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/community/${instance}/${community.name}`)}
+              onClick={() => navigate(`/community/${srcInstance}/${srcName}`)}
             >
-              c/{community.name}
+              c/{srcName}
             </div>
-            <div className={styles.instanceName}>{instance}</div>
-            {creator.actor_id ? (
+            <div className={styles.instanceName}>{srcInstance}</div>
+            {authorInstance ? (
               <button
                 className={styles.creatorLink}
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/user/${instanceFromActorId(creator.actor_id!)}/${creator.name}`);
+                  navigate(`/user/${authorInstance}/${authorName}`);
                 }}
               >
-                <CreatorAvatar name={creator.name} avatar={creator.avatar ?? undefined} size={16} />
-                {creator.display_name ?? creator.name}
+                <CreatorAvatar name={authorName} avatar={post.author.avatar} size={16} />
+                {post.author.displayName ?? authorName}
               </button>
             ) : (
-              <div className={styles.instanceName}>{creator.display_name ?? creator.name}</div>
+              <div className={styles.instanceName}>{post.author.displayName ?? post.author.handle}</div>
             )}
           </div>
           <div className={styles.metaStats}>
-            <span data-testid="meta-score">▲ {counts.score}</span>
-            <span data-testid="meta-comments">💬 {counts.comments}</span>
-            <span data-testid="meta-age">{timeAgo(post.published)}</span>
+            <span data-testid="meta-score">▲ {post.counts.score}</span>
+            <span data-testid="meta-comments">💬 {post.counts.comments}</span>
+            <span data-testid="meta-age">{timeAgo(post.publishedAt)}</span>
           </div>
         </div>
 
-        <div className={styles.title}>{post.name}</div>
+        <div className={styles.title}>{post.title}</div>
 
         {showLinkBanner && (
           <div
             data-testid="link-banner"
             className={styles.linkBanner}
-            onClick={() => window.open(post.url!, '_blank', 'noopener,noreferrer')}
+            onClick={() => window.open(post.externalUrl!, '_blank', 'noopener,noreferrer')}
           >
             <span className={styles.linkBannerIcon}>🔗</span>
             <div className={styles.linkBannerContent}>
-              <div className={styles.linkBannerDomain}>{instanceFromActorId(post.url!)}</div>
+              <div className={styles.linkBannerDomain}>{instanceFromActorId(post.externalUrl!)}</div>
               <div className={styles.linkBannerHint}>Tap to open link</div>
             </div>
             <span className={styles.linkBannerArrow}>↗</span>
@@ -289,7 +264,7 @@ export default function PostCardShell({
         {post.body && <MarkdownRenderer content={post.body} className={styles.excerpt} />}
 
         <div className={styles.footer}>
-          {auth && (
+          {isLoggedIn && (
             <button
               data-testid="save-button"
               className={styles.footerAction}
@@ -306,7 +281,7 @@ export default function PostCardShell({
           >
             Share ↗
           </button>
-          {auth && (
+          {isLoggedIn && (
             <button
               data-testid="report-button"
               className={styles.footerAction}
@@ -315,7 +290,7 @@ export default function PostCardShell({
               ⚑ Report
             </button>
           )}
-          {auth && (
+          {isLoggedIn && (
             <button
               data-testid="comment-button"
               className={styles.footerAction}
@@ -346,31 +321,30 @@ export default function PostCardShell({
         )}
 
         <div className={styles.commentsSection}>
-          {commentsLoaded && comments.length === 0 && counts.comments > 0 && (
+          {commentsLoaded && comments.length === 0 && post.counts.comments > 0 && (
             <a
               className={styles.commentsFallback}
-              href={post.ap_id}
+              href={post.permalink}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {counts.comments} comments — view on {instanceFromActorId(post.ap_id)}
+              {post.counts.comments} comments — view on {instanceFromActorId(post.permalink)}
             </a>
           )}
           <CommentList
             comments={comments}
             localReplies={localReplies}
-            auth={auth ?? { instance, token: '', username: '' }}
-            opActorId={creator.actor_id ?? undefined}
-            onSetReplyTarget={(cv) => setSheetState({ mode: 'reply', target: cv })}
-            onEdit={(cv) => setSheetState({ mode: 'edit', target: cv })}
+            opActorId={post.author.profileUrl}
+            onSetReplyTarget={(c) => setSheetState({ mode: 'reply', target: c })}
+            onEdit={(c) => setSheetState({ mode: 'edit', target: c })}
             localEdits={localEdits}
-            onReport={auth ? handleReport : undefined}
+            onReport={isLoggedIn ? handleReport : undefined}
             highlightCommentId={highlightCommentId}
           />
         </div>
       </div>
 
-      {auth && (
+      {isLoggedIn && (
         <div
           data-testid="reply-wrapper"
           style={{ position: 'absolute', left: 0, right: 0, bottom: keyboardOffset }}
@@ -384,11 +358,10 @@ export default function PostCardShell({
           />
         </div>
       )}
-      {auth && reportTarget && (
+      {isLoggedIn && reportTarget && (
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10 }}>
           <ReportSheet
             target={reportTarget}
-            auth={auth}
             onClose={() => setReportTarget(null)}
           />
         </div>

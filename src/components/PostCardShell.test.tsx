@@ -1,26 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsProvider } from '../lib/SettingsContext';
-import type { CommentSortType } from '../lib/lemmy';
-
-vi.mock('../lib/lemmy', () => ({
-  savePost: vi.fn().mockResolvedValue(undefined),
-  deletePost: vi.fn().mockResolvedValue(undefined),
-  deleteComment: vi.fn().mockResolvedValue(undefined),
-  createComment: vi.fn().mockResolvedValue({
-    comment: { id: 99, content: 'reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
-    creator: { name: 'me', display_name: null },
-    counts: { score: 1 },
-  }),
-  editComment: vi.fn().mockResolvedValue({
-    comment: { id: 1, content: 'Edited', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
-    creator: { name: 'alice', display_name: null },
-    counts: { score: 1 },
-  }),
-  resolveCommentId: vi.fn().mockResolvedValue(null),
-  reportPost: vi.fn().mockResolvedValue(undefined),
-  reportComment: vi.fn().mockResolvedValue(undefined),
-}));
+import { renderWithBackend, makePost, makeSource, makeUser } from '../test-utils';
+import type { RenderWithBackendOptions } from '../test-utils';
 
 vi.mock('../lib/urlUtils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/urlUtils')>();
@@ -31,41 +13,50 @@ vi.mock('../lib/urlUtils', async (importOriginal) => {
   };
 });
 
+vi.mock('../lib/lemmy', () => ({
+  reportPost: vi.fn().mockResolvedValue(undefined),
+  reportComment: vi.fn().mockResolvedValue(undefined),
+  resolveCommentId: vi.fn().mockResolvedValue(null),
+}));
+
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
 import PostCardShell from './PostCardShell';
-import { savePost } from '../lib/lemmy';
 import { buildShareUrl } from '../lib/urlUtils';
 
-const POST = {
-  id: 1, name: 'Test Post', ap_id: 'https://lemmy.world/post/1',
-  url: null, body: null, thumbnail_url: null,
-};
-const COMMUNITY = { name: 'linux', actor_id: 'https://lemmy.world/c/linux' };
-const CREATOR = { name: 'alice', display_name: null };
-const COUNTS = { score: 42, comments: 7 };
-const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
+const SOURCE = makeSource({ handle: 'linux@lemmy.world', name: 'linux' });
+const AUTHOR = makeUser({ handle: 'alice@lemmy.world' });
+const POST = makePost({
+  id: '1|https://lemmy.world/post/1',
+  title: 'Test Post',
+  permalink: 'https://lemmy.world/post/1',
+  externalUrl: undefined,
+  body: undefined,
+  mediaUrl: undefined,
+  counts: { score: 42, comments: 7 },
+  source: SOURCE,
+  author: AUTHOR,
+  viewer: { vote: 0, saved: false },
+});
 
-function renderShell(overrides: Record<string, unknown> = {}) {
-  const { activeSort = 'Top', onSortChange = vi.fn(), ...rest } = overrides;
-  return render(
+type ShellProps = Partial<React.ComponentProps<typeof PostCardShell>>;
+
+function renderShell(props: ShellProps = {}, opts: RenderWithBackendOptions = {}) {
+  return renderWithBackend(
     <SettingsProvider>
       <PostCardShell
         post={POST}
-        community={COMMUNITY}
-        creator={CREATOR}
-        counts={COUNTS}
         comments={[]}
         commentsLoaded={true}
-        auth={AUTH}
-        activeSort={activeSort as CommentSortType}
-        onSortChange={onSortChange as (s: CommentSortType) => void}
-        {...rest}
+        activeSort="Top"
+        onSortChange={vi.fn()}
+        {...props}
       />
     </SettingsProvider>,
+    opts,
   );
 }
 
@@ -85,26 +76,26 @@ describe('PostCardShell', () => {
   });
 
   it('renders Share button without auth', () => {
-    renderShell({ auth: undefined });
+    renderShell({}, { anonymous: true });
     expect(screen.getByTestId('share-button')).toBeInTheDocument();
   });
 
   it('hides Save and Comment buttons without auth', () => {
-    renderShell({ auth: undefined });
+    renderShell({}, { anonymous: true });
     expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('comment-button')).not.toBeInTheDocument();
   });
 
-  it('shows Save and Comment buttons with auth', () => {
+  it('shows Save and Comment buttons when logged in', () => {
     renderShell();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
     expect(screen.getByTestId('comment-button')).toBeInTheDocument();
   });
 
-  it('clicking Save calls savePost with save=true', async () => {
-    renderShell();
+  it('clicking Save calls backend.posts.save with save=true', async () => {
+    const { backend } = renderShell();
     fireEvent.click(screen.getByTestId('save-button'));
-    await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, true));
+    await waitFor(() => expect(backend.state.saves[POST.id]).toBe(true));
   });
 
   it('shows Saved toast after save button is clicked', async () => {
@@ -113,50 +104,49 @@ describe('PostCardShell', () => {
     await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument());
   });
 
-  it('save button shows "🔖 Save" when post.saved is false', () => {
-    renderShell({ post: { ...POST, saved: false } });
+  it('save button shows "🔖 Save" when post.viewer.saved is false', () => {
+    renderShell({ post: { ...POST, viewer: { vote: 0, saved: false } } });
     expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Save');
   });
 
-  it('save button shows "🔖 Saved" when post.saved is true', () => {
-    renderShell({ post: { ...POST, saved: true } });
+  it('save button shows "🔖 Saved" when post.viewer.saved is true', () => {
+    renderShell({ post: { ...POST, viewer: { vote: 0, saved: true } } });
     expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Saved');
   });
 
-  it('clicking Saved button calls savePost with save=false', async () => {
-    renderShell({ post: { ...POST, saved: true } });
+  it('clicking Saved button calls backend.posts.save with save=false', async () => {
+    const { backend } = renderShell({ post: { ...POST, viewer: { vote: 0, saved: true } } });
     fireEvent.click(screen.getByTestId('save-button'));
-    await waitFor(() => expect(savePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1, false));
+    await waitFor(() => expect(backend.state.saves[POST.id]).toBe(false));
   });
 
   it('save button toggles to Saved optimistically after clicking Save', async () => {
-    renderShell({ post: { ...POST, saved: false } });
+    renderShell({ post: { ...POST, viewer: { vote: 0, saved: false } } });
     fireEvent.click(screen.getByTestId('save-button'));
     await waitFor(() => expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Saved'));
   });
 
-  it('save button reverts to Save when savePost throws', async () => {
-    const { savePost: mockSave } = await import('../lib/lemmy');
-    (mockSave as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('fail'));
-    renderShell({ post: { ...POST, saved: false } });
+  it('save button reverts to Save when backend.posts.save throws', async () => {
+    const { backend } = renderShell({ post: { ...POST, viewer: { vote: 0, saved: false } } });
+    backend.posts.save = vi.fn().mockRejectedValueOnce(new Error('fail'));
     fireEvent.click(screen.getByTestId('save-button'));
     await waitFor(() => expect(screen.getByTestId('save-button')).toHaveTextContent('🔖 Save'));
   });
 
-  it('renders image when post.url is an image', () => {
-    renderShell({ post: { ...POST, url: 'https://example.com/photo.jpg' } });
+  it('renders image when externalUrl is an image', () => {
+    renderShell({ post: { ...POST, externalUrl: 'https://example.com/photo.jpg' } });
     expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
-  it('renders link banner when post.url is not an image', () => {
-    renderShell({ post: { ...POST, url: 'https://example.com/article' } });
+  it('renders link banner when externalUrl is not an image', () => {
+    renderShell({ post: { ...POST, externalUrl: 'https://example.com/article' } });
     expect(screen.getByTestId('link-banner')).toBeInTheDocument();
     expect(screen.getByText('Tap to open link')).toBeInTheDocument();
   });
 
   it('shows NSFW blur overlay for nsfw post with blurNsfw=true', () => {
     renderShell({
-      post: { ...POST, url: 'https://example.com/photo.jpg', nsfw: true },
+      post: { ...POST, externalUrl: 'https://example.com/photo.jpg', nsfw: true },
       blurNsfw: true,
     });
     expect(screen.getByTestId('nsfw-blur-overlay')).toBeInTheDocument();
@@ -165,7 +155,7 @@ describe('PostCardShell', () => {
 
   it('reveals image when NSFW overlay is tapped', () => {
     renderShell({
-      post: { ...POST, url: 'https://example.com/photo.jpg', nsfw: true },
+      post: { ...POST, externalUrl: 'https://example.com/photo.jpg', nsfw: true },
       blurNsfw: true,
     });
     fireEvent.click(screen.getByTestId('nsfw-blur-overlay'));
@@ -175,7 +165,7 @@ describe('PostCardShell', () => {
 
   it('shows image directly when blurNsfw=false for nsfw post', () => {
     renderShell({
-      post: { ...POST, url: 'https://example.com/photo.jpg', nsfw: true },
+      post: { ...POST, externalUrl: 'https://example.com/photo.jpg', nsfw: true },
       blurNsfw: false,
     });
     expect(screen.queryByTestId('nsfw-blur-overlay')).not.toBeInTheDocument();
@@ -188,45 +178,38 @@ describe('PostCardShell', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/community/lemmy.world/linux');
   });
 
-  it('navigates to user profile when creator with actor_id is clicked', () => {
-    renderShell({
-      creator: { name: 'alice', display_name: null, actor_id: 'https://lemmy.world/u/alice' },
-    });
+  it('navigates to user profile when creator with instance is clicked', () => {
+    renderShell({ post: { ...POST, author: makeUser({ handle: 'alice@lemmy.world' }) } });
     fireEvent.click(screen.getByText('alice'));
     expect(mockNavigate).toHaveBeenCalledWith('/user/lemmy.world/alice');
   });
 
-  it('renders creator as plain text when no actor_id', () => {
-    renderShell({ creator: { name: 'alice', display_name: null } });
+  it('renders creator as plain text when handle has no instance', () => {
+    renderShell({ post: { ...POST, author: makeUser({ handle: 'alice' }) } });
     const el = screen.getByText('alice');
     expect(el.tagName).not.toBe('BUTTON');
   });
 
-  it('renders reply-wrapper when auth is present', () => {
+  it('renders reply-wrapper when logged in', () => {
     renderShell();
     expect(screen.getByTestId('reply-wrapper')).toBeInTheDocument();
   });
 
-  it('does not render reply-wrapper when auth is absent', () => {
-    renderShell({ auth: undefined });
+  it('does not render reply-wrapper when not logged in', () => {
+    renderShell({}, { anonymous: true });
     expect(screen.queryByTestId('reply-wrapper')).not.toBeInTheDocument();
   });
 
-  it('renders community icon image when community.icon is provided', () => {
-    renderShell({
-      community: {
-        name: 'linux',
-        actor_id: 'https://lemmy.world/c/linux',
-        icon: 'https://lemmy.world/pictrs/image/icon.png',
-      },
-    });
+  it('renders community icon image when source.icon is provided', () => {
+    const iconSrc = makeSource({ handle: 'linux@lemmy.world', name: 'linux', icon: 'https://lemmy.world/pictrs/image/icon.png' });
+    renderShell({ post: { ...POST, source: iconSrc } });
     const img = document.querySelector('[data-testid="community-avatar-img"]') as HTMLImageElement;
     expect(img).not.toBeNull();
     expect(img.src).toBe('https://lemmy.world/pictrs/image/icon.png');
   });
 
-  it('renders first-letter fallback when community.icon is absent', () => {
-    renderShell({ community: { name: 'linux', actor_id: 'https://lemmy.world/c/linux' } });
+  it('renders first-letter fallback when source.icon is absent', () => {
+    renderShell();
     expect(screen.getByText('L')).toBeInTheDocument();
     expect(document.querySelector('[data-testid="community-avatar-img"]')).toBeNull();
   });
@@ -244,27 +227,47 @@ describe('PostCardShell', () => {
     it('calls buildShareUrl with stakswipe format by default', () => {
       renderShell();
       fireEvent.click(screen.getByTestId('share-button'));
-      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('stakswipe', POST, AUTH, COMMUNITY.actor_id);
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith(
+        'stakswipe',
+        { id: 1, ap_id: 'https://lemmy.world/post/1' },
+        expect.anything(),
+        'https://lemmy.world/c/linux',
+      );
     });
 
     it('calls buildShareUrl with source format when shareLinkFormat=source', () => {
       localStorage.setItem('stakswipe_settings', JSON.stringify({ shareLinkFormat: 'source' }));
       renderShell();
       fireEvent.click(screen.getByTestId('share-button'));
-      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('source', POST, AUTH, COMMUNITY.actor_id);
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith(
+        'source',
+        expect.objectContaining({ ap_id: 'https://lemmy.world/post/1' }),
+        expect.anything(),
+        expect.any(String),
+      );
     });
 
     it('calls buildShareUrl with home format when shareLinkFormat=home', () => {
       localStorage.setItem('stakswipe_settings', JSON.stringify({ shareLinkFormat: 'home' }));
       renderShell();
       fireEvent.click(screen.getByTestId('share-button'));
-      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('home', POST, AUTH, COMMUNITY.actor_id);
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith(
+        'home',
+        expect.objectContaining({ ap_id: 'https://lemmy.world/post/1' }),
+        expect.anything(),
+        expect.any(String),
+      );
     });
 
     it('passes null auth when not authenticated', () => {
-      renderShell({ auth: undefined });
+      renderShell({}, { anonymous: true });
       fireEvent.click(screen.getByTestId('share-button'));
-      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith('stakswipe', POST, null, COMMUNITY.actor_id);
+      expect(vi.mocked(buildShareUrl)).toHaveBeenCalledWith(
+        'stakswipe',
+        expect.objectContaining({ ap_id: 'https://lemmy.world/post/1' }),
+        null,
+        expect.any(String),
+      );
     });
   });
 
@@ -299,18 +302,18 @@ describe('PostCardShell', () => {
     });
   });
 
-  it('shows Report button when auth is provided', () => {
-    renderShell({ auth: AUTH });
+  it('shows Report button when logged in', () => {
+    renderShell();
     expect(screen.getByTestId('report-button')).toBeInTheDocument();
   });
 
-  it('hides Report button when auth is null', () => {
-    renderShell({ auth: null });
+  it('hides Report button when not logged in', () => {
+    renderShell({}, { anonymous: true });
     expect(screen.queryByTestId('report-button')).not.toBeInTheDocument();
   });
 
   it('clicking Report button opens the report sheet', () => {
-    renderShell({ auth: AUTH });
+    renderShell();
     fireEvent.click(screen.getByTestId('report-button'));
     expect(screen.getByText('Report post')).toBeInTheDocument();
   });

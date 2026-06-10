@@ -1,22 +1,21 @@
 import { useState, useEffect } from 'react';
-import { type AuthState } from '../lib/store';
-import { reportPost, reportComment, resolveCommentId } from '../lib/lemmy';
+import { useBackend } from '../lib/api/context';
 import styles from './ReportSheet.module.css';
 
 const REASONS = ['Spam', 'Harassment', 'Hate speech', 'NSFW', 'Misinformation', 'Other'];
 
 export type ReportTarget =
-  | { type: 'post'; postId: number }
-  | { type: 'comment'; commentId: number; apId: string }
+  | { type: 'post'; postId: string }
+  | { type: 'comment'; commentId: string }
   | null;
 
 interface Props {
   target: ReportTarget;
-  auth: AuthState;
   onClose: () => void;
 }
 
-export default function ReportSheet({ target, auth, onClose }: Props) {
+export default function ReportSheet({ target, onClose }: Props) {
+  const backend = useBackend();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [detail, setDetail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -47,11 +46,9 @@ export default function ReportSheet({ target, auth, onClose }: Props) {
     setError(null);
     try {
       if (target.type === 'post') {
-        await reportPost(auth.instance, auth.token, target.postId, reason);
+        await backend.posts.report(target.postId, reason);
       } else {
-        const resolved = await resolveCommentId(auth.instance, auth.token, target.apId).catch(() => null);
-        const commentId = resolved ?? target.commentId;
-        await reportComment(auth.instance, auth.token, commentId, reason);
+        await backend.comments.report(target.commentId, reason);
       }
       setSuccess(true);
     } catch (e) {
