@@ -1,22 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithBackend } from '../test-utils';
 
 vi.mock('../lib/lemmy', () => ({
-  fetchComments: vi.fn().mockResolvedValue([]),
-  resolvePostId: vi.fn().mockResolvedValue(null),
+  reportPost: vi.fn().mockResolvedValue(undefined),
+  reportComment: vi.fn().mockResolvedValue(undefined),
   resolveCommentId: vi.fn().mockResolvedValue(null),
-  createComment: vi.fn().mockResolvedValue({
-    comment: { id: 99, content: 'reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
-    creator: { name: 'me', display_name: null },
-    counts: { score: 1 },
-  }),
-  editComment: vi.fn().mockResolvedValue({
-    comment: { id: 1, content: 'Edited', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
-    creator: { name: 'alice', display_name: null },
-    counts: { score: 1 },
-  }),
-  savePost: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockNavigate = vi.fn();
@@ -25,16 +14,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../hooks/useCommentLoader', () => ({
-  useCommentLoader: () => ({ comments: [], commentsLoaded: true, resolvedInstanceRef: { current: '' }, resolvedTokenRef: { current: '' } }),
-}));
-
 vi.mock('../lib/urlUtils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/urlUtils')>();
-  return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/lemmy.world/1') };
+  return { ...actual, getShareUrl: vi.fn().mockReturnValue('https://stakswipe.com/#/post/mock.test/1') };
 });
 
 import PostDetailCard from './PostDetailCard';
+import { SettingsProvider } from '../lib/SettingsContext';
 
 const POST = { id: 1, name: 'A shared post', ap_id: 'https://lemmy.world/post/1', url: null, body: null, thumbnail_url: null };
 const COMMUNITY = { name: 'linux', actor_id: 'https://lemmy.world/c/linux' };
@@ -42,36 +28,24 @@ const CREATOR = { name: 'alice', display_name: null };
 const COUNTS = { score: 10, comments: 2 };
 const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 
-const mockPost = {
-  id: 1,
-  name: 'Test Post Title',
-  ap_id: 'https://lemmy.world/post/1',
-  url: null,
-  body: 'Post body text',
-  thumbnail_url: null,
-};
-
-const mockCommunity = {
-  name: 'technology',
-  actor_id: 'https://lemmy.world/c/technology',
-};
-
+const mockPost = { id: 1, name: 'Test Post Title', ap_id: 'https://lemmy.world/post/1', url: null, body: 'Post body text', thumbnail_url: null };
+const mockCommunity = { name: 'technology', actor_id: 'https://lemmy.world/c/technology' };
 const mockCreator = { name: 'alice', display_name: null };
 const mockCounts = { score: 42, comments: 7 };
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
 
-function renderCard(overrides: Record<string, unknown> = {}) {
-  return render(
-    <MemoryRouter>
+function renderCard(props: Record<string, unknown> = {}, anonymous = false) {
+  return renderWithBackend(
+    <SettingsProvider>
       <PostDetailCard
         post={mockPost}
         community={mockCommunity}
         creator={mockCreator}
         counts={mockCounts}
-        auth={mockAuth}
-        {...overrides}
+        auth={AUTH}
+        {...props}
       />
-    </MemoryRouter>,
+    </SettingsProvider>,
+    { anonymous },
   );
 }
 
@@ -79,17 +53,26 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 describe('PostDetailCard', () => {
   it('renders without auth (anonymous mode)', () => {
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
+    renderWithBackend(
+      <SettingsProvider>
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />
+      </SettingsProvider>,
+      { anonymous: true },
+    );
     expect(screen.getByText('A shared post')).toBeInTheDocument();
   });
 
-  it('does not render ReplySheet when auth is absent', () => {
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
+  it('does not render ReplySheet when not logged in', () => {
+    renderCard({}, true);
     expect(screen.queryByTestId('reply-wrapper')).not.toBeInTheDocument();
   });
 
   it('renders with auth (authenticated mode)', () => {
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    renderWithBackend(
+      <SettingsProvider>
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />
+      </SettingsProvider>,
+    );
     expect(screen.getByText('A shared post')).toBeInTheDocument();
   });
 
@@ -130,26 +113,23 @@ describe('PostDetailCard', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('renders share button when auth is present', () => {
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
-    expect(screen.getByTestId('share-button')).toBeInTheDocument();
-  });
-
-  it('renders share button when auth is absent (anonymous users can share)', () => {
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />);
+  it('renders share button in all cases', () => {
+    renderCard({}, true);
     expect(screen.getByTestId('share-button')).toBeInTheDocument();
   });
 
   it('calls navigator.share when share button clicked and API available', () => {
     const shareMock = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'share', { value: shareMock, writable: true, configurable: true });
-
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    renderWithBackend(
+      <SettingsProvider>
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />
+      </SettingsProvider>,
+    );
     fireEvent.click(screen.getByTestId('share-button'));
-
     expect(shareMock).toHaveBeenCalledWith({
       title: 'A shared post',
-      url: 'https://stakswipe.com/#/post/lemmy.world/1',
+      url: 'https://stakswipe.com/#/post/mock.test/1',
     });
   });
 
@@ -157,26 +137,28 @@ describe('PostDetailCard', () => {
     Object.defineProperty(navigator, 'share', { value: undefined, writable: true, configurable: true });
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: writeTextMock }, writable: true, configurable: true });
-
-    render(<PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />);
+    renderWithBackend(
+      <SettingsProvider>
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />
+      </SettingsProvider>,
+    );
     fireEvent.click(screen.getByTestId('share-button'));
-
-    expect(writeTextMock).toHaveBeenCalledWith('https://stakswipe.com/#/post/lemmy.world/1');
+    expect(writeTextMock).toHaveBeenCalledWith('https://stakswipe.com/#/post/mock.test/1');
   });
 
   it('does not show Save or Comment buttons without auth', () => {
-    render(<MemoryRouter><PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} /></MemoryRouter>);
+    renderCard({}, true);
     expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('comment-button')).not.toBeInTheDocument();
   });
 
-  it('shows Save and Comment buttons with auth', () => {
-    render(<MemoryRouter><PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} /></MemoryRouter>);
+  it('shows Save and Comment buttons when logged in', () => {
+    renderCard();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
     expect(screen.getByTestId('comment-button')).toBeInTheDocument();
   });
 
-  it('score and comment count are in metaStats (top), not a footer span', () => {
+  it('score and comment count are in metaStats (top)', () => {
     renderCard();
     expect(screen.getByTestId('meta-score')).toHaveTextContent('▲ 42');
     expect(screen.getByTestId('meta-comments')).toHaveTextContent('💬 7');

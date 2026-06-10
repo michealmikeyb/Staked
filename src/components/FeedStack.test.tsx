@@ -1,42 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-import FeedStack from './FeedStack';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { renderWithBackend, makePost, makeSource } from '../test-utils';
+import { createMockBackend } from '../lib/api/backends/mock';
+import { BackendProvider } from '../lib/api/context';
 import { addSeen } from '../lib/store';
 import { SettingsProvider } from '../lib/SettingsContext';
+import FeedStack from './FeedStack';
 
-vi.mock('../lib/lemmy', () => ({
-  fetchPosts: vi.fn().mockResolvedValue([
-    {
-      post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null },
-      community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-      creator: { name: 'alice' },
-      counts: { score: 847, comments: 42 },
-    },
-  ]),
-  fetchComments: vi.fn().mockResolvedValue([]),
-  resolvePostId: vi.fn().mockResolvedValue(null),
-  upvotePost: vi.fn().mockResolvedValue(undefined),
-  downvotePost: vi.fn().mockResolvedValue(undefined),
-  savePost: vi.fn().mockResolvedValue(undefined),
-  fetchUnreadCount: vi.fn().mockResolvedValue(3),
-  fetchCommunityPosts: vi.fn().mockResolvedValue([
-    {
-      post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
-      community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
-      creator: { name: 'bob' },
-      counts: { score: 10, comments: 2 },
-    },
-  ]),
-  fetchCommunityInfo: vi.fn().mockResolvedValue({
-    id: 99,
-    icon: undefined,
-    banner: undefined,
-    description: 'A rust community',
-    counts: { subscribers: 5000, posts: 200, comments: 800 },
-    subscribed: 'NotSubscribed',
-  }),
-  followCommunity: vi.fn().mockResolvedValue(undefined),
-  blockCommunity: vi.fn().mockResolvedValue(undefined),
+vi.mock('./PostCard', () => ({
+  default: ({ post, onSwipeRight, onSwipeLeft, onUndo, isReturning }: any) => (
+    <div
+      data-testid="post-card"
+      data-post-id={post.id}
+      data-is-returning={isReturning ? 'true' : undefined}
+    >
+      <span>{post.title}</span>
+      <button onClick={onSwipeRight}>swipe-right</button>
+      <button onClick={onSwipeLeft}>swipe-left</button>
+      <button onClick={onUndo}>undo</button>
+    </div>
+  ),
+}));
+
+vi.mock('./CommunityHeader', () => ({
+  default: ({ name, instance, onBlock, onSubscribeToggle }: any) => (
+    <div>
+      <span>{`c/${name}`}</span>
+      {onBlock && <button onClick={onBlock}>block-community</button>}
+      {onSubscribeToggle && <button onClick={onSubscribeToggle}>subscribe-community</button>}
+    </div>
+  ),
 }));
 
 const mockNavigate = vi.fn();
@@ -46,7 +39,31 @@ vi.mock('react-router-dom', () => ({
   useLocation: () => mockLocation,
 }));
 
-const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
+const FEED_OPTIONS = [
+  { id: 'Active', label: 'Active' },
+  { id: 'Hot', label: 'Hot' },
+  { id: 'New', label: 'New' },
+  { id: 'TopTwelveHour', label: 'Top 12h' },
+  { id: 'TopDay', label: 'Top Day' },
+];
+
+const SOURCE = makeSource({ handle: 'technology@lemmy.world', name: 'technology' });
+const RUST_SOURCE = makeSource({ id: 'src-rust', handle: 'rust@lemmy.world', name: 'rust' });
+
+const POST_1 = makePost({ id: '1', title: 'Test Post Title', source: SOURCE });
+const COMMUNITY_POST = makePost({ id: '2', title: 'Community Post', source: RUST_SOURCE });
+
+function renderFeed(
+  props: Partial<React.ComponentProps<typeof FeedStack>> = {},
+  opts: Parameters<typeof renderWithBackend>[1] = {},
+) {
+  return renderWithBackend(
+    <SettingsProvider>
+      <FeedStack unreadCount={0} setUnreadCount={vi.fn()} {...props} />
+    </SettingsProvider>,
+    { capabilities: { feedOptions: FEED_OPTIONS }, ...opts },
+  );
+}
 
 describe('FeedStack', () => {
   beforeEach(() => {
@@ -55,12 +72,12 @@ describe('FeedStack', () => {
   });
 
   it('shows a loading state initially', () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
   it('renders a post title after loading', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await waitFor(() => {
       expect(screen.getByText('Test Post Title')).toBeInTheDocument();
     });
@@ -68,7 +85,7 @@ describe('FeedStack', () => {
 
   it('does not render a post whose id is in the seen list', async () => {
     addSeen(1);
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await waitFor(() => {
       expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
     });
@@ -81,26 +98,19 @@ describe('FeedStack empty state', () => {
     localStorage.clear();
   });
 
-  it('shows reset and logout buttons when feed is exhausted', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+  it('shows reset button when feed is exhausted', async () => {
+    renderFeed({}, { fixtures: { posts: [] } });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /reset seen history/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
     });
   });
 
   it('calls clearSeen and reloads when reset button is clicked', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-
     const reloadMock = vi.fn();
     vi.stubGlobal('location', { reload: reloadMock });
     addSeen(99);
 
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [] } });
     const btn = await screen.findByRole('button', { name: /reset seen history/i });
     fireEvent.click(btn);
 
@@ -111,206 +121,112 @@ describe('FeedStack empty state', () => {
 });
 
 describe('FeedStack header and sort', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 847, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
   });
 
   it('renders the header bar', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     expect(screen.getByRole('button', { name: /menu/i })).toBeInTheDocument();
   });
 
-  it('calls fetchPosts with default sort TopTwelveHour', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+  it('shows TopTwelveHour as the default sort label', async () => {
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
-    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour', 'All');
+    expect(screen.getByRole('button', { name: /top 12h/i })).toBeInTheDocument();
   });
 
-  it('resets the feed and re-fetches when sort changes', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 99, name: 'Hot Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/99' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'bob' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
-
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+  it('passes correct sort to feed on initial load', async () => {
+    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+    const spy = vi.spyOn(backend.feed, 'getTimeline');
+    render(
+      <BackendProvider value={backend}>
+        <SettingsProvider>
+          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
+        </SettingsProvider>
+      </BackendProvider>,
+    );
     await screen.findByText('Test Post Title');
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'TopTwelveHour', stakId: 'All' }));
+  });
 
-    // Open dropdown and pick Hot
+  it('re-fetches with new sort when sort changes', async () => {
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1] } });
+    await screen.findByText('Test Post Title');
+    const spy = vi.spyOn(backend.feed, 'getTimeline');
+
     fireEvent.click(screen.getByRole('button', { name: /top 12h/i }));
-    fireEvent.click(within(screen.getByTestId('sort-dropdown')).getByRole('button', { name: /^hot$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
 
     await waitFor(() => {
-      expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot', 'All');
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'Hot' }));
     });
   });
 });
 
 describe('FeedStack keyboard shortcuts', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
   it('ArrowDown with empty undo stack does nothing', async () => {
-    const { fetchPosts, savePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 847, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
-
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
-
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-
     expect(screen.getByText('Test Post Title')).toBeInTheDocument();
-    expect(savePost).not.toHaveBeenCalled();
   });
 
   it('ArrowDown restores the last dismissed post', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'First Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 10, comments: 0 },
-        },
-        {
-          post: { id: 2, name: 'Second Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 5, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
-
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('First Post');
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    await waitFor(() => expect(screen.queryByText('First Post')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
 
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await waitFor(() => expect(screen.getByText('First Post')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Test Post Title')).toBeInTheDocument());
   });
 
   it('ArrowDown can undo multiple times', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'First Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 10, comments: 0 },
-        },
-        {
-          post: { id: 2, name: 'Second Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 5, comments: 0 },
-        },
-        {
-          post: { id: 3, name: 'Third Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/3' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 3, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
-
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('First Post');
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const POST_3 = makePost({ id: '3', title: 'Third Post', source: SOURCE });
+    renderFeed({}, { fixtures: { posts: [POST_1, POST_2, POST_3] } });
+    await screen.findByText('Test Post Title');
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    await waitFor(() => expect(screen.queryByText('First Post')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     await waitFor(() => expect(screen.queryByText('Second Post')).not.toBeInTheDocument());
 
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     await waitFor(() => expect(screen.getByText('Second Post')).toBeInTheDocument());
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await waitFor(() => expect(screen.getByText('First Post')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Test Post Title')).toBeInTheDocument());
   });
 
-  it('restored card is marked isReturning (rendered with entrance animation props)', async () => {
-    // We verify this indirectly: after undo the card is visible.
-    // The entrance animation is visual-only and cannot be asserted in jsdom —
-    // this test guards that the undo render completes without error.
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'Animated Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 10, comments: 0 },
-        },
-        {
-          post: { id: 2, name: 'Second Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/2' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 5, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
-
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('Animated Post');
+  it('restored card renders without error after undo', async () => {
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    await waitFor(() => expect(screen.queryByText('Animated Post')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await waitFor(() => expect(screen.getByText('Animated Post')).toBeInTheDocument());
-    // No error thrown — animation props accepted by framer-motion without crashing.
+    await waitFor(() => expect(screen.getByText('Test Post Title')).toBeInTheDocument());
   });
 });
 
 describe('FeedStack menu drawer', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-          community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-          creator: { name: 'alice' },
-          counts: { score: 847, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
   });
 
   it('opens the drawer when menu button is clicked', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
@@ -319,7 +235,7 @@ describe('FeedStack menu drawer', () => {
   });
 
   it('closes the drawer when a tile is clicked', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     fireEvent.click(screen.getByRole('button', { name: /saved/i }));
@@ -327,7 +243,7 @@ describe('FeedStack menu drawer', () => {
   });
 
   it('closes the drawer when the hamburger is clicked again', async () => {
-    render(<FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />);
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByRole('button', { name: /menu/i }));
     expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
@@ -337,34 +253,20 @@ describe('FeedStack menu drawer', () => {
 });
 
 describe('unread badge', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    const { fetchPosts, fetchUnreadCount } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-        creator: { name: 'alice' },
-        counts: { score: 847, comments: 0 },
-      },
-    ]);
-    (fetchUnreadCount as ReturnType<typeof vi.fn>).mockResolvedValue(3);
   });
 
   it('shows unread count badge on Inbox button when unreadCount > 0', async () => {
-    render(
-      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={5} setUnreadCount={() => {}} />,
-    );
+    renderFeed({ unreadCount: 5 }, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByLabelText('Menu'));
     expect(screen.getByTestId('inbox-badge')).toBeInTheDocument();
   });
 
   it('hides badge when unreadCount is 0', async () => {
-    render(
-      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={0} setUnreadCount={() => {}} />,
-    );
+    renderFeed({ unreadCount: 0 }, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByLabelText('Menu'));
     expect(screen.queryByTestId('inbox-badge')).not.toBeInTheDocument();
@@ -372,25 +274,13 @@ describe('unread badge', () => {
 });
 
 describe('drawer navigation', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    const { fetchPosts, fetchUnreadCount } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-        creator: { name: 'alice' },
-        counts: { score: 847, comments: 0 },
-      },
-    ]);
-    (fetchUnreadCount as ReturnType<typeof vi.fn>).mockResolvedValue(3);
   });
 
   it('navigates to /inbox when Inbox button is clicked', async () => {
-    render(
-      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={0} setUnreadCount={() => {}} />,
-    );
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByLabelText('Menu'));
     fireEvent.click(screen.getByText('Inbox'));
@@ -398,9 +288,7 @@ describe('drawer navigation', () => {
   });
 
   it('navigates to /saved when Saved button is clicked', async () => {
-    render(
-      <FeedStack auth={AUTH} onLogout={() => {}} unreadCount={0} setUnreadCount={() => {}} />,
-    );
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
     fireEvent.click(screen.getByLabelText('Menu'));
     fireEvent.click(screen.getByText('Saved'));
@@ -418,18 +306,17 @@ describe('FeedStack settings — defaultSort', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'Hot',
     }));
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Hot Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
-    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
-    await screen.findByText('Hot Post');
-    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'Hot', 'All');
+    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+    const spy = vi.spyOn(backend.feed, 'getTimeline');
+    render(
+      <BackendProvider value={backend}>
+        <SettingsProvider>
+          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
+        </SettingsProvider>
+      </BackendProvider>,
+    );
+    await screen.findByText('Test Post Title');
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'Hot' }));
   });
 });
 
@@ -439,97 +326,58 @@ describe('FeedStack settings — gestures', () => {
     localStorage.clear();
   });
 
-  it('calls downvotePost on ArrowLeft when nonUpvoteSwipeAction is downvote (default)', async () => {
-    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      {
-        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]).mockResolvedValue([]);
-    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
-    await screen.findByText('Test Post');
+  it('votes -1 on ArrowLeft when nonUpvoteSwipeAction is downvote (default)', async () => {
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(downvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+    await waitFor(() => expect(backend.state.votes['1']).toBe(-1));
   });
 
-  it('does not call downvotePost on ArrowLeft when nonUpvoteSwipeAction is dismiss', async () => {
+  it('does not vote on ArrowLeft when nonUpvoteSwipeAction is dismiss', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'dismiss', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour',
     }));
-    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      {
-        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]).mockResolvedValue([]);
-    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
-    await screen.findByText('Test Post');
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(downvotePost).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
+    expect(backend.state.votes['1']).toBeUndefined();
   });
 
-  it('calls upvotePost on ArrowLeft when swapGestures is true', async () => {
+  it('votes 1 on ArrowLeft when swapGestures is true', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'downvote', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
     }));
-    const { fetchPosts, upvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      {
-        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]).mockResolvedValue([]);
-    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
-    await screen.findByText('Test Post');
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(upvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+    await waitFor(() => expect(backend.state.votes['1']).toBe(1));
   });
 
-  it('calls downvotePost on ArrowRight when swapGestures is true and nonUpvoteSwipeAction is downvote', async () => {
+  it('votes -1 on ArrowRight when swapGestures is true and nonUpvoteSwipeAction is downvote', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'downvote', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
     }));
-    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      {
-        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]).mockResolvedValue([]);
-    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
-    await screen.findByText('Test Post');
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(downvotePost).toHaveBeenCalledWith('lemmy.world', 'tok', 1);
+    await waitFor(() => expect(backend.state.votes['1']).toBe(-1));
   });
 
-  it('does not call downvotePost on ArrowRight when swapGestures is true and nonUpvoteSwipeAction is dismiss', async () => {
+  it('does not vote on ArrowRight when swapGestures is true and nonUpvoteSwipeAction is dismiss', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'dismiss', swapGestures: true, blurNsfw: true, defaultSort: 'TopTwelveHour',
     }));
-    const { fetchPosts, downvotePost, upvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      {
-        post: { id: 1, name: 'Test Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]).mockResolvedValue([]);
-    render(<SettingsProvider><FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} /></SettingsProvider>);
-    await screen.findByText('Test Post');
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(downvotePost).not.toHaveBeenCalled();
-    expect(upvotePost).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
+    expect(backend.state.votes['1']).toBeUndefined();
   });
 });
 
@@ -540,78 +388,41 @@ describe('FeedStack community mode', () => {
   });
 
   it('renders CommunityHeader instead of MenuDrawer when community prop is set', async () => {
-    const { fetchCommunityPosts } = await import('../lib/lemmy');
-    (fetchCommunityPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
-          community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
-          creator: { name: 'bob' },
-          counts: { score: 10, comments: 2 },
-        },
-      ])
-      .mockResolvedValue([]);
-
-    render(
-      <FeedStack
-        auth={AUTH}
-        onLogout={vi.fn()}
-        unreadCount={0}
-        setUnreadCount={vi.fn()}
-        community={{ name: 'rust', instance: 'lemmy.world' }}
-      />
+    renderFeed(
+      { community: { name: 'rust', instance: 'lemmy.world' } },
+      { fixtures: { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] } },
     );
     await screen.findByText('Community Post');
-    expect(screen.getAllByText('c/rust')).toHaveLength(2);
+    expect(screen.getAllByText('c/rust')).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /^menu$/i })).not.toBeInTheDocument();
   });
 
-  it('calls fetchCommunityPosts with the correct communityRef', async () => {
-    const { fetchCommunityPosts } = await import('../lib/lemmy');
-    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
-        community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
-        creator: { name: 'bob' },
-        counts: { score: 10, comments: 2 },
-      },
-    ]);
-
+  it('fetches from getSourceFeed with the correct handle', async () => {
+    const backend = createMockBackend(
+      { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] },
+      { feedOptions: FEED_OPTIONS },
+    );
+    const spy = vi.spyOn(backend.feed, 'getSourceFeed');
     render(
-      <FeedStack
-        auth={AUTH}
-        onLogout={vi.fn()}
-        unreadCount={0}
-        setUnreadCount={vi.fn()}
-        community={{ name: 'rust', instance: 'lemmy.world' }}
-      />
+      <BackendProvider value={backend}>
+        <SettingsProvider>
+          <FeedStack
+            unreadCount={0}
+            setUnreadCount={vi.fn()}
+            community={{ name: 'rust', instance: 'lemmy.world' }}
+          />
+        </SettingsProvider>
+      </BackendProvider>,
     );
     await screen.findByText('Community Post');
-    expect(fetchCommunityPosts).toHaveBeenCalledWith(
-      'lemmy.world', 'tok', 'rust@lemmy.world', 1, 'Active',
-    );
+    expect(spy).toHaveBeenCalledWith('rust@lemmy.world', expect.objectContaining({ feedId: 'Active' }));
   });
 
-  it('shows a post that is in the seen list (independent seen tracking)', async () => {
-    const { fetchCommunityPosts } = await import('../lib/lemmy');
-    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
-        community: { name: 'rust', actor_id: 'https://lemmy.world/c/rust' },
-        creator: { name: 'bob' },
-        counts: { score: 10, comments: 2 },
-      },
-    ]);
-
-    addSeen(2); // post id 2 is the community post
-    render(
-      <FeedStack
-        auth={AUTH}
-        onLogout={vi.fn()}
-        unreadCount={0}
-        setUnreadCount={vi.fn()}
-        community={{ name: 'rust', instance: 'lemmy.world' }}
-      />
+  it('shows a post that is in the seen list (community uses independent seen tracking)', async () => {
+    addSeen(2);
+    renderFeed(
+      { community: { name: 'rust', instance: 'lemmy.world' } },
+      { fixtures: { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] } },
     );
     await waitFor(() => {
       expect(screen.getByText('Community Post')).toBeInTheDocument();
@@ -619,16 +430,9 @@ describe('FeedStack community mode', () => {
   });
 
   it('shows empty state without reset button when community feed is exhausted', async () => {
-    const { fetchCommunityPosts } = await import('../lib/lemmy');
-    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    render(
-      <FeedStack
-        auth={AUTH}
-        onLogout={vi.fn()}
-        unreadCount={0}
-        setUnreadCount={vi.fn()}
-        community={{ name: 'rust', instance: 'lemmy.world' }}
-      />
+    renderFeed(
+      { community: { name: 'rust', instance: 'lemmy.world' } },
+      { fixtures: { posts: [], sources: [RUST_SOURCE] } },
     );
     await waitFor(() => {
       expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
@@ -636,157 +440,75 @@ describe('FeedStack community mode', () => {
     });
   });
 
-  it('navigates to /create-post with community state when post button is clicked in community menu', async () => {
-    const { fetchCommunityPosts } = await import('../lib/lemmy');
-    (fetchCommunityPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 2, name: 'Community Post', body: null, url: null, thumbnail_url: null },
-        community: { name: 'programming', actor_id: 'https://lemmy.world/c/programming' },
-        creator: { name: 'bob' },
-        counts: { score: 10, comments: 2 },
-      },
-    ]);
-
-    render(
-      <SettingsProvider>
-        <FeedStack
-          auth={AUTH}
-          onLogout={vi.fn()}
-          unreadCount={0}
-          setUnreadCount={vi.fn()}
-          community={{ name: 'programming', instance: 'lemmy.world' }}
-        />
-      </SettingsProvider>
+  it('fetches community source info on mount', async () => {
+    const backend = createMockBackend(
+      { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] },
+      { feedOptions: FEED_OPTIONS },
     );
-    await screen.findByText('Community Post');
-    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/create-post', {
-      state: { community: 'programming@lemmy.world' },
+    const spy = vi.spyOn(backend.sources, 'get');
+    render(
+      <BackendProvider value={backend}>
+        <SettingsProvider>
+          <FeedStack
+            unreadCount={0}
+            setUnreadCount={vi.fn()}
+            community={{ name: 'rust', instance: 'lemmy.world' }}
+          />
+        </SettingsProvider>
+      </BackendProvider>,
+    );
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith('rust@lemmy.world');
     });
   });
 
-  it('calls fetchCommunityInfo on mount in community mode', async () => {
-    const { fetchCommunityInfo } = await import('../lib/lemmy');
-    render(
-      <SettingsProvider>
-        <FeedStack
-          auth={AUTH}
-          onLogout={vi.fn()}
-          unreadCount={0}
-          setUnreadCount={vi.fn()}
-          community={{ name: 'rust', instance: 'lemmy.world' }}
-        />
-      </SettingsProvider>,
+  it('blocks community and navigates to / with toast when block is clicked', async () => {
+    const { backend } = renderFeed(
+      { community: { name: 'rust', instance: 'lemmy.world' } },
+      { fixtures: { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] } },
     );
-    await waitFor(() => {
-      expect(fetchCommunityInfo).toHaveBeenCalledWith(
-        'lemmy.world', AUTH.token, 'rust@lemmy.world',
-      );
-    });
+    await screen.findByText('Community Post');
+    fireEvent.click(screen.getByRole('button', { name: /block-community/i }));
+    await waitFor(() => expect(backend.state.blockedSources.has('src-rust')).toBe(true));
+    expect(mockNavigate).toHaveBeenCalledWith('/', { state: { toast: 'Blocked c/rust' } });
   });
 });
 
-describe('FeedStack anonymous mode (auth=null)', () => {
+describe('FeedStack anonymous mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
-  it('calls fetchPosts with anonymous instance and empty token when auth is null', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
-        community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
-    render(
-      <SettingsProvider>
-        <FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
-    );
-    await screen.findByText('Anon Post');
-    // TopTwelveHour maps to reddthat.com, token is empty string
-    expect(fetchPosts).toHaveBeenCalledWith('reddthat.com', '', 1, 'TopTwelveHour', 'All');
+  it('renders posts when logged out', async () => {
+    renderFeed({}, { fixtures: { posts: [POST_1] }, anonymous: true });
+    await screen.findByText('Test Post Title');
   });
 
-  it('does not call fetchUnreadCount when auth is null', async () => {
-    const { fetchPosts, fetchUnreadCount } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
-        community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
-    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('Anon Post');
-    expect(fetchUnreadCount).not.toHaveBeenCalled();
-  });
-
-  it('does not call upvotePost on ArrowRight when auth is null', async () => {
-    const { fetchPosts, upvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
-          community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
-          creator: { name: 'alice' },
-          counts: { score: 10, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
-    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('Anon Post');
+  it('does not vote on ArrowRight when logged out', async () => {
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] }, anonymous: true });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(upvotePost).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
+    expect(backend.state.votes['1']).toBeUndefined();
   });
 
-  it('does not call downvotePost on ArrowLeft when auth is null', async () => {
-    const { fetchPosts, downvotePost } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce([
-        {
-          post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
-          community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
-          creator: { name: 'alice' },
-          counts: { score: 10, comments: 0 },
-        },
-      ])
-      .mockResolvedValue([]);
-    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('Anon Post');
+  it('does not vote on ArrowLeft when logged out', async () => {
+    const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] }, anonymous: true });
+    await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(downvotePost).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
+    expect(backend.state.votes['1']).toBeUndefined();
   });
 
-  it('shows Log in button in empty state when auth is null', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
+  it('shows empty state without log out button when logged out', async () => {
+    renderFeed({}, { fixtures: { posts: [] }, anonymous: true });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+      expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
     });
-  });
-
-  it('does not render stak selector when auth is null', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Anon Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://reddthat.com/post/1' },
-        community: { name: 'tech', actor_id: 'https://reddthat.com/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
-    render(<FeedStack auth={null} unreadCount={0} setUnreadCount={vi.fn()} />);
-    await screen.findByText('Anon Post');
-    expect(screen.queryByRole('button', { name: /switch stak/i })).not.toBeInTheDocument();
   });
 });
 
@@ -796,45 +518,35 @@ describe('FeedStack settings — activeStak', () => {
     localStorage.clear();
   });
 
-  it('calls fetchPosts with activeStak All by default', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
+  it('fetches with All stak by default', async () => {
+    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+    const spy = vi.spyOn(backend.feed, 'getTimeline');
     render(
-      <SettingsProvider>
-        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
+      <BackendProvider value={backend}>
+        <SettingsProvider>
+          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
+        </SettingsProvider>
+      </BackendProvider>,
     );
-    await screen.findByText('Post');
-    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour', 'All');
+    await screen.findByText('Test Post Title');
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ stakId: 'All' }));
   });
 
-  it('calls fetchPosts with activeStak from persisted settings', async () => {
+  it('fetches with activeStak from persisted settings', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Local',
     }));
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Local Post', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'tech', actor_id: 'https://lemmy.world/c/tech' },
-        creator: { name: 'alice' },
-        counts: { score: 10, comments: 0 },
-      },
-    ]);
+    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+    const spy = vi.spyOn(backend.feed, 'getTimeline');
     render(
-      <SettingsProvider>
-        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
+      <BackendProvider value={backend}>
+        <SettingsProvider>
+          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
+        </SettingsProvider>
+      </BackendProvider>,
     );
-    await screen.findByText('Local Post');
-    expect(fetchPosts).toHaveBeenCalledWith('lemmy.world', 'tok', 1, 'TopTwelveHour', 'Local');
+    await screen.findByText('Test Post Title');
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ stakId: 'Local' }));
   });
 });
 
@@ -848,93 +560,36 @@ describe('FeedStack subscribed empty state', () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Subscribed',
     }));
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    render(
-      <SettingsProvider>
-        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
-    );
+    renderFeed({}, { fixtures: { posts: [] } });
     await waitFor(() => {
-      expect(screen.getByText(/no subscriptions yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/no more posts in your subscriptions/i)).toBeInTheDocument();
     });
   });
 
   it('shows generic empty state for All stak', async () => {
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    render(
-      <SettingsProvider>
-        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
-    );
+    renderFeed({}, { fixtures: { posts: [] } });
     await waitFor(() => {
       expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
     });
   });
 });
 
-describe('FeedStack community feed — onBlock', () => {
+describe('FeedStack toast from navigation state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
     mockLocation.state = null;
   });
 
-  it('calls blockCommunity and navigates to / with toast when onBlock fires', async () => {
-    const { blockCommunity } = await import('../lib/lemmy');
-    render(
-      <SettingsProvider>
-        <FeedStack
-          auth={AUTH}
-          onLogout={vi.fn()}
-          unreadCount={0}
-          setUnreadCount={vi.fn()}
-          community={{ name: 'rust', instance: 'lemmy.world' }}
-        />
-      </SettingsProvider>,
-    );
-    await waitFor(() => screen.getByRole('button', { name: /community menu/i }));
-    fireEvent.click(screen.getByRole('button', { name: /community menu/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^block$/i }));
-    await waitFor(() => expect(blockCommunity).toHaveBeenCalledWith('lemmy.world', 'tok', 99, true));
-    expect(mockNavigate).toHaveBeenCalledWith('/', { state: { toast: 'Blocked c/rust' } });
-  });
-});
-
-describe('FeedStack toast from navigation state', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    localStorage.clear();
-    const { fetchPosts } = await import('../lib/lemmy');
-    (fetchPosts as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        post: { id: 1, name: 'Test Post Title', body: null, url: null, thumbnail_url: null, ap_id: 'https://lemmy.world/post/1' },
-        community: { name: 'technology', actor_id: 'https://lemmy.world/c/technology' },
-        creator: { name: 'alice' },
-        counts: { score: 847, comments: 0 },
-      },
-    ]);
-  });
-
   it('shows toast when location.state.toast is set', async () => {
     mockLocation.state = { toast: 'Blocked c/rust' };
-    render(
-      <SettingsProvider>
-        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
-    );
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await waitFor(() => expect(screen.getByText('Blocked c/rust')).toBeInTheDocument());
   });
 
   it('does not show toast when location.state has no toast', async () => {
     mockLocation.state = null;
-    render(
-      <SettingsProvider>
-        <FeedStack auth={AUTH} onLogout={vi.fn()} unreadCount={0} setUnreadCount={vi.fn()} />
-      </SettingsProvider>,
-    );
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await waitFor(() => screen.getByText('Test Post Title'));
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { type CommentView } from '../lib/lemmy';
+import type { Comment } from '../lib/api/types';
 import styles from './ReplySheet.module.css';
 
 interface Props {
   mode: 'reply' | 'edit' | 'new' | null;
-  target?: CommentView;
+  target?: Comment;
   initialContent?: string;
   onSubmit: (content: string) => Promise<void>;
   onClose: () => void;
@@ -37,9 +37,10 @@ export default function ReplySheet({ mode, target, initialContent, onSubmit, onC
 
   if (!mode) return null;
 
+  const authorName = target?.author.displayName ?? target?.author.handle.split('@')[0] ?? '';
   const header =
     mode === 'reply'
-      ? `↩ Replying to @${target?.creator.display_name ?? target?.creator.name ?? ''}`
+      ? `↩ Replying to @${authorName}`
       : mode === 'edit'
       ? '✏ Editing your comment'
       : '💬 Commenting on post';

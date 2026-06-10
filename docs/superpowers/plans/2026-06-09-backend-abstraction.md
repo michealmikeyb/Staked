@@ -352,7 +352,14 @@ git add src/lib/api/registry.ts
 git commit -m "feat(api): add backend registry"
 ```
 
-> ✅ **Compact point A reached.** Foundations laid; no behavior wired. Safe to compact session here.
+> ⛔ **COMPACT GATE — Compact point A reached.** Foundations laid; no behavior wired.
+>
+> **STOP. Do not read or begin the next task.** Report to the user:
+> - Your approximate context window usage (e.g. "~60% used")
+> - Whether the next task group fits in the remaining context or requires a fresh window
+>
+> Then tell the user exactly: *"Compact point A reached. Please run `/compact` before we continue."*
+> Do not proceed until the user starts a new session after compacting.
 
 ---
 
@@ -876,7 +883,14 @@ git add src/lib/api/backends/mock/index.test.ts
 git commit -m "test(mock): add Backend interface sanity test"
 ```
 
-> ✅ **Compact point B reached.** Mock backend works in isolation. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point B reached.** Mock backend works in isolation.
+>
+> **STOP. Do not read or begin the next task.** Report to the user:
+> - Your approximate context window usage (e.g. "~60% used")
+> - Whether the next task group fits in the remaining context or requires a fresh window
+>
+> Then tell the user exactly: *"Compact point B reached. Please run `/compact` before we continue."*
+> Do not proceed until the user starts a new session after compacting.
 
 ---
 
@@ -1921,7 +1935,14 @@ git add src/lib/api/backends/lemmy/index.ts
 git commit -m "feat(lemmy): assemble Backend factory and AuthService"
 ```
 
-> ✅ **Compact point C reached.** Lemmy adapter complete; app still runs against legacy `lib/lemmy.ts`. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point C reached.** Lemmy adapter complete; app still runs against legacy `lib/lemmy.ts`.
+>
+> **STOP. Do not read or begin the next task.** Report to the user:
+> - Your approximate context window usage (e.g. "~60% used")
+> - Whether the next task group fits in the remaining context or requires a fresh window
+>
+> Then tell the user exactly: *"Compact point C reached. Please run `/compact` before we continue."*
+> Do not proceed until the user starts a new session after compacting.
 
 ---
 
@@ -1973,7 +1994,14 @@ git add src/test-utils.tsx
 git commit -m "test: add renderWithBackend helper"
 ```
 
-> ✅ **Compact point D reached.** Helper ready. Component migrations begin next.
+> ⛔ **COMPACT GATE — Compact point D reached.** Helper ready. Component migrations begin next.
+>
+> **STOP. Do not read or begin the next task.** Report to the user:
+> - Your approximate context window usage (e.g. "~60% used")
+> - Whether the next task group fits in the remaining context or requires a fresh window
+>
+> Then tell the user exactly: *"Compact point D reached. Please run `/compact` before we continue."*
+> Do not proceed until the user starts a new session after compacting.
 
 ---
 
@@ -2046,7 +2074,15 @@ git add src/components/CommentList.tsx src/components/CommentList.test.tsx
 git commit -m "refactor(CommentList): migrate to neutral Comment + parentId tree"
 ```
 
-> ✅ **Compact point E1 reached.** Run `npm test -- --run` to confirm full suite still passes. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point E1 reached.**
+>
+> 1. Run `npm test -- --run` — all tests must pass.
+> 2. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point E1 reached — tests pass. Please run `/compact` before we continue."*
+> 3. Do not proceed until the user starts a new session after compacting.
 
 ### Task 19: Round 2 — useCommentLoader collapsed into useAsync
 
@@ -2201,7 +2237,15 @@ git add src/components/PostCard.tsx src/components/PostCard.test.tsx
 git commit -m "refactor(PostCard): migrate to Backend abstraction"
 ```
 
-> ✅ **Compact point E2 reached.** Run `npm test -- --run`. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point E2 reached.**
+>
+> 1. Run `npm test -- --run` — all tests must pass.
+> 2. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point E2 reached — tests pass. Please run `/compact` before we continue."*
+> 3. Do not proceed until the user starts a new session after compacting.
 
 ### Task 22: Round 3 — HeaderBar
 
@@ -2320,7 +2364,15 @@ git add src/components/FeedStack.tsx src/components/FeedStack.test.tsx
 git commit -m "refactor(FeedStack): migrate to Backend; replace page:number with opaque cursor"
 ```
 
-> ✅ **Compact point E3 reached.** Run `npm test -- --run` and `npm run build`. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point E3 reached.**
+>
+> 1. Run `npm test -- --run` and `npm run build` — both must succeed.
+> 2. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point E3 reached — tests and build pass. Please run `/compact` before we continue."*
+> 3. Do not proceed until the user starts a new session after compacting.
 
 ### Task 25: Round 4 — LoginPage
 
@@ -2612,7 +2664,15 @@ git add src/components/CommunityAboutPage.tsx src/components/CommunityAboutPage.
 git commit -m "refactor: migrate community pages to Backend"
 ```
 
-> ✅ **Compact point E4 reached.** Run `npm test -- --run` and `npm run build`. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point E4 reached.**
+>
+> 1. Run `npm test -- --run` and `npm run build` — both must succeed.
+> 2. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point E4 reached — tests and build pass. Please run `/compact` before we continue."*
+> 3. Do not proceed until the user starts a new session after compacting.
 
 ### Task 32: Round 5 — ReportSheet, ReplySheet, useNotificationPolling, useShare/urlUtils
 
@@ -2660,7 +2720,16 @@ git add -A src/components/ReportSheet.tsx src/components/ReportSheet.test.tsx sr
 git commit -m "refactor: migrate sheets, polling, and share helpers to Backend"
 ```
 
-> ✅ **Compact point E5 reached.** Run `npm test -- --run` and `npm run build`. Every component should now be off `lib/lemmy.ts`. Run `grep -rn "from '../lib/lemmy'" src/` — only `App.tsx` and `store.ts` (used by upcoming wire-up) and `lib/lemmy.ts` itself should remain. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point E5 reached.**
+>
+> 1. Run `npm test -- --run` and `npm run build` — both must succeed.
+> 2. Run `grep -rn "from '../lib/lemmy'" src/` — only `App.tsx`, `store.ts`, and `lib/lemmy.ts` itself should remain.
+> 3. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point E5 reached — all components off lib/lemmy. Please run `/compact` before we continue."*
+> 4. Do not proceed until the user starts a new session after compacting.
 
 ---
 
@@ -2877,7 +2946,15 @@ git add src/App.tsx
 git commit -m "feat(app): wire BackendProvider; load sessions from store with migration"
 ```
 
-> ✅ **Compact point F reached.** Live wiring done. Safe to compact.
+> ⛔ **COMPACT GATE — Compact point F reached.** Live wiring done.
+>
+> 1. Run `npm test -- --run` and `npm run build` — both must succeed.
+> 2. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point F reached — live wiring done. Please run `/compact` before we continue."*
+> 3. Do not proceed until the user starts a new session after compacting.
 
 ---
 
@@ -2913,7 +2990,15 @@ Expected: Both PASS.
 git commit -m "chore: remove legacy lib/lemmy.ts; all consumers migrated"
 ```
 
-> ✅ **Compact point G reached.** Refactor complete. Legacy localStorage keys remain for one release.
+> ⛔ **COMPACT GATE — Compact point G reached.** Refactor complete. Legacy localStorage keys remain for one release.
+>
+> 1. Run `npm test -- --run` and `npm run build` — both must succeed.
+> 2. **STOP. Do not read or begin the next task.** Report to the user:
+>    - Your approximate context window usage (e.g. "~60% used")
+>    - Whether the next task group fits in the remaining context or requires a fresh window
+>
+>    Then tell the user exactly: *"Compact point G reached — refactor complete. Please run `/compact` before we continue."*
+> 3. Do not proceed until the user starts a new session after compacting.
 
 ---
 

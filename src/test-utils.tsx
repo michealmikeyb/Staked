@@ -10,10 +10,11 @@ export interface RenderWithBackendOptions {
   fixtures?: MockFixtures;
   capabilities?: Partial<Capabilities>;
   renderOptions?: Omit<RenderOptions, 'wrapper'>;
+  anonymous?: boolean;
 }
 
 export function renderWithBackend(ui: ReactElement, opts: RenderWithBackendOptions = {}) {
-  const backend: MockBackend = createMockBackend(opts.fixtures, opts.capabilities);
+  const backend: MockBackend = createMockBackend(opts.fixtures, opts.capabilities, opts.anonymous);
   const result = render(ui, {
     ...opts.renderOptions,
     wrapper: ({ children }) => <BackendProvider value={backend}>{children}</BackendProvider>,

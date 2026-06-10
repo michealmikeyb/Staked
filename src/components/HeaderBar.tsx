@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { type SortType, type StakType, type CommentSortType } from '../lib/lemmy';
+import { useBackend } from '../lib/api/context';
 import Logo from './Logo';
 
-export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
+// Keep exported for backward compat — FeedStack, CommunityHeader, SettingsPage, PostCardShell
+// migrate these in Tasks 24–31.
+export const SORT_OPTIONS: { sort: string; label: string }[] = [
   { sort: 'Active', label: 'Active' },
   { sort: 'Hot', label: 'Hot' },
   { sort: 'New', label: 'New' },
@@ -11,7 +13,7 @@ export const SORT_OPTIONS: { sort: SortType; label: string }[] = [
   { sort: 'TopDay', label: 'Top Day' },
 ];
 
-export const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = [
+export const COMMENT_SORT_OPTIONS: { sort: string; label: string }[] = [
   { sort: 'Hot', label: 'Hot' },
   { sort: 'Top', label: 'Top' },
   { sort: 'New', label: 'New' },
@@ -19,7 +21,7 @@ export const COMMENT_SORT_OPTIONS: { sort: CommentSortType; label: string }[] = 
   { sort: 'Controversial', label: 'Controversial' },
 ];
 
-export const STAKS: { stak: StakType; label: string; icon: string }[] = [
+export const STAKS: { stak: string; label: string; icon: string }[] = [
   { stak: 'All', label: 'All', icon: '🌐' },
   { stak: 'Local', label: 'Local', icon: '🏠' },
   { stak: 'Subscribed', label: 'Subscribed', icon: '⭐' },
@@ -27,14 +29,14 @@ export const STAKS: { stak: StakType; label: string; icon: string }[] = [
 ];
 
 interface Props {
-  sortType?: SortType;
-  onSortChange?: (sort: SortType) => void;
+  sortType?: string;
+  onSortChange?: (sort: string) => void;
   onMenuOpen: () => void;
   centerContent?: React.ReactNode;
   onLogoClick?: () => void;
   leftContent?: React.ReactNode;
-  activeStak?: StakType;
-  onStakChange?: (stak: StakType) => void;
+  activeStak?: string;
+  onStakChange?: (stak: string) => void;
 }
 
 export default function HeaderBar({
@@ -47,16 +49,18 @@ export default function HeaderBar({
   activeStak,
   onStakChange,
 }: Props) {
+  const backend = useBackend();
+  const feedOptions = backend.capabilities.feedOptions;
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showStakDropdown, setShowStakDropdown] = useState(false);
-  const currentLabel = SORT_OPTIONS.find((o) => o.sort === sortType)?.label ?? sortType ?? '';
+  const currentLabel = feedOptions.find((o) => o.id === sortType)?.label ?? sortType ?? '';
 
-  function handleSortSelect(sort: SortType) {
+  function handleSortSelect(sort: string) {
     setShowSortDropdown(false);
     onSortChange?.(sort);
   }
 
-  function handleStakSelect(stak: StakType) {
+  function handleStakSelect(stak: string) {
     setShowStakDropdown(false);
     onStakChange?.(stak);
   }
@@ -132,22 +136,22 @@ export default function HeaderBar({
               position: 'fixed', top: 48, left: 0, right: 0,
               background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30,
             }}>
-            {SORT_OPTIONS.map(({ sort, label }) => (
+            {feedOptions.map(({ id, label }) => (
               <button
-                key={sort}
-                onClick={() => handleSortSelect(sort)}
+                key={id}
+                onClick={() => handleSortSelect(id)}
                 aria-label={label}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   width: '100%', padding: '12px 16px',
                   background: 'none', border: 'none', cursor: 'pointer',
                   borderBottom: '1px solid #1e2128', textAlign: 'left',
-                  color: sort === sortType ? '#ff6b35' : '#f5f5f5',
-                  fontWeight: sort === sortType ? 600 : 400, fontSize: 14,
+                  color: id === sortType ? '#ff6b35' : '#f5f5f5',
+                  fontWeight: id === sortType ? 600 : 400, fontSize: 14,
                 }}
               >
                 <span style={{ width: 16, fontSize: 13 }}>
-                  {sort === sortType ? '✓' : ''}
+                  {id === sortType ? '✓' : ''}
                 </span>
                 {label}
               </button>

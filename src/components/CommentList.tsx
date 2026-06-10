@@ -1,63 +1,52 @@
 import { useMemo } from 'react';
-import { type CommentView } from '../lib/lemmy';
-import { type AuthState } from '../lib/store';
+import type { Comment } from '../lib/api/types';
 import CommentItem from './CommentItem';
 
 interface Props {
-  comments: CommentView[];
-  localReplies: CommentView[];
-  auth: AuthState;
-  onSetReplyTarget: (cv: CommentView) => void;
-  onEdit?: (cv: CommentView) => void;
-  onReport?: (cv: CommentView) => void;
-  localEdits?: Record<number, string>;
-  highlightCommentId?: number;
+  comments: Comment[];
+  localReplies: Comment[];
+  onSetReplyTarget: (comment: Comment) => void;
+  onEdit?: (comment: Comment) => void;
+  onReport?: (comment: Comment) => void;
+  localEdits?: Record<string, string>;
+  highlightCommentId?: string;
   opActorId?: string;
 }
 
-export default function CommentList({ comments, localReplies, auth, onSetReplyTarget, onEdit, onReport, localEdits, highlightCommentId, opActorId }: Props) {
+export default function CommentList({ comments, localReplies, onSetReplyTarget, onEdit, onReport, localEdits, highlightCommentId, opActorId }: Props) {
   const items = useMemo(() => {
     const allItems = [...comments, ...localReplies];
-    const childMap = new Map<string, CommentView[]>();
-    const roots: CommentView[] = [];
-    for (const cv of allItems) {
-      const parts = cv.comment.path.split('.');
-      if (parts.length === 2) {
-        roots.push(cv);
-      } else {
-        const parentId = parts[parts.length - 2];
-        if (!childMap.has(parentId)) childMap.set(parentId, []);
-        childMap.get(parentId)!.push(cv);
+    const childMap = new Map<string | null, Comment[]>();
+    for (const c of allItems) {
+      const key = c.parentId ?? null;
+      if (!childMap.has(key)) childMap.set(key, []);
+      childMap.get(key)!.push(c);
+    }
+    const result: Comment[] = [];
+    function collect(parentId: string | null) {
+      for (const c of childMap.get(parentId) ?? []) {
+        result.push(c);
+        collect(c.id);
       }
     }
-    const result: CommentView[] = [];
-    function collect(cv: CommentView) {
-      result.push(cv);
-      for (const child of childMap.get(String(cv.comment.id)) ?? []) collect(child);
-    }
-    for (const root of roots) collect(root);
+    collect(null);
     return result;
   }, [comments, localReplies]);
 
   return (
     <>
-      {items.map((cv) => {
-        const depth = cv.comment.path.split('.').length - 1;
-        return (
-          <CommentItem
-            key={cv.comment.id}
-            cv={cv}
-            auth={auth}
-            depth={depth}
-            onReply={onSetReplyTarget}
-            onEdit={onEdit}
-            onReport={onReport}
-            overrideContent={localEdits?.[cv.comment.id]}
-            isHighlighted={cv.comment.id === highlightCommentId}
-            opActorId={opActorId}
-          />
-        );
-      })}
+      {items.map((comment) => (
+        <CommentItem
+          key={comment.id}
+          comment={comment}
+          onReply={onSetReplyTarget}
+          onEdit={onEdit}
+          onReport={onReport}
+          overrideContent={localEdits?.[comment.id]}
+          isHighlighted={comment.id === highlightCommentId}
+          opActorId={opActorId}
+        />
+      ))}
     </>
   );
 }

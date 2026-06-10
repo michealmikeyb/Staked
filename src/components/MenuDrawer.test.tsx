@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithBackend } from '../test-utils';
 import MenuDrawer from './MenuDrawer';
 
 const mockNavigate = vi.fn();
@@ -12,11 +12,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 beforeEach(() => { vi.clearAllMocks(); });
 
 function renderDrawer(props: Partial<React.ComponentProps<typeof MenuDrawer>> = {}) {
-  return render(
-    <MemoryRouter>
-      <MenuDrawer onNavigate={mockNavigate} {...props} />
-    </MemoryRouter>,
-  );
+  return renderWithBackend(<MenuDrawer onNavigate={mockNavigate} {...props} />);
 }
 
 describe('MenuDrawer', () => {

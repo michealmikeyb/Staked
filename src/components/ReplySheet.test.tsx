@@ -1,12 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import ReplySheet from './ReplySheet';
+import { makeComment, makeUser } from '../test-utils';
 
-const mockTarget = {
-  comment: { id: 5, content: 'Parent comment', path: '0.5' },
-  creator: { name: 'alice', display_name: null },
-  counts: { score: 3 },
-};
+const mockTarget = makeComment({ author: makeUser({ handle: 'alice@beehaw.org' }) });
 
 describe('ReplySheet', () => {
   it('renders nothing when mode is null', () => {
@@ -16,14 +13,14 @@ describe('ReplySheet', () => {
 
   it('shows replying-to header in reply mode', () => {
     render(
-      <ReplySheet mode="reply" target={mockTarget as never} onSubmit={vi.fn()} onClose={vi.fn()} />,
+      <ReplySheet mode="reply" target={mockTarget} onSubmit={vi.fn()} onClose={vi.fn()} />,
     );
     expect(screen.getByText(/replying to @alice/i)).toBeInTheDocument();
   });
 
   it('shows editing header in edit mode', () => {
     render(
-      <ReplySheet mode="edit" target={mockTarget as never} initialContent="old text" onSubmit={vi.fn()} onClose={vi.fn()} />,
+      <ReplySheet mode="edit" target={mockTarget} initialContent="old text" onSubmit={vi.fn()} onClose={vi.fn()} />,
     );
     expect(screen.getByText(/editing your comment/i)).toBeInTheDocument();
   });
@@ -35,7 +32,7 @@ describe('ReplySheet', () => {
 
   it('pre-fills textarea with initialContent in edit mode', () => {
     render(
-      <ReplySheet mode="edit" target={mockTarget as never} initialContent="old text" onSubmit={vi.fn()} onClose={vi.fn()} />,
+      <ReplySheet mode="edit" target={mockTarget} initialContent="old text" onSubmit={vi.fn()} onClose={vi.fn()} />,
     );
     expect(screen.getByRole('textbox')).toHaveValue('old text');
   });
@@ -43,7 +40,7 @@ describe('ReplySheet', () => {
   it('calls onSubmit with textarea content when Send is clicked', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
-      <ReplySheet mode="reply" target={mockTarget as never} onSubmit={onSubmit} onClose={vi.fn()} />,
+      <ReplySheet mode="reply" target={mockTarget} onSubmit={onSubmit} onClose={vi.fn()} />,
     );
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'My reply' } });
     await act(async () => {
@@ -56,7 +53,7 @@ describe('ReplySheet', () => {
     const onClose = vi.fn();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
-      <ReplySheet mode="reply" target={mockTarget as never} onSubmit={onSubmit} onClose={onClose} />,
+      <ReplySheet mode="reply" target={mockTarget} onSubmit={onSubmit} onClose={onClose} />,
     );
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'My reply' } });
     await act(async () => {
@@ -69,7 +66,7 @@ describe('ReplySheet', () => {
   it('shows error message when onSubmit rejects', async () => {
     const onSubmit = vi.fn().mockRejectedValue(new Error('Network error'));
     render(
-      <ReplySheet mode="reply" target={mockTarget as never} onSubmit={onSubmit} onClose={vi.fn()} />,
+      <ReplySheet mode="reply" target={mockTarget} onSubmit={onSubmit} onClose={vi.fn()} />,
     );
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'My reply' } });
     await act(async () => {
@@ -86,7 +83,7 @@ describe('ReplySheet', () => {
   it('calls onClose when Cancel is clicked', () => {
     const onClose = vi.fn();
     render(
-      <ReplySheet mode="reply" target={mockTarget as never} onSubmit={vi.fn()} onClose={onClose} />,
+      <ReplySheet mode="reply" target={mockTarget} onSubmit={vi.fn()} onClose={onClose} />,
     );
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(onClose).toHaveBeenCalled();

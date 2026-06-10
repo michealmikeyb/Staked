@@ -11,10 +11,20 @@ describe('createMockBackend', () => {
     expect(backend.capabilities.canDownvote).toBe(false);
   });
 
-  it('lists a single all stak', () => {
+  it('lists all, local, and subscribed staks when authenticated', () => {
     const backend = createMockBackend();
     expect(backend.listStaks()).toEqual([
       { sessionId: 'mock-session', id: 'all', label: 'All' },
+      { sessionId: 'mock-session', id: 'local', label: 'Local' },
+      { sessionId: 'mock-session', id: 'subscribed', label: 'Subscribed' },
+    ]);
+  });
+
+  it('lists only all and local staks when anonymous', () => {
+    const backend = createMockBackend({}, {}, true);
+    expect(backend.listStaks()).toEqual([
+      { sessionId: '', id: 'all', label: 'All' },
+      { sessionId: '', id: 'local', label: 'Local' },
     ]);
   });
 

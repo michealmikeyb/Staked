@@ -1,58 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { screen, fireEvent, act } from '@testing-library/react';
 import { useState } from 'react';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
-import { type CommentView } from '../lib/lemmy';
-
-vi.mock('../lib/lemmy', () => ({
-  likeComment: vi.fn().mockResolvedValue(undefined),
-  resolveCommentId: vi.fn().mockResolvedValue(null),
-  createComment: vi.fn().mockResolvedValue({
-    comment: { id: 99, content: 'My reply', path: '0.1.99', ap_id: 'https://lemmy.world/comment/99' },
-    creator: { name: 'me', actor_id: 'https://lemmy.world/u/me' },
-    counts: { score: 1 },
-  }),
-}));
+import type { Comment } from '../lib/api/types';
+import { renderWithBackend, makeComment, makeUser } from '../test-utils';
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => vi.fn() };
 });
 
-const mockAuth = { instance: 'lemmy.world', token: 'tok', username: 'me' };
-
 const mockComments = [
-  {
-    comment: { id: 1, content: 'First comment', path: '0.1', ap_id: 'https://lemmy.world/comment/1' },
-    creator: { name: 'alice', actor_id: 'https://lemmy.world/u/alice' },
-    counts: { score: 5 },
-  },
-  {
-    comment: { id: 2, content: 'Second comment', path: '0.2', ap_id: 'https://lemmy.world/comment/2' },
-    creator: { name: 'bob', actor_id: 'https://lemmy.world/u/bob' },
-    counts: { score: 3 },
-  },
-] as unknown as CommentView[];
+  makeComment({ id: '1', author: makeUser({ handle: 'alice@lemmy.world' }), body: 'First comment' }),
+  makeComment({ id: '2', author: makeUser({ handle: 'bob@lemmy.world' }), body: 'Second comment' }),
+];
 
-function makeComment({ id, path }: { id: number; path: string }): CommentView {
-  return {
-    comment: { id, content: `Comment ${id}`, path, ap_id: `https://lemmy.world/comment/${id}` },
-    creator: { name: `user${id}`, actor_id: `https://lemmy.world/u/user${id}` },
-    counts: { score: id * 2 },
-  } as unknown as CommentView;
-}
-
-// Wraps CommentList + ReplySheet together holding the lifted state — mirrors what PostCard does.
 function Wrapper({ onSubmit = vi.fn() }: { onSubmit?: (content: string) => Promise<void> }) {
-  const [replyTarget, setReplyTarget] = useState<CommentView | null>(null);
-  const [localReplies] = useState<CommentView[]>([]);
+  const [replyTarget, setReplyTarget] = useState<Comment | null>(null);
+  const [localReplies] = useState<Comment[]>([]);
   return (
     <>
       <CommentList
         comments={mockComments}
         localReplies={localReplies}
-        auth={mockAuth}
         onSetReplyTarget={setReplyTarget}
         onEdit={vi.fn()}
         localEdits={{}}
@@ -71,13 +42,13 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 describe('CommentList', () => {
   it('renders all comments', () => {
-    render(<Wrapper />);
+    renderWithBackend(<Wrapper />);
     expect(screen.getByText(/alice/)).toBeInTheDocument();
     expect(screen.getByText(/bob/)).toBeInTheDocument();
   });
 
   it('opens reply sheet when Reply is clicked on a comment', () => {
-    render(<Wrapper />);
+    renderWithBackend(<Wrapper />);
     const replyButtons = screen.getAllByRole('button', { name: /reply/i });
     fireEvent.click(replyButtons[0]);
     expect(screen.getByText(/replying to @alice/i)).toBeInTheDocument();
@@ -85,7 +56,7 @@ describe('CommentList', () => {
 
   it('calls onSubmit and closes sheet on send', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<Wrapper onSubmit={onSubmit} />);
+    renderWithBackend(<Wrapper onSubmit={onSubmit} />);
     const replyButtons = screen.getAllByRole('button', { name: /reply/i });
     fireEvent.click(replyButtons[0]);
     fireEvent.change(screen.getByRole('textbox'), {
@@ -99,30 +70,28 @@ describe('CommentList', () => {
   });
 
   it('closes the reply sheet when Cancel is clicked', () => {
-    render(<Wrapper />);
+    renderWithBackend(<Wrapper />);
     const replyButtons = screen.getAllByRole('button', { name: /reply/i });
     fireEvent.click(replyButtons[0]);
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(screen.queryByText(/replying to/i)).not.toBeInTheDocument();
   });
 
-  it('passes isHighlighted=true only to the comment matching highlightCommentId', async () => {
+  it('passes isHighlighted=true only to the comment matching highlightCommentId', () => {
     const comments = [
-      makeComment({ id: 1, path: '0.1' }),
-      makeComment({ id: 2, path: '0.2' }),
+      makeComment({ id: '1' }),
+      makeComment({ id: '2' }),
     ];
-    render(
+    renderWithBackend(
       <CommentList
         comments={comments}
         localReplies={[]}
-        auth={mockAuth}
         onSetReplyTarget={() => {}}
         onEdit={vi.fn()}
         localEdits={{}}
-        highlightCommentId={2}
+        highlightCommentId={'2'}
       />,
     );
-    // comment id=2 should have the orange border, id=1 should not
     const items = screen.getAllByTestId('comment-item');
     const item1 = items.find(el => el.getAttribute('data-comment-id') === '1')!;
     const item2 = items.find(el => el.getAttribute('data-comment-id') === '2')!;
@@ -132,16 +101,11 @@ describe('CommentList', () => {
 
   it('passes onEdit down to CommentItems', () => {
     const onEdit = vi.fn();
-    const ownComment = {
-      comment: { id: 3, content: 'My comment', path: '0.3', ap_id: 'https://lemmy.world/comment/3' },
-      creator: { name: 'me', actor_id: 'https://lemmy.world/u/me' },
-      counts: { score: 1 },
-    } as unknown as CommentView;
-    render(
+    const ownComment = makeComment({ id: '3', body: 'My comment', author: makeUser({ handle: 'viewer@mock.test' }) });
+    renderWithBackend(
       <CommentList
         comments={[...mockComments, ownComment]}
         localReplies={[]}
-        auth={mockAuth}
         onSetReplyTarget={() => {}}
         onEdit={onEdit}
         localEdits={{}}
@@ -152,14 +116,13 @@ describe('CommentList', () => {
   });
 
   it('passes overrideContent from localEdits to the matching CommentItem', () => {
-    render(
+    renderWithBackend(
       <CommentList
         comments={mockComments}
         localReplies={[]}
-        auth={mockAuth}
         onSetReplyTarget={() => {}}
         onEdit={vi.fn()}
-        localEdits={{ 1: 'Edited first comment' }}
+        localEdits={{ '1': 'Edited first comment' }}
       />,
     );
     expect(screen.getByText('Edited first comment')).toBeInTheDocument();

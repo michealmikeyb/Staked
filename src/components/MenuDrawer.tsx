@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { type SortType, type StakType } from '../lib/lemmy';
 import HeaderBar from './HeaderBar';
 
 interface Props {
@@ -7,11 +6,11 @@ interface Props {
   centerContent?: React.ReactNode;
   onLogoClick?: () => void;
   leftContent?: React.ReactNode;
-  sortType?: SortType;
-  onSortChange?: (sort: SortType) => void;
+  sortType?: string;
+  onSortChange?: (sort: string) => void;
   unreadCount?: number;
-  activeStak?: StakType;
-  onStakChange?: (stak: StakType) => void;
+  activeStak?: string;
+  onStakChange?: (stak: string) => void;
   isAuthenticated?: boolean;
 }
 
