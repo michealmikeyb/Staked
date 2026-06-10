@@ -52,7 +52,10 @@ export default function ProfilePostDetailPage({ auth: _auth }: Props) {
     nsfw: neutralPost.nsfw,
     published: neutralPost.publishedAt,
   };
-  const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+  // source.id is a numeric string; reconstruct the actor URL from the handle for instanceFromActorId
+  const [sourceName, sourceInst] = neutralPost.source.handle.split('@');
+  const communityActorId = sourceInst ? `https://${sourceInst}/c/${sourceName}` : neutralPost.source.id;
+  const community = { name: neutralPost.source.name, actor_id: communityActorId };
   const creator = {
     name: authorName,
     display_name: neutralPost.author.displayName ?? null,

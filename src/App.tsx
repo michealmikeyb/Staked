@@ -139,7 +139,7 @@ function AppRoutes({
           element={<RequireAuth session={session}><ProfilePage /></RequireAuth>}
         />
         <Route
-          path="/profile/:postId"
+          path="/profile/view"
           element={<RequireAuth session={session}><ProfilePostDetailPage /></RequireAuth>}
         />
         <Route

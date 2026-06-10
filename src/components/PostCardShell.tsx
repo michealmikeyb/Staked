@@ -147,7 +147,10 @@ export default function PostCardShell({
       parentId: parentComment?.id,
       body: content,
     });
-    setLocalReplies(prev => [...prev, newComment]);
+    // Server encodes parentId from path with empty apId ("X|") but local comments use
+    // full encoded IDs ("X|https://..."). Align parentId so tree traversal in CommentList works.
+    const corrected = parentComment ? { ...newComment, parentId: parentComment.id } : newComment;
+    setLocalReplies(prev => [...prev, corrected]);
   };
 
   const handleEditSubmit = async (content: string, target: Comment) => {

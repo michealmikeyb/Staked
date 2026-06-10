@@ -153,7 +153,7 @@ export default function ProfilePage({ target }: Props) {
             return (
               <div
                 key={`post-${post.id}`}
-                onClick={() => navigate(`/profile/${post.id}`, { state: { post } })}
+                onClick={() => navigate('/profile/view', { state: { post } })}
                 style={{ margin: '6px 12px', background: '#1e2128', borderRadius: 12, overflow: 'hidden', cursor: 'pointer' }}
               >
                 {bannerSrc ? (
@@ -206,7 +206,7 @@ export default function ProfilePage({ target }: Props) {
           return (
             <div
               key={`comment-${comment.id}`}
-              onClick={() => navigate(`/profile/${comment.postId}`, {
+              onClick={() => navigate('/profile/view', {
                 state: {
                   postId: comment.postId,
                   commentApId: comment.permalink,
