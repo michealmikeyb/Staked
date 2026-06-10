@@ -888,7 +888,7 @@ git commit -m "test(mock): add Backend interface sanity test"
 - Create: `src/lib/api/backends/lemmy/client.ts`
 - Create: `src/lib/api/backends/lemmy/session.ts`
 
-- [ ] **Step 1: Create the client factory**
+- [x] **Step 1: Create the client factory**
 
 ```ts
 // src/lib/api/backends/lemmy/client.ts
@@ -913,7 +913,7 @@ export function sourceFromApId(apId: string): { instance: string; postId: number
 }
 ```
 
-- [ ] **Step 2: Create the session data type and stak list helper**
+- [x] **Step 2: Create the session data type and stak list helper**
 
 ```ts
 // src/lib/api/backends/lemmy/session.ts
@@ -941,12 +941,12 @@ export function listLemmyStaks(session: Session): Stak[] {
 }
 ```
 
-- [ ] **Step 3: Verify TypeScript compiles**
+- [x] **Step 3: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/
@@ -959,7 +959,7 @@ git commit -m "feat(lemmy): add client factory, session shape, and stak list"
 - Create: `src/lib/api/backends/lemmy/mappers.ts`
 - Create: `src/lib/api/backends/lemmy/mappers.test.ts`
 
-- [ ] **Step 1: Write failing mapper tests**
+- [x] **Step 1: Write failing mapper tests**
 
 ```ts
 // src/lib/api/backends/lemmy/mappers.test.ts
@@ -1033,12 +1033,12 @@ describe('parsePostId', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test (expect fail — file doesn't exist)**
+- [x] **Step 2: Run the test (expect fail — file doesn't exist)**
 
 Run: `npx vitest run src/lib/api/backends/lemmy/mappers.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement the mappers**
+- [x] **Step 3: Implement the mappers**
 
 ```ts
 // src/lib/api/backends/lemmy/mappers.ts
@@ -1208,12 +1208,12 @@ export function mapMention(mv: PersonMentionView): Notification {
 }
 ```
 
-- [ ] **Step 4: Run tests until they pass**
+- [x] **Step 4: Run tests until they pass**
 
 Run: `npx vitest run src/lib/api/backends/lemmy/mappers.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/mappers.ts src/lib/api/backends/lemmy/mappers.test.ts
@@ -1227,7 +1227,7 @@ git commit -m "feat(lemmy): add native↔neutral type mappers"
 
 The Lemmy adapter encodes Lemmy's `page: number` as a string cursor. Empty pages return `nextCursor: null`. Anonymous sessions route through the user-configured `anonInstance` if set, otherwise through `getAnonInstance(feedId)` from `src/lib/instanceRankings.ts`.
 
-- [ ] **Step 1: Create the FeedService implementation**
+- [x] **Step 1: Create the FeedService implementation**
 
 ```ts
 // src/lib/api/backends/lemmy/feed.ts
@@ -1308,12 +1308,12 @@ export function createFeedService(
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/feed.ts
@@ -1325,7 +1325,7 @@ git commit -m "feat(lemmy): FeedService with cursor-page mapping and anon routin
 **Files:**
 - Create: `src/lib/api/backends/lemmy/posts.ts`
 
-- [ ] **Step 1: Create the PostService implementation**
+- [x] **Step 1: Create the PostService implementation**
 
 ```ts
 // src/lib/api/backends/lemmy/posts.ts
@@ -1407,12 +1407,12 @@ export function createPostService(session: Session): PostService {
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/posts.ts
@@ -1426,7 +1426,7 @@ git commit -m "feat(lemmy): PostService"
 
 The 3-tier fallback and cross-stitching algorithm is ported verbatim from `src/hooks/useCommentLoader.ts` lines 27–99 of the original file. The encoding round-trip means `comments.list(postId)` receives `"localId|apId"` and unpacks both.
 
-- [ ] **Step 1: Create the CommentService implementation**
+- [x] **Step 1: Create the CommentService implementation**
 
 ```ts
 // src/lib/api/backends/lemmy/comments.ts
@@ -1586,12 +1586,12 @@ export function createCommentService(session: Session): CommentService {
 
 > **Note on Tier 2 omission:** The original `useCommentLoader` had a Tier 2 community-instance fallback that required the `community.actor_id` at fetch time. In the adapter, comment listing is decoupled from the post object — only `postId` is available. The Tier 3 home-instance fallback handles the same recovery cases for the vast majority of federation gaps. If gaps appear in testing, encode the community actor_id into the `postId` opaque string as a third segment (`"localId|apId|communityActorId"`) and reintroduce Tier 2 here.
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [x] **Step 2: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/comments.ts
@@ -1607,7 +1607,7 @@ git commit -m "feat(lemmy): CommentService with federation fallback"
 - Create: `src/lib/api/backends/lemmy/search.ts`
 - Create: `src/lib/api/backends/lemmy/media.ts`
 
-- [ ] **Step 1: Create SourceService**
+- [x] **Step 1: Create SourceService**
 
 ```ts
 // src/lib/api/backends/lemmy/sources.ts
@@ -1638,7 +1638,7 @@ export function createSourceService(session: Session): SourceService {
 }
 ```
 
-- [ ] **Step 2: Create UserService**
+- [x] **Step 2: Create UserService**
 
 ```ts
 // src/lib/api/backends/lemmy/users.ts
@@ -1679,7 +1679,7 @@ export function createUserService(session: Session): UserService {
 }
 ```
 
-- [ ] **Step 3: Create NotificationService**
+- [x] **Step 3: Create NotificationService**
 
 ```ts
 // src/lib/api/backends/lemmy/notifs.ts
@@ -1738,7 +1738,7 @@ export function createNotificationService(session: Session): NotificationService
 }
 ```
 
-- [ ] **Step 4: Create SearchService**
+- [x] **Step 4: Create SearchService**
 
 ```ts
 // src/lib/api/backends/lemmy/search.ts
@@ -1771,7 +1771,7 @@ export function createSearchService(session: Session): SearchService {
 }
 ```
 
-- [ ] **Step 5: Create MediaService**
+- [x] **Step 5: Create MediaService**
 
 ```ts
 // src/lib/api/backends/lemmy/media.ts
@@ -1801,12 +1801,12 @@ export function createMediaService(session: Session): MediaService {
 }
 ```
 
-- [ ] **Step 6: Verify TypeScript compiles**
+- [x] **Step 6: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/
@@ -1818,7 +1818,7 @@ git commit -m "feat(lemmy): SourceService, UserService, NotificationService, Sea
 **Files:**
 - Create: `src/lib/api/backends/lemmy/index.ts`
 
-- [ ] **Step 1: Create the backend factory and AuthService**
+- [x] **Step 1: Create the backend factory and AuthService**
 
 ```ts
 // src/lib/api/backends/lemmy/index.ts
@@ -1909,12 +1909,12 @@ export function createLemmyBackend(session: Session, opts: LemmyBackendOptions =
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles and full build succeeds**
+- [x] **Step 2: Verify TypeScript compiles and full build succeeds**
 
 Run: `npm run build`
 Expected: PASS — full build succeeds. `src/lib/lemmy.ts` is still in place and used by the app.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/api/backends/lemmy/index.ts
