@@ -37,7 +37,7 @@ export default function PostCard({
   const [pullDelta, setPullDelta] = useState(0);
 
   const { data: commentsData, loading: commentsLoading } = useAsync(
-    () => backend.comments.list(post.id, { sortId: activeSort }),
+    () => backend.comments.list(post.id, { sortId: activeSort, sourceHandle: post.source.handle }),
     [post.id, activeSort],
   );
   const comments = commentsData ?? [];

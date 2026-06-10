@@ -14,7 +14,7 @@ export function useNotificationPolling(
   const lastCountRef = useRef<number>(-1); // -1 = baseline not yet established
 
   useEffect(() => {
-    if (!backend?.session || permission !== 'granted') return;
+    if (!backend?.session?.viewer || permission !== 'granted') return;
 
     let cancelled = false;
 
@@ -57,7 +57,7 @@ export function useNotificationPolling(
   }, [backend?.session, permission]);
 
   useEffect(() => {
-    if (!backend?.session) {
+    if (!backend?.session?.viewer) {
       lastCountRef.current = -1;
       clearNotifState().catch(() => {});
       return;

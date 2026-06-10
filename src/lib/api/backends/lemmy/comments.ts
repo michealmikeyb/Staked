@@ -6,6 +6,13 @@ import { makeLemmyClient, sourceFromApId } from './client';
 import { getLemmySessionData } from './session';
 import { mapComment, mapComments, parsePostId, parseCommentId } from './mappers';
 
+async function resolvePostIdOn(instance: string, apId: string): Promise<number | null> {
+  try {
+    const res = await makeLemmyClient(instance).resolveObject({ q: apId });
+    return res.post?.post.id ?? null;
+  } catch { return null; }
+}
+
 async function fetchRaw(instance: string, token: string, postId: number, sort: CommentSortType): Promise<CommentView[]> {
   try {
     const res = await makeLemmyClient(instance, token || undefined).getComments({
@@ -64,6 +71,18 @@ export function createCommentService(session: Session): CommentService {
       if (source) {
         const srcToken = source.instance === homeInstance ? (token ?? '') : '';
         loaded = await fetchRaw(source.instance, srcToken, source.postId, sort);
+      }
+
+      // Tier 2 — source instance via community resolution (anonymous-compatible)
+      if (loaded.length === 0 && opts.sourceHandle) {
+        const communityInstance = opts.sourceHandle.split('@')[1] ?? '';
+        if (communityInstance && communityInstance !== source?.instance) {
+          const communityLocalId = await resolvePostIdOn(communityInstance, apId);
+          if (communityLocalId != null) {
+            const communityToken = communityInstance === homeInstance ? (token ?? '') : '';
+            loaded = await fetchRaw(communityInstance, communityToken, communityLocalId, sort);
+          }
+        }
       }
 
       // Tier 3 — home instance, authenticated then anonymous

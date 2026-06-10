@@ -64,7 +64,7 @@ export default function PostCardShell({
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollRefProp ?? internalRef;
 
-  const isLoggedIn = backend.session !== null;
+  const isLoggedIn = !!backend.session?.viewer;
 
   const srcParts = post.source.handle.split('@');
   const srcName = srcParts[0] ?? post.source.handle;

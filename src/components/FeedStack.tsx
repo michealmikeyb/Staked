@@ -27,7 +27,7 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
   const location = useLocation();
   const { settings, updateSetting } = useSettings();
   const backend = useBackend();
-  const isLoggedIn = backend.session !== null;
+  const isLoggedIn = !!backend.session?.viewer;
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [undoStack, setUndoStack] = useState<Post[]>([]);

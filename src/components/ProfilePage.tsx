@@ -44,7 +44,7 @@ export default function ProfilePage({ target }: Props) {
   const displayUsername = target?.username ?? (viewerHandle.includes('@') ? viewerHandle.split('@')[0] : viewerHandle);
   const displayInstance = target?.instance ?? (viewerHandle.includes('@') ? viewerHandle.split('@')[1] : '');
 
-  const isOwnProfile = !!backend.session && (!target || backend.session.viewer?.handle === handle);
+  const isOwnProfile = !!backend.session?.viewer && (!target || backend.session.viewer?.handle === handle);
 
   const [user, setUser] = useState<User | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ kind: 'post' | 'comment'; id: string } | null>(null);

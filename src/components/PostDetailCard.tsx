@@ -82,7 +82,7 @@ export default function PostDetailCard({
   }, [post, community, creator, counts]);
 
   const { data: commentsData, loading: commentsLoading } = useAsync(
-    () => backend.comments.list(neutralPost.id, { sortId: activeSort }),
+    () => backend.comments.list(neutralPost.id, { sortId: activeSort, sourceHandle: neutralPost.source.handle }),
     [neutralPost.id, activeSort],
   );
   const comments = commentsData ?? [];

@@ -20,7 +20,7 @@ export default function CommentsPanel({ post, onClose, onSave }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    backend.comments.list(post.id, { sortId: 'Top' })
+    backend.comments.list(post.id, { sortId: 'Top', sourceHandle: post.source.handle })
       .then((c) => { if (!cancelled) setComments(c); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
