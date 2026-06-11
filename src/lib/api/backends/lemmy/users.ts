@@ -28,12 +28,14 @@ export function createUserService(session: Session): UserService {
     async getPosts(handle, opts): Promise<Page<Post>> {
       const page = pageNumber(opts.cursor);
       const res = await clientFor(handle).getPersonDetails({ username: handle, sort: 'New', page, limit: PAGE_SIZE });
-      return { items: res.posts.map(mapPost), nextCursor: nextCursor(page, res.posts.length) };
+      const visible = res.posts.filter((pv) => !pv.post.deleted && !pv.post.removed);
+      return { items: visible.map(mapPost), nextCursor: nextCursor(page, res.posts.length) };
     },
     async getComments(handle, opts): Promise<Page<Comment>> {
       const page = pageNumber(opts.cursor);
       const res = await clientFor(handle).getPersonDetails({ username: handle, sort: 'New', page, limit: PAGE_SIZE });
-      return { items: res.comments.map(mapComment), nextCursor: nextCursor(page, res.comments.length) };
+      const visible = res.comments.filter((cv) => !cv.comment.deleted && !cv.comment.removed);
+      return { items: visible.map(mapComment), nextCursor: nextCursor(page, res.comments.length) };
     },
     async block(userId, block): Promise<void> {
       if (!token) throw new Error('Block requires login');
