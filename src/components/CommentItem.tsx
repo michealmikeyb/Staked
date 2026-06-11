@@ -26,7 +26,7 @@ export default function CommentItem({ comment, onReply, onEdit, onReport, overri
   const displayScore = comment.counts.score + vote;
   const lastTapRef = useRef<number>(0);
 
-  const isOwnComment = comment.author.handle === backend.session?.viewer?.handle;
+  const isOwnComment = comment.author.handle.toLowerCase() === backend.session?.viewer?.handle?.toLowerCase();
   const isOP = opActorId != null && comment.author.profileUrl === opActorId;
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
