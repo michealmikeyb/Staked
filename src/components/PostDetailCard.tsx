@@ -121,7 +121,7 @@ export default function PostDetailCard({
       });
       setNextCursor(page.nextCursor);
       setLoadingMore(false);
-    });
+    }).catch(() => { setLoadingMore(false); });
   }, [nextCursor, loadingMore, neutralPost.id, activeSort, backend]);
 
   const highlightCommentId = useMemo(() => {
