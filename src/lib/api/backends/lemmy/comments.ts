@@ -89,25 +89,37 @@ export function createCommentService(session: Session): CommentService {
       }
       const tier1Count = loaded.length;
 
-      // Tier 2 — source instance via community resolution (anonymous-compatible)
+      let tier2Count = 0;
+      let tier3Count = 0;
+      let tier2Ran = false;
+
+      // Tier 2 — community instance via resolve_object (anonymous-compatible)
       if (loaded.length === 0 && opts.sourceHandle) {
         const communityInstance = opts.sourceHandle.split('@')[1] ?? '';
         if (communityInstance && communityInstance !== source?.instance) {
           const communityLocalId = await resolvePostIdOn(communityInstance, apId);
           if (communityLocalId != null) {
+            tier2Ran = true;
             const communityToken = communityInstance === homeInstance ? (token ?? '') : '';
-            loaded = await fetchRaw(communityInstance, communityToken, communityLocalId, sort);
+            loaded = await fetchRaw(communityInstance, communityToken, communityLocalId, sort, page);
+            tier2Count = loaded.length;
           }
         }
       }
 
       // Tier 3 — home instance, authenticated then anonymous
-      if (token && source?.instance !== homeInstance && loaded.length === 0) {
-        cachedHome = await fetchRaw(homeInstance, token, localId, sort);
-        if (cachedHome.length === 0) {
-          cachedHome = await fetchRaw(homeInstance, '', localId, sort);
+      // On page 2+, skip if Tier 2 already ran (don't mix tiers across pages)
+      const skipTier3 = !isFirstPage && tier2Ran;
+      if (!skipTier3 && token && source?.instance !== homeInstance && loaded.length === 0) {
+        if (isFirstPage) {
+          cachedHome = await fetchRaw(homeInstance, token, localId, sort);
+          if (cachedHome.length === 0) cachedHome = await fetchRaw(homeInstance, '', localId, sort);
+          loaded = cachedHome;
+        } else {
+          loaded = await fetchRaw(homeInstance, token, localId, sort, page);
+          if (loaded.length === 0) loaded = await fetchRaw(homeInstance, '', localId, sort, page);
         }
-        loaded = cachedHome;
+        tier3Count = loaded.length;
       }
 
       // Cross-stitch novel home comments into source tree (first page only)
@@ -142,7 +154,8 @@ export function createCommentService(session: Session): CommentService {
         }
       }
 
-      const nextCursor = tier1Count === 50 ? String(page + 1) : null;
+      const activeTierCount = tier1Count || tier2Count || tier3Count;
+      const nextCursor = activeTierCount === 50 ? String(page + 1) : null;
       return { items: mapComments(loaded), nextCursor };
     },
 
