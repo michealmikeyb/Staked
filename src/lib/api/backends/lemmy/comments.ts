@@ -75,7 +75,8 @@ export function createCommentService(session: Session): CommentService {
       const sort = opts.sortId as CommentSortType;
       const { localId, apId } = parsePostId(postId);
       const source = sourceFromApId(apId);
-      const page = opts.cursor ? parseInt(opts.cursor, 10) : 1;
+      const parsed = opts.cursor ? parseInt(opts.cursor, 10) : NaN;
+      const page = isNaN(parsed) ? 1 : parsed;
       const isFirstPage = page === 1;
 
       let loaded: CommentView[] = [];
@@ -86,6 +87,7 @@ export function createCommentService(session: Session): CommentService {
         const srcToken = source.instance === homeInstance ? (token ?? '') : '';
         loaded = await fetchRaw(source.instance, srcToken, source.postId, sort, page);
       }
+      const tier1Count = loaded.length;
 
       // Tier 2 — source instance via community resolution (anonymous-compatible)
       if (loaded.length === 0 && opts.sourceHandle) {
@@ -140,7 +142,7 @@ export function createCommentService(session: Session): CommentService {
         }
       }
 
-      const nextCursor = loaded.length === 50 ? String(page + 1) : null;
+      const nextCursor = tier1Count === 50 ? String(page + 1) : null;
       return { items: mapComments(loaded), nextCursor };
     },
 
