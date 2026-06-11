@@ -54,8 +54,9 @@ describe('createMockBackend', () => {
     const post = makePost();
     const backend = createMockBackend({ posts: [post], comments: { [post.id]: [] } });
     const c = await backend.comments.create({ postId: post.id, body: 'Hi' });
-    const list = await backend.comments.list(post.id, { sortId: 'top' });
-    expect(list).toContainEqual(c);
+    const page = await backend.comments.list(post.id, { sortId: 'top' });
+    expect(page.items).toContainEqual(c);
+    expect(page.nextCursor).toBeNull();
   });
 
   it('filters saved posts', async () => {

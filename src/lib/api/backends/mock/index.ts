@@ -124,7 +124,7 @@ export function createMockBackend(
     },
 
     comments: {
-      async list(postId, _opts) { return state.comments.get(postId) ?? []; },
+      async list(postId, _opts) { return pageOf(state.comments.get(postId) ?? []); },
       async vote(commentId, vote) { state.votes[commentId] = vote; },
       async create(input) {
         const id = `mock-comment-${Date.now()}`;
