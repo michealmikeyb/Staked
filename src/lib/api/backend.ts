@@ -26,7 +26,7 @@ export interface PostService {
 }
 
 export interface CommentService {
-  list(postId: ID, opts: { sortId: string; sourceHandle?: string }): Promise<Comment[]>;
+  list(postId: ID, opts: { sortId: string; sourceHandle?: string; targetCommentApId?: string; cursor?: string | null }): Promise<Page<Comment>>;
   vote(commentId: ID, vote: Vote): Promise<void>;
   create(input: { postId: ID; parentId?: ID; body: string }): Promise<Comment>;
   edit(commentId: ID, body: string): Promise<Comment>;
