@@ -359,7 +359,7 @@ export default function PostCardShell({
             highlightCommentId={highlightCommentId}
           />
           {onLoadMore && (
-            <div ref={sentinelRef} style={{ height: 1, margin: '4px 0' }}>
+            <div ref={sentinelRef} style={{ height: '1px', margin: '4px 0' }}>
               {loadingMore && (
                 <div style={{ textAlign: 'center', padding: '8px 0', color: '#666', fontSize: 13 }}>
                   Loading more…
