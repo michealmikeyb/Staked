@@ -72,11 +72,11 @@ export default function PostCardShell({
     if (!onLoadMore || !sentinelRef.current) return;
     const obs = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
-      { threshold: 0 },
+      { threshold: 0, root: scrollRef.current },
     );
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
-  }, [onLoadMore]);
+  }, [onLoadMore, scrollRef]);
 
   const isLoggedIn = !!backend.session?.viewer;
 
