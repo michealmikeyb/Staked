@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { SettingsProvider } from '../lib/SettingsContext';
 import { renderWithBackend, makePost, makeSource, makeUser } from '../test-utils';
 import type { RenderWithBackendOptions } from '../test-utils';
@@ -316,5 +316,26 @@ describe('PostCardShell', () => {
     renderShell();
     fireEvent.click(screen.getByTestId('report-button'));
     expect(screen.getByText('Report post')).toBeInTheDocument();
+  });
+
+  it('calls onLoadMore when sentinel scrolls into view', async () => {
+    const onLoadMore = vi.fn();
+    // jsdom IntersectionObserver mock
+    let observeCallback: IntersectionObserverCallback = () => {};
+    const mockObserver = { observe: vi.fn(), disconnect: vi.fn() };
+    vi.stubGlobal('IntersectionObserver', vi.fn((cb: IntersectionObserverCallback) => {
+      observeCallback = cb;
+      return mockObserver;
+    }));
+
+    renderShell({ onLoadMore, loadingMore: false });
+
+    // Simulate sentinel entering viewport
+    await act(async () => {
+      observeCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 });

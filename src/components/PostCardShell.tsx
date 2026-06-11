@@ -39,6 +39,8 @@ interface Props {
   blurNsfw?: boolean;
   activeSort?: string;
   onSortChange?: (sort: string) => void;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 const noop = () => {};
@@ -57,12 +59,24 @@ export default function PostCardShell({
   blurNsfw = true,
   activeSort = 'Top',
   onSortChange = noop,
+  onLoadMore,
+  loadingMore,
 }: Props) {
   const navigate = useNavigate();
   const backend = useBackend();
   const { settings } = useSettings();
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollRefProp ?? internalRef;
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!onLoadMore || !sentinelRef.current) return;
+    const obs = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+      { threshold: 0 },
+    );
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [onLoadMore]);
 
   const isLoggedIn = !!backend.session?.viewer;
 
@@ -344,6 +358,15 @@ export default function PostCardShell({
             onReport={isLoggedIn ? handleReport : undefined}
             highlightCommentId={highlightCommentId}
           />
+          {onLoadMore && (
+            <div ref={sentinelRef} style={{ height: 1, margin: '4px 0' }}>
+              {loadingMore && (
+                <div style={{ textAlign: 'center', padding: '8px 0', color: '#666', fontSize: 13 }}>
+                  Loading more…
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
