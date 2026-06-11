@@ -1,6 +1,6 @@
 // src/lib/api/backends/lemmy/comments.ts
 import type { CommentService } from '../../backend';
-import type { Comment, Session, Vote, ID } from '../../types';
+import type { Comment, Session, Vote, ID, Page } from '../../types';
 import type { CommentView, CommentSortType } from 'lemmy-js-client';
 import { makeLemmyClient, sourceFromApId } from './client';
 import { getLemmySessionData } from './session';
@@ -13,10 +13,10 @@ async function resolvePostIdOn(instance: string, apId: string): Promise<number |
   } catch { return null; }
 }
 
-async function fetchRaw(instance: string, token: string, postId: number, sort: CommentSortType): Promise<CommentView[]> {
+async function fetchRaw(instance: string, token: string, postId: number, sort: CommentSortType, page = 1): Promise<CommentView[]> {
   try {
     const res = await makeLemmyClient(instance, token || undefined).getComments({
-      post_id: postId, sort, limit: 50,
+      post_id: postId, sort, limit: 50, page,
     });
     return res.comments;
   } catch { return []; }
@@ -54,15 +54,29 @@ function crossStitch(source: CommentView[], home: CommentView[]): CommentView[] 
   return result;
 }
 
+async function resolveHomeCommentId(
+  homeClient: ReturnType<typeof makeLemmyClient>,
+  localId: number,
+  apId: string,
+): Promise<number> {
+  if (!apId) return localId;
+  try {
+    const r = await homeClient.resolveObject({ q: apId });
+    return r.comment?.comment.id ?? localId;
+  } catch { return localId; }
+}
+
 export function createCommentService(session: Session): CommentService {
   const { instance: homeInstance, token } = getLemmySessionData(session);
   const homeClient = () => makeLemmyClient(homeInstance, token ?? undefined);
 
   return {
-    async list(postId: ID, opts): Promise<Comment[]> {
+    async list(postId: ID, opts): Promise<Page<Comment>> {
       const sort = opts.sortId as CommentSortType;
       const { localId, apId } = parsePostId(postId);
       const source = sourceFromApId(apId);
+      const page = opts.cursor ? parseInt(opts.cursor, 10) : 1;
+      const isFirstPage = page === 1;
 
       let loaded: CommentView[] = [];
       let cachedHome: CommentView[] | null = null;
@@ -70,7 +84,7 @@ export function createCommentService(session: Session): CommentService {
       // Tier 1 — source instance
       if (source) {
         const srcToken = source.instance === homeInstance ? (token ?? '') : '';
-        loaded = await fetchRaw(source.instance, srcToken, source.postId, sort);
+        loaded = await fetchRaw(source.instance, srcToken, source.postId, sort, page);
       }
 
       // Tier 2 — source instance via community resolution (anonymous-compatible)
@@ -94,19 +108,22 @@ export function createCommentService(session: Session): CommentService {
         loaded = cachedHome;
       }
 
-      // Cross-stitch novel home comments into source tree
-      if (token && source && source.instance !== homeInstance) {
+      // Cross-stitch novel home comments into source tree (first page only)
+      if (isFirstPage && token && source && source.instance !== homeInstance) {
         const home = cachedHome ?? await fetchRaw(homeInstance, token, localId, sort);
         loaded = crossStitch(loaded, home);
       }
 
-      return mapComments(loaded);
+      const nextCursor = loaded.length === 50 ? String(page + 1) : null;
+      return { items: mapComments(loaded), nextCursor };
     },
 
     async vote(commentId: ID, vote: Vote): Promise<void> {
       if (!token) throw new Error('Vote requires login');
-      const { localId } = parseCommentId(commentId);
-      await homeClient().likeComment({ comment_id: localId, score: vote });
+      const { localId, apId } = parseCommentId(commentId);
+      const client = homeClient();
+      const homeId = await resolveHomeCommentId(client, localId, apId);
+      await client.likeComment({ comment_id: homeId, score: vote });
     },
 
     async create(input): Promise<Comment> {
@@ -132,21 +149,27 @@ export function createCommentService(session: Session): CommentService {
 
     async edit(commentId, body): Promise<Comment> {
       if (!token) throw new Error('Edit requires login');
-      const { localId } = parseCommentId(commentId);
-      const res = await homeClient().editComment({ comment_id: localId, content: body });
+      const { localId, apId } = parseCommentId(commentId);
+      const client = homeClient();
+      const homeId = await resolveHomeCommentId(client, localId, apId);
+      const res = await client.editComment({ comment_id: homeId, content: body });
       return mapComment(res.comment_view);
     },
 
     async delete(commentId): Promise<void> {
       if (!token) throw new Error('Delete requires login');
-      const { localId } = parseCommentId(commentId);
-      await homeClient().deleteComment({ comment_id: localId, deleted: true });
+      const { localId, apId } = parseCommentId(commentId);
+      const client = homeClient();
+      const homeId = await resolveHomeCommentId(client, localId, apId);
+      await client.deleteComment({ comment_id: homeId, deleted: true });
     },
 
     async report(commentId, reason): Promise<void> {
       if (!token) throw new Error('Report requires login');
-      const { localId } = parseCommentId(commentId);
-      await homeClient().createCommentReport({ comment_id: localId, reason });
+      const { localId, apId } = parseCommentId(commentId);
+      const client = homeClient();
+      const homeId = await resolveHomeCommentId(client, localId, apId);
+      await client.createCommentReport({ comment_id: homeId, reason });
     },
   };
 }
