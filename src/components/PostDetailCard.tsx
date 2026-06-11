@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useBackend } from '../lib/api/context';
-import { useAsync } from '../hooks/useAsync';
 import { instanceFromActorId } from '../lib/urlUtils';
 import type { AuthState } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
-import type { Post as NeutralPost } from '../lib/api/types';
+import type { Post as NeutralPost, Comment } from '../lib/api/types';
 import PostCardShell from './PostCardShell';
 
 interface Post {
@@ -81,17 +80,54 @@ export default function PostDetailCard({
     };
   }, [post, community, creator, counts]);
 
-  const { data: commentsData, loading: commentsLoading } = useAsync(
-    () => backend.comments.list(neutralPost.id, { sortId: activeSort, sourceHandle: neutralPost.source.handle }),
-    [neutralPost.id, activeSort],
-  );
-  const comments = commentsData ?? [];
-  const commentsLoaded = !commentsLoading;
+  const [allComments, setAllComments] = useState<Comment[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAllComments([]);
+    setNextCursor(null);
+    setCommentsLoaded(false);
+    backend.comments.list(neutralPost.id, {
+      sortId: activeSort,
+      sourceHandle: neutralPost.source.handle,
+      targetCommentApId: notifCommentApId,
+      cursor: null,
+    }).then((page) => {
+      if (!cancelled) {
+        setAllComments(page.items);
+        setNextCursor(page.nextCursor);
+        setCommentsLoaded(true);
+      }
+    });
+    return () => { cancelled = true; };
+  // notifCommentApId intentionally omitted — only used on initial mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [neutralPost.id, activeSort]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    backend.comments.list(neutralPost.id, {
+      sortId: activeSort,
+      sourceHandle: neutralPost.source.handle,
+      cursor: nextCursor,
+    }).then((page) => {
+      setAllComments((prev) => {
+        const existing = new Set(prev.map((c) => c.id));
+        return [...prev, ...page.items.filter((c) => !existing.has(c.id))];
+      });
+      setNextCursor(page.nextCursor);
+      setLoadingMore(false);
+    });
+  }, [nextCursor, loadingMore, neutralPost.id, activeSort, backend]);
 
   const highlightCommentId = useMemo(() => {
     if (!commentsLoaded || !notifCommentApId) return undefined;
-    return comments.find((c) => c.permalink === notifCommentApId)?.id;
-  }, [comments, commentsLoaded, notifCommentApId]);
+    return allComments.find((c) => c.permalink === notifCommentApId)?.id;
+  }, [allComments, commentsLoaded, notifCommentApId]);
 
   // Suppress unused auth warning — kept in props for caller backward compat
   void auth;
@@ -106,11 +142,13 @@ export default function PostDetailCard({
     }}>
       <PostCardShell
         post={neutralPost}
-        comments={comments}
+        comments={allComments}
         commentsLoaded={commentsLoaded}
         highlightCommentId={highlightCommentId}
         activeSort={activeSort}
         onSortChange={setActiveSort}
+        onLoadMore={nextCursor ? handleLoadMore : undefined}
+        loadingMore={loadingMore}
       />
     </div>
   );

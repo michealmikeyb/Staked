@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithBackend } from '../test-utils';
+import { makeComment } from '../lib/api/backends/mock/fixtures';
 
 vi.mock('../lib/lemmy', () => ({
   reportPost: vi.fn().mockResolvedValue(undefined),
@@ -162,5 +163,22 @@ describe('PostDetailCard', () => {
     renderCard();
     expect(screen.getByTestId('meta-score')).toHaveTextContent('▲ 42');
     expect(screen.getByTestId('meta-comments')).toHaveTextContent('💬 7');
+  });
+
+  it('renders comments from initial load', async () => {
+    // neutralPost.id is composed as `${post.id}|${post.ap_id}` = '1|https://lemmy.world/post/1'
+    const POST_KEY = `${mockPost.id}|${mockPost.ap_id}`;
+    const comments = [
+      makeComment({ id: 'c1', body: 'First comment' }),
+      makeComment({ id: 'c2', body: 'Second comment' }),
+    ];
+    renderWithBackend(
+      <SettingsProvider>
+        <PostDetailCard post={mockPost} community={mockCommunity} creator={mockCreator} counts={mockCounts} auth={AUTH} />
+      </SettingsProvider>,
+      { fixtures: { comments: { [POST_KEY]: comments } } },
+    );
+    await waitFor(() => expect(screen.getByText('First comment')).toBeInTheDocument());
+    expect(screen.getByText('Second comment')).toBeInTheDocument();
   });
 });
