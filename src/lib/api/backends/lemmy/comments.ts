@@ -114,6 +114,32 @@ export function createCommentService(session: Session): CommentService {
         loaded = crossStitch(loaded, home);
       }
 
+      // Supplemental fetch: if a specific target comment wasn't found in the initial load,
+      // resolve it on the source instance and fetch its thread to ensure it appears.
+      if (isFirstPage && opts.targetCommentApId && source) {
+        const targetApId = opts.targetCommentApId;
+        const alreadyLoaded = loaded.some((cv) => cv.comment.ap_id === targetApId);
+        if (!alreadyLoaded) {
+          try {
+            const srcToken = source.instance === homeInstance ? (token ?? '') : '';
+            const res = await makeLemmyClient(source.instance, srcToken || undefined).resolveObject({ q: targetApId });
+            if (res.comment) {
+              const cv = res.comment;
+              const parts = cv.comment.path.split('.');
+              // Fetch from the grandparent level for context, or parent if shallow
+              const ancestorIdx = Math.max(1, parts.length - 3);
+              const ancestorId = parts[ancestorIdx] !== '0' ? parseInt(parts[ancestorIdx], 10) : undefined;
+              const threadRes = await makeLemmyClient(source.instance, srcToken || undefined).getComments({
+                post_id: source.postId, parent_id: ancestorId, limit: 50,
+              });
+              const existingApIds = new Set(loaded.map((c) => c.comment.ap_id));
+              const novel = threadRes.comments.filter((c) => !existingApIds.has(c.comment.ap_id));
+              loaded = [...loaded, ...novel];
+            }
+          } catch { /* silently skip supplemental fetch on failure */ }
+        }
+      }
+
       const nextCursor = loaded.length === 50 ? String(page + 1) : null;
       return { items: mapComments(loaded), nextCursor };
     },
