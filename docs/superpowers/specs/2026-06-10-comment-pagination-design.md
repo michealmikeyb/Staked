@@ -59,7 +59,7 @@ Pass `page` through to `getComments`. No other change.
 - Tier 1 fetches `page` from the source instance
 - `nextCursor = results.length === 50 ? String(page + 1) : null`
 
-**`targetCommentApId` auto-load (page 1 only):** When `cursor` is null/`'1'` and `targetCommentApId` is set and the target is not found in the initial fetch, loop pages 2 and 3, appending and deduplicating by `ap_id`, stopping as soon as the target appears. The returned `nextCursor` points to the page after where the loop stopped, so the user can continue scrolling normally.
+**`targetCommentApId`:** No special multi-page auto-load. Page 1 is always a single fetch. If the target is not in page 1, the existing supplemental `resolveObject` fetch handles it as a fallback.
 
 **Cross-stitch and supplemental fetch** only run when `!cursor || cursor === '1'`. Subsequent pages are raw Tier 1 source comments appended to the UI's accumulated list.
 
