@@ -40,7 +40,7 @@ export default function PostCard({
     () => backend.comments.list(post.id, { sortId: activeSort, sourceHandle: post.source.handle }),
     [post.id, activeSort],
   );
-  const comments = commentsData ?? [];
+  const comments = commentsData?.items ?? [];
   const commentsLoaded = !commentsLoading;
 
   const x = useMotionValue(0);

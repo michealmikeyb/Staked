@@ -21,7 +21,7 @@ export default function CommentsPanel({ post, onClose, onSave }: Props) {
   useEffect(() => {
     let cancelled = false;
     backend.comments.list(post.id, { sortId: 'Top', sourceHandle: post.source.handle })
-      .then((c) => { if (!cancelled) setComments(c); })
+      .then((page) => { if (!cancelled) setComments(page.items); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
