@@ -130,27 +130,48 @@ export function createCommentService(session: Session): CommentService {
 
       // Supplemental fetch: if a specific target comment wasn't found in the initial load,
       // resolve it on the source instance and fetch its thread to ensure it appears.
-      if (isFirstPage && opts.targetCommentApId && source) {
+      // Falls back to the home instance if the source is unreachable.
+      if (isFirstPage && opts.targetCommentApId) {
         const targetApId = opts.targetCommentApId;
         const alreadyLoaded = loaded.some((cv) => cv.comment.ap_id === targetApId);
         if (!alreadyLoaded) {
-          try {
-            const srcToken = source.instance === homeInstance ? (token ?? '') : '';
-            const res = await makeLemmyClient(source.instance, srcToken || undefined).resolveObject({ q: targetApId });
-            if (res.comment) {
-              const cv = res.comment;
-              const parts = cv.comment.path.split('.');
-              // Fetch from the grandparent level for context, or parent if shallow
-              const ancestorIdx = Math.max(1, parts.length - 3);
-              const ancestorId = parts[ancestorIdx] !== '0' ? parseInt(parts[ancestorIdx], 10) : undefined;
-              const threadRes = await makeLemmyClient(source.instance, srcToken || undefined).getComments({
-                post_id: source.postId, parent_id: ancestorId, limit: 50,
-              });
-              const existingApIds = new Set(loaded.map((c) => c.comment.ap_id));
-              const novel = threadRes.comments.filter((c) => !existingApIds.has(c.comment.ap_id));
-              loaded = [...loaded, ...novel];
-            }
-          } catch { /* silently skip supplemental fetch on failure */ }
+          // Priority: community instance (most complete tree) → source instance → home instance
+          // postId is resolved per-instance from resolveObject, so we don't store it here
+          const instancesToTry: Array<{ instance: string; token: string }> = [];
+          const communityInst = opts.sourceHandle?.split('@')[1] ?? '';
+          if (communityInst) {
+            instancesToTry.push({ instance: communityInst, token: communityInst === homeInstance ? (token ?? '') : '' });
+          }
+          if (source && source.instance !== communityInst) {
+            instancesToTry.push({ instance: source.instance, token: source.instance === homeInstance ? (token ?? '') : '' });
+          }
+          if (homeInstance && homeInstance !== communityInst && homeInstance !== source?.instance) {
+            instancesToTry.push({ instance: homeInstance, token: token ?? '' });
+          }
+          for (const { instance: inst, token: instToken } of instancesToTry) {
+            try {
+              const res = await makeLemmyClient(inst, instToken || undefined).resolveObject({ q: targetApId });
+              if (res.comment) {
+                const cv = res.comment;
+                // Use the post ID from the resolved instance's own perspective, not a foreign ID
+                const resolvedPostId = cv.post.id;
+                const parts = cv.comment.path.split('.');
+                // Fetch from the grandparent level for context, or parent if shallow
+                const ancestorIdx = Math.max(1, parts.length - 3);
+                const ancestorId = parts[ancestorIdx] !== '0' ? parseInt(parts[ancestorIdx], 10) : undefined;
+                const threadRes = await makeLemmyClient(inst, instToken || undefined).getComments({
+                  post_id: resolvedPostId, parent_id: ancestorId, limit: 50,
+                });
+                const existingApIds = new Set(loaded.map((c) => c.comment.ap_id));
+                const novel = threadRes.comments.filter((c) => !existingApIds.has(c.comment.ap_id));
+                if (novel.length > 0) {
+                  loaded = [...loaded, ...novel];
+                  break; // found novel comments — stop trying other instances
+                }
+                // Thread empty on this instance; try next
+              }
+            } catch { /* try next instance */ }
+          }
         }
       }
 
