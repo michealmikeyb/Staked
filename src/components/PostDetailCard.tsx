@@ -101,7 +101,7 @@ export default function PostDetailCard({
         setNextCursor(page.nextCursor);
         setCommentsLoaded(true);
       }
-    });
+    }).catch(() => { if (!cancelled) setCommentsLoaded(true); });
     return () => { cancelled = true; };
   // notifCommentApId intentionally omitted — only used on initial mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
