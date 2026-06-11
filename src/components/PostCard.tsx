@@ -1,9 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
-import type { Post } from '../lib/api/types';
+import type { Post, Comment } from '../lib/api/types';
 import { useBackend } from '../lib/api/context';
-import { useAsync } from '../hooks/useAsync';
 import { useSettings } from '../lib/SettingsContext';
 import PostCardShell from './PostCardShell';
 import styles from './PostCard.module.css';
@@ -36,12 +35,41 @@ export default function PostCard({
   const touchStartY = useRef(0);
   const [pullDelta, setPullDelta] = useState(0);
 
-  const { data: commentsData, loading: commentsLoading } = useAsync(
-    () => backend.comments.list(post.id, { sortId: activeSort, sourceHandle: post.source.handle }),
-    [post.id, activeSort],
-  );
-  const comments = commentsData?.items ?? [];
-  const commentsLoaded = !commentsLoading;
+  const [allComments, setAllComments] = useState<Comment[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAllComments([]);
+    setNextCursor(null);
+    setCommentsLoaded(false);
+    backend.comments.list(post.id, { sortId: activeSort, sourceHandle: post.source.handle, cursor: null })
+      .then((page) => {
+        if (!cancelled) {
+          setAllComments(page.items);
+          setNextCursor(page.nextCursor);
+          setCommentsLoaded(true);
+        }
+      }).catch(() => { if (!cancelled) setCommentsLoaded(true); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id, activeSort]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    backend.comments.list(post.id, { sortId: activeSort, sourceHandle: post.source.handle, cursor: nextCursor })
+      .then((page) => {
+        setAllComments((prev) => {
+          const existing = new Set(prev.map((c) => c.id));
+          return [...prev, ...page.items.filter((c) => !existing.has(c.id))];
+        });
+        setNextCursor(page.nextCursor);
+        setLoadingMore(false);
+      }).catch(() => { setLoadingMore(false); });
+  }, [nextCursor, loadingMore, post.id, activeSort, backend]);
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-150, 0, 150], [12, 0, -12]);
@@ -106,7 +134,7 @@ export default function PostCard({
       </motion.div>
       <PostCardShell
         post={post}
-        comments={comments}
+        comments={allComments}
         commentsLoaded={commentsLoaded}
         scrollRef={scrollRef}
         blurNsfw={settings.blurNsfw}
@@ -115,6 +143,8 @@ export default function PostCard({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onLoadMore={nextCursor ? handleLoadMore : undefined}
+        loadingMore={loadingMore}
       />
     </motion.div>
   );
