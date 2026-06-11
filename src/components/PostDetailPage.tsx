@@ -44,8 +44,12 @@ export default function PostDetailPage({ setUnreadCount, unreadCount = 0 }: Prop
   }
 
   // Convert neutral Notification to legacy PostDetailCard props (PostDetailCard migrates in a later task)
+  // Extract local post ID so Tier 3 (home instance fallback) can resolve the post correctly.
+  const encodedPostId = notification.post.id;
+  const pipeIdx = encodedPostId.indexOf('|');
+  const postLocalId = pipeIdx >= 0 ? parseInt(encodedPostId.slice(0, pipeIdx), 10) : 0;
   const post = {
-    id: 0,
+    id: postLocalId,
     name: notification.post.title ?? '',
     ap_id: notification.post.permalink,
     url: null,
