@@ -43,7 +43,7 @@ export default function ProfilePostDetailPage({ auth: _auth }: Props) {
   const authorHandle = neutralPost.author.handle;
   const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
   const post = {
-    id: 0,
+    id: parseInt(neutralPost.id.split('|')[0], 10),
     name: neutralPost.title ?? '',
     ap_id: neutralPost.permalink,
     url: neutralPost.externalUrl ?? null,

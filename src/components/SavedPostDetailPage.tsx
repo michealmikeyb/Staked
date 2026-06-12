@@ -29,7 +29,7 @@ export default function SavedPostDetailPage({ auth: _auth }: Props) {
   const authorHandle = neutralPost.author.handle;
   const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
   const post = {
-    id: 0,
+    id: parseInt(neutralPost.id.split('|')[0], 10),
     name: neutralPost.title ?? '',
     ap_id: neutralPost.permalink,
     url: neutralPost.externalUrl ?? null,
@@ -38,7 +38,9 @@ export default function SavedPostDetailPage({ auth: _auth }: Props) {
     nsfw: neutralPost.nsfw,
     published: neutralPost.publishedAt,
   };
-  const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+  const [srcName, srcInst] = neutralPost.source.handle.split('@');
+  const communityActorId = srcInst ? `https://${srcInst}/c/${srcName}` : neutralPost.source.id;
+  const community = { name: neutralPost.source.name, actor_id: communityActorId };
   const creator = {
     name: authorName,
     display_name: neutralPost.author.displayName ?? null,

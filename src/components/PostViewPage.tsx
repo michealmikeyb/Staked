@@ -62,7 +62,7 @@ export default function PostViewPage({ auth: _auth }: Props) {
           const authorHandle = neutralPost.author.handle;
           const authorName = authorHandle.includes('@') ? authorHandle.split('@')[0] : authorHandle;
           const post = {
-            id: 0,
+            id: parseInt(neutralPost.id.split('|')[0], 10),
             name: neutralPost.title ?? '',
             ap_id: neutralPost.permalink,
             url: neutralPost.externalUrl ?? null,
@@ -71,7 +71,9 @@ export default function PostViewPage({ auth: _auth }: Props) {
             nsfw: neutralPost.nsfw,
             published: neutralPost.publishedAt,
           };
-          const community = { name: neutralPost.source.name, actor_id: neutralPost.source.id };
+          const [srcName2, srcInst2] = neutralPost.source.handle.split('@');
+          const communityActorId2 = srcInst2 ? `https://${srcInst2}/c/${srcName2}` : neutralPost.source.id;
+          const community = { name: neutralPost.source.name, actor_id: communityActorId2 };
           const creator = { name: authorName, display_name: neutralPost.author.displayName ?? null, actor_id: neutralPost.author.profileUrl };
           const counts = { score: neutralPost.counts.score, comments: neutralPost.counts.comments };
           return (
