@@ -37,8 +37,8 @@ export default function PostDetailPage({ setUnreadCount, unreadCount = 0 }: Prop
 
   useEffect(() => {
     if (!notification) return;
-    backend.posts.getByPermalink(notification.post.permalink)
-      .then((p) => { if (p) setFullPost(p); })
+    backend.posts.get(notification.post.id)
+      .then((p) => setFullPost(p))
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
