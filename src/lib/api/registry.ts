@@ -10,6 +10,14 @@ export function registerBackend(backendId: string, factory: BackendFactory): voi
   registry.set(backendId, factory);
 }
 
+export function hasBackend(backendId: string): boolean {
+  return registry.has(backendId);
+}
+
+export function listBackendIds(): string[] {
+  return [...registry.keys()];
+}
+
 export function createBackend(session: Session): Backend {
   const factory = registry.get(session.backendId);
   if (!factory) throw new Error(`Unknown backendId: ${session.backendId}`);
