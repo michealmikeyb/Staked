@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { renderWithBackend, makePost, makeSource } from '../test-utils';
-import { createMockBackend } from '../lib/api/backends/mock';
-import { BackendProvider } from '../lib/api/context';
+import { makePost, makeSource } from '../test-utils';
+import type { MockFixtures } from '../lib/api/backends/mock/fixtures';
+import type { Capabilities } from '../lib/api/capabilities';
+import { createMockBackend, type MockBackend } from '../lib/api/backends/mock';
 import { addSeen } from '../lib/store';
 import { SettingsProvider } from '../lib/SettingsContext';
+import { AccountsProvider } from '../lib/AccountsContext';
+import { clearRegistry, registerBackend } from '../lib/api/registry';
+import type { Session } from '../lib/api/types';
 import FeedStack from './FeedStack';
 
 vi.mock('./PostCard', () => ({
@@ -53,22 +57,63 @@ const RUST_SOURCE = makeSource({ id: 'src-rust', handle: 'rust@lemmy.world', nam
 const POST_1 = makePost({ id: '1', title: 'Test Post Title', source: SOURCE });
 const COMMUNITY_POST = makePost({ id: '2', title: 'Community Post', source: RUST_SOURCE });
 
+const ALICE_SESSION: Session = {
+  id: 'lemmy:alice@x',
+  backendId: 'lemmy',
+  viewer: { id: 'alice', handle: 'alice@x', profileUrl: 'https://x/u/alice' },
+  data: { instance: 'x', token: 't' },
+};
+
+function seedLoggedIn(stakId = 'all') {
+  localStorage.setItem('stakswipe_accounts', JSON.stringify([
+    { session: ALICE_SESSION, addedAt: 1 },
+  ]));
+  localStorage.setItem('stakswipe_active', JSON.stringify({ sessionId: 'lemmy:alice@x', stakId }));
+}
+
+// Registry-backed render. AccountsProvider builds the active backend from the
+// registry, so the `lemmy` factory must return a mock seeded with the fixtures.
+// We cache one mock per session id so spies attach to the instance FeedStack uses.
+interface RenderFeedOpts {
+  fixtures?: MockFixtures;
+  capabilities?: Partial<Capabilities>;
+}
+
 function renderFeed(
   props: Partial<React.ComponentProps<typeof FeedStack>> = {},
-  opts: Parameters<typeof renderWithBackend>[1] = {},
+  opts: RenderFeedOpts = {},
 ) {
-  return renderWithBackend(
+  const caps = { feedOptions: FEED_OPTIONS, ...opts.capabilities };
+  const cache = new Map<string, MockBackend>();
+  registerBackend('lemmy', (session) => {
+    const existing = cache.get(session.id);
+    if (existing) return existing;
+    const anonymous = !session.viewer;
+    const backend = createMockBackend(opts.fixtures, caps, anonymous);
+    cache.set(session.id, backend);
+    return backend;
+  });
+
+  const result = render(
     <SettingsProvider>
-      <FeedStack unreadCount={0} setUnreadCount={vi.fn()} {...props} />
+      <AccountsProvider>
+        <FeedStack unreadCount={0} setUnreadCount={vi.fn()} {...props} />
+      </AccountsProvider>
     </SettingsProvider>,
-    { capabilities: { feedOptions: FEED_OPTIONS }, ...opts },
   );
+
+  // The backend FeedStack uses: active account's session, else the anonymous one.
+  const activeRaw = localStorage.getItem('stakswipe_active');
+  const activeId = activeRaw ? (JSON.parse(activeRaw) as { sessionId: string }).sessionId : 'anon';
+  const backend = cache.get(activeId) ?? cache.get('anon')!;
+  return { ...result, backend, cache };
 }
 
 describe('FeedStack', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
   it('shows a loading state initially', () => {
@@ -96,6 +141,7 @@ describe('FeedStack empty state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
   it('shows reset button when feed is exhausted', async () => {
@@ -124,6 +170,7 @@ describe('FeedStack header and sort', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
   it('renders the header bar', async () => {
@@ -139,17 +186,12 @@ describe('FeedStack header and sort', () => {
   });
 
   it('passes correct sort to feed on initial load', async () => {
-    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1] } });
     const spy = vi.spyOn(backend.feed, 'getTimeline');
-    render(
-      <BackendProvider value={backend}>
-        <SettingsProvider>
-          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
-        </SettingsProvider>
-      </BackendProvider>,
-    );
     await screen.findByText('Test Post Title');
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'TopTwelveHour', stakId: 'All' }));
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'TopTwelveHour', stakId: 'all' })),
+    );
   });
 
   it('re-fetches with new sort when sort changes', async () => {
@@ -170,6 +212,8 @@ describe('FeedStack keyboard shortcuts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    seedLoggedIn();
   });
 
   it('ArrowDown with empty undo stack does nothing', async () => {
@@ -223,6 +267,8 @@ describe('FeedStack menu drawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    seedLoggedIn();
   });
 
   it('opens the drawer when menu button is clicked', async () => {
@@ -256,6 +302,8 @@ describe('unread badge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    seedLoggedIn();
   });
 
   it('shows unread count badge on Inbox button when unreadCount > 0', async () => {
@@ -277,6 +325,8 @@ describe('drawer navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    seedLoggedIn();
   });
 
   it('navigates to /inbox when Inbox button is clicked', async () => {
@@ -300,23 +350,17 @@ describe('FeedStack settings — defaultSort', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
   it('uses defaultSort from settings for initial fetch', async () => {
     localStorage.setItem('stakswipe_settings', JSON.stringify({
       nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'Hot',
     }));
-    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1] } });
     const spy = vi.spyOn(backend.feed, 'getTimeline');
-    render(
-      <BackendProvider value={backend}>
-        <SettingsProvider>
-          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
-        </SettingsProvider>
-      </BackendProvider>,
-    );
     await screen.findByText('Test Post Title');
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'Hot' }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ feedId: 'Hot' })));
   });
 });
 
@@ -324,6 +368,8 @@ describe('FeedStack settings — gestures', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    seedLoggedIn();
   });
 
   it('votes -1 on ArrowLeft when nonUpvoteSwipeAction is downvote (default)', async () => {
@@ -385,6 +431,8 @@ describe('FeedStack community mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    seedLoggedIn();
   });
 
   it('renders CommunityHeader instead of MenuDrawer when community prop is set', async () => {
@@ -398,24 +446,15 @@ describe('FeedStack community mode', () => {
   });
 
   it('fetches from getSourceFeed with the correct handle', async () => {
-    const backend = createMockBackend(
-      { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] },
-      { feedOptions: FEED_OPTIONS },
+    const { backend } = renderFeed(
+      { community: { name: 'rust', instance: 'lemmy.world' } },
+      { fixtures: { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] } },
     );
     const spy = vi.spyOn(backend.feed, 'getSourceFeed');
-    render(
-      <BackendProvider value={backend}>
-        <SettingsProvider>
-          <FeedStack
-            unreadCount={0}
-            setUnreadCount={vi.fn()}
-            community={{ name: 'rust', instance: 'lemmy.world' }}
-          />
-        </SettingsProvider>
-      </BackendProvider>,
-    );
     await screen.findByText('Community Post');
-    expect(spy).toHaveBeenCalledWith('rust@lemmy.world', expect.objectContaining({ feedId: 'Active' }));
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith('rust@lemmy.world', expect.objectContaining({ feedId: 'Active' })),
+    );
   });
 
   it('shows a post that is in the seen list (community uses independent seen tracking)', async () => {
@@ -441,21 +480,26 @@ describe('FeedStack community mode', () => {
   });
 
   it('fetches community source info on mount', async () => {
+    // Pre-create the active backend and spy BEFORE render, since sources.get
+    // fires in the mount effect.
     const backend = createMockBackend(
       { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] },
       { feedOptions: FEED_OPTIONS },
     );
     const spy = vi.spyOn(backend.sources, 'get');
+    registerBackend('lemmy', (session) =>
+      session.id === ALICE_SESSION.id ? backend : createMockBackend(undefined, { feedOptions: FEED_OPTIONS }, true),
+    );
     render(
-      <BackendProvider value={backend}>
-        <SettingsProvider>
+      <SettingsProvider>
+        <AccountsProvider>
           <FeedStack
             unreadCount={0}
             setUnreadCount={vi.fn()}
             community={{ name: 'rust', instance: 'lemmy.world' }}
           />
-        </SettingsProvider>
-      </BackendProvider>,
+        </AccountsProvider>
+      </SettingsProvider>,
     );
     await waitFor(() => {
       expect(spy).toHaveBeenCalledWith('rust@lemmy.world');
@@ -478,16 +522,18 @@ describe('FeedStack anonymous mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
+    // no seeded account/active → AccountsContext.active is null → anonymous mode
   });
 
   it('renders posts when logged out', async () => {
-    renderFeed({}, { fixtures: { posts: [POST_1] }, anonymous: true });
+    renderFeed({}, { fixtures: { posts: [POST_1] } });
     await screen.findByText('Test Post Title');
   });
 
   it('does not vote on ArrowRight when logged out', async () => {
     const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
-    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] }, anonymous: true });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
     await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
@@ -496,57 +542,61 @@ describe('FeedStack anonymous mode', () => {
 
   it('does not vote on ArrowLeft when logged out', async () => {
     const POST_2 = makePost({ id: '2', title: 'Second Post', source: SOURCE });
-    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] }, anonymous: true });
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1, POST_2] } });
     await screen.findByText('Test Post Title');
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     await waitFor(() => expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument());
     expect(backend.state.votes['1']).toBeUndefined();
   });
 
-  it('shows empty state without log out button when logged out', async () => {
-    renderFeed({}, { fixtures: { posts: [] }, anonymous: true });
+  it('shows empty state without log out / browse anonymously button when logged out', async () => {
+    renderFeed({}, { fixtures: { posts: [] } });
     await waitFor(() => {
       expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
+      // error-screen "Browse anonymously" button is not present in the empty state
+      expect(screen.queryByRole('button', { name: /browse anonymously/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('offers an Anonymous stak pill in the empty state', async () => {
+    renderFeed({}, { fixtures: { posts: [] } });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /anonymous/i })).toBeInTheDocument();
     });
   });
 });
 
-describe('FeedStack settings — activeStak', () => {
+describe('FeedStack stak selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
-  it('fetches with All stak by default', async () => {
-    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+  it('fetches with the all stak by default when logged in', async () => {
+    seedLoggedIn('all');
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1] } });
     const spy = vi.spyOn(backend.feed, 'getTimeline');
-    render(
-      <BackendProvider value={backend}>
-        <SettingsProvider>
-          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
-        </SettingsProvider>
-      </BackendProvider>,
-    );
     await screen.findByText('Test Post Title');
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ stakId: 'All' }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ stakId: 'all' })));
   });
 
-  it('fetches with activeStak from persisted settings', async () => {
-    localStorage.setItem('stakswipe_settings', JSON.stringify({
-      nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Local',
-    }));
-    const backend = createMockBackend({ posts: [POST_1] }, { feedOptions: FEED_OPTIONS });
+  it('fetches with the active stak from the persisted active pointer', async () => {
+    seedLoggedIn('local');
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1] } });
     const spy = vi.spyOn(backend.feed, 'getTimeline');
-    render(
-      <BackendProvider value={backend}>
-        <SettingsProvider>
-          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
-        </SettingsProvider>
-      </BackendProvider>,
-    );
     await screen.findByText('Test Post Title');
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ stakId: 'Local' }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ stakId: 'local' })));
+  });
+
+  it('switches to the subscribed stak when its empty-state pill is clicked', async () => {
+    seedLoggedIn('all');
+    renderFeed({}, { fixtures: { posts: [] } });
+    const pill = await screen.findByRole('button', { name: /subscribed/i });
+    fireEvent.click(pill);
+    await waitFor(() =>
+      expect(localStorage.getItem('stakswipe_active')).toContain('"stakId":"subscribed"'),
+    );
   });
 });
 
@@ -554,19 +604,19 @@ describe('FeedStack subscribed empty state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
-  it('shows subscribed empty state when Subscribed stak returns no posts', async () => {
-    localStorage.setItem('stakswipe_settings', JSON.stringify({
-      nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true, defaultSort: 'TopTwelveHour', activeStak: 'Subscribed',
-    }));
+  it('shows subscribed empty state when the subscribed stak returns no posts', async () => {
+    seedLoggedIn('subscribed');
     renderFeed({}, { fixtures: { posts: [] } });
     await waitFor(() => {
       expect(screen.getByText(/no more posts in your subscriptions/i)).toBeInTheDocument();
     });
   });
 
-  it('shows generic empty state for All stak', async () => {
+  it('shows generic empty state for the all stak', async () => {
+    seedLoggedIn('all');
     renderFeed({}, { fixtures: { posts: [] } });
     await waitFor(() => {
       expect(screen.getByText(/you've seen everything/i)).toBeInTheDocument();
@@ -578,6 +628,7 @@ describe('FeedStack toast from navigation state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    clearRegistry();
     mockLocation.state = null;
   });
 

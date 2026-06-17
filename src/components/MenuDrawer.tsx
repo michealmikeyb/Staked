@@ -9,8 +9,11 @@ interface Props {
   sortType?: string;
   onSortChange?: (sort: string) => void;
   unreadCount?: number;
-  activeStak?: string;
-  onStakChange?: (stak: string) => void;
+  staks?: import('../lib/AccountsContext').StakOption[];
+  activeStakKey?: string;
+  onStakSelect?: (stak: import('../lib/AccountsContext').StakOption) => void;
+  onAddAccount?: () => void;
+  onManageAccounts?: () => void;
   isAuthenticated?: boolean;
 }
 
@@ -22,8 +25,11 @@ export default function MenuDrawer({
   sortType,
   onSortChange,
   unreadCount = 0,
-  activeStak,
-  onStakChange,
+  staks,
+  activeStakKey,
+  onStakSelect,
+  onAddAccount,
+  onManageAccounts,
   isAuthenticated = true,
 }: Props) {
   const [showDrawer, setShowDrawer] = useState(false);
@@ -52,8 +58,11 @@ export default function MenuDrawer({
         onLogoClick={onLogoClick}
         centerContent={centerContent}
         leftContent={leftContent}
-        activeStak={activeStak}
-        onStakChange={onStakChange}
+        staks={staks}
+        activeStakKey={activeStakKey}
+        onStakSelect={onStakSelect}
+        onAddAccount={onAddAccount}
+        onManageAccounts={onManageAccounts}
       />
       {showDrawer && (
         <>

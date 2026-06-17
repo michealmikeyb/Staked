@@ -9,11 +9,12 @@ import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
 import CommunityHeader from './CommunityHeader';
 import Toast from './Toast';
-import { SORT_OPTIONS, STAKS } from './HeaderBar';
+import { SORT_OPTIONS } from './HeaderBar';
+import { useAccounts, type StakOption } from '../lib/AccountsContext';
+import type { ActiveStakRef } from '../lib/api/types';
 
 interface Props {
   auth?: unknown; // kept for App.tsx backward compat — not used internally
-  onLogout?: () => void;
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   community?: { name: string; instance: string };
@@ -22,12 +23,17 @@ interface Props {
 const STACK_VISIBLE = 3;
 const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
-export default function FeedStack({ onLogout, unreadCount, setUnreadCount, community }: Props) {
+export default function FeedStack({ unreadCount, setUnreadCount, community }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { settings, updateSetting } = useSettings();
+  const { settings } = useSettings();
   const backend = useBackend();
   const isLoggedIn = !!backend.session?.viewer;
+
+  const { active, allStaks, setActive } = useAccounts();
+  const stak = active?.stakId ?? 'all';
+  const stakKeyOf = (s: StakOption) => `${s.sessionId ?? 'anon'}:${s.stakId}`;
+  const activeStakKey = active ? `${active.sessionId}:${active.stakId}` : 'anon:anonymous';
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [undoStack, setUndoStack] = useState<Post[]>([]);
@@ -38,9 +44,8 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
   const [sortType, setSortType] = useState<string>(community ? 'Active' : settings.defaultFeedId);
-  const [stak, setStak] = useState<string>(isLoggedIn ? settings.activeStakId : 'All');
 
-  const isAnonymousMode = !isLoggedIn || stak === 'Anonymous';
+  const isAnonymousMode = active === null;
 
   const [communityInfo, setCommunityInfo] = useState<Source | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -100,6 +105,16 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
   }, [backend, community?.name, community?.instance]);
 
   useEffect(() => {
+    if (community) return; // community feed loads via its own effect below
+    setPosts([]);
+    setCursor(null);
+    setCanLoadMore(true);
+    loadMore(sortType, stak, null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend, stak]);
+
+  useEffect(() => {
+    if (!community) return;
     loadMore(sortType, stak, null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadMore]);
@@ -108,9 +123,8 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
     if (posts.length <= 3 && !loading && canLoadMore) {
       loadMore(sortType, stak, cursor);
     }
-  // stak excluded: handleStakChange calls loadMore directly on change
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posts.length, loading, canLoadMore, sortType, cursor]);
+  }, [posts.length, loading, canLoadMore, sortType, cursor, stak]);
 
   function resetAndLoad(sort: string, newStak: string) {
     setPosts([]);
@@ -142,11 +156,12 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
     resetAndLoad(newSort, stak);
   }
 
-  function handleStakChange(newStak: string) {
-    updateSetting('activeStakId', newStak);
-    setStak(newStak);
+  function handleStakChange(option: StakOption) {
+    const ref: ActiveStakRef | null = option.sessionId
+      ? { sessionId: option.sessionId, stakId: option.stakId }
+      : null;
     seenRef.current = new Set();
-    resetAndLoad(sortType, newStak);
+    setActive(ref); // active change → reset+load effect fires with the new backend/stak
   }
 
   function getLocalId(postId: string): number {
@@ -212,8 +227,8 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
     return (
       <div style={screenStyle}>
         <div style={{ color: '#ff4444' }}>{error}</div>
-        <button onClick={isLoggedIn ? onLogout : () => navigate('/login')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
-          {isLoggedIn ? 'Log out' : 'Log in'}
+        <button onClick={isLoggedIn ? () => setActive(null) : () => navigate('/accounts/add')} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' }}>
+          {isLoggedIn ? 'Browse anonymously' : 'Log in'}
         </button>
       </div>
     );
@@ -229,7 +244,7 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
       <div style={screenStyle}>
         <div style={{ fontSize: 32 }}>✓</div>
         <div style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 280, padding: '0 16px' }}>
-          {stak === 'Subscribed'
+          {stak === 'subscribed'
             ? 'No more posts in your subscriptions.'
             : "You've seen everything in this stak."}
         </div>
@@ -238,11 +253,14 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
           <>
             <div style={sectionLabel}>Switch stak</div>
             <div style={pillRow}>
-              {(isLoggedIn ? STAKS : STAKS.filter((s) => s.stak === 'All' || s.stak === 'Anonymous')).map(({ stak: s, label, icon }) => (
-                <button key={s} onClick={() => handleStakChange(s)} style={s === stak ? pillActive : pillInactive}>
-                  {icon} {label}
-                </button>
-              ))}
+              {allStaks.map((s) => {
+                const keyActive = stakKeyOf(s) === activeStakKey;
+                return (
+                  <button key={stakKeyOf(s)} onClick={() => handleStakChange(s)} style={keyActive ? pillActive : pillInactive}>
+                    {s.icon} {s.label}{s.handle ? ` · ${s.handle}` : ''}
+                  </button>
+                );
+              })}
             </div>
 
             <div style={sectionLabel}>Switch sort</div>
@@ -254,7 +272,7 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
               ))}
             </div>
 
-            {stak !== 'Subscribed' && (
+            {stak !== 'subscribed' && (
               <button
                 onClick={() => { clearSeen(); window.location.reload(); }}
                 style={{ ...pillInactive, marginTop: 8 }}
@@ -290,8 +308,11 @@ export default function FeedStack({ onLogout, unreadCount, setUnreadCount, commu
           onNavigate={navigate}
           onLogoClick={() => navigate('/')}
           unreadCount={unreadCount}
-          activeStak={isLoggedIn ? stak : undefined}
-          onStakChange={isLoggedIn ? handleStakChange : undefined}
+          staks={allStaks}
+          activeStakKey={activeStakKey}
+          onStakSelect={handleStakChange}
+          onAddAccount={() => navigate('/accounts/add')}
+          onManageAccounts={() => navigate('/accounts')}
           isAuthenticated={isLoggedIn}
         />
       )}
