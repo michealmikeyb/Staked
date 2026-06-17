@@ -78,7 +78,7 @@ function createAuthService(session: Session): AuthService {
         : null;
       const handle = viewer?.handle ?? `${usernameOrEmail}@${instance}`.toLowerCase();
       const data: LemmySessionData & Record<string, unknown> = { instance, token: res.jwt };
-      return { ...session, id: `lemmy:${handle}`, backendId: 'lemmy', viewer, data };
+      return { ...session, id: `lemmy:${handle.toLowerCase()}`, backendId: 'lemmy', viewer, data };
     },
     async logout(): Promise<void> {},
   };

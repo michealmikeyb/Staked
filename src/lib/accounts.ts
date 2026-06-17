@@ -35,7 +35,7 @@ function migrateLegacy(): StoredAccount[] {
 
   const handle = `${username}@${instance}`;
   const session: Session = {
-    id: `lemmy:${handle}`,
+    id: `lemmy:${handle.toLowerCase()}`,
     backendId: 'lemmy',
     viewer: { id: username, handle, profileUrl: `https://${instance}/u/${username}` },
     data: { instance, token },
