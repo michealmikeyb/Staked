@@ -76,7 +76,7 @@ function createAuthService(session: Session): AuthService {
       const viewer = persRes.my_user?.local_user_view?.person
         ? mapUser(persRes.my_user.local_user_view.person)
         : null;
-      const handle = viewer?.handle ?? `${usernameOrEmail}@${instance}`;
+      const handle = viewer?.handle ?? `${usernameOrEmail}@${instance}`.toLowerCase();
       const data: LemmySessionData & Record<string, unknown> = { instance, token: res.jwt };
       return { ...session, id: `lemmy:${handle}`, backendId: 'lemmy', viewer, data };
     },
