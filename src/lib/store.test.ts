@@ -1,45 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { saveAuth, loadAuth, clearAuth, loadSeen, addSeen, clearSeen, type AuthState, loadSettings, saveSettings, type AppSettings } from './store';
-
-const VALID_AUTH: AuthState = {
-  token: 'test-jwt-token',
-  instance: 'lemmy.world',
-  username: 'alice',
-};
+import { loadSeen, addSeen, clearSeen, loadSettings, saveSettings, type AppSettings } from './store';
 
 beforeEach(() => {
   localStorage.clear();
-});
-
-describe('saveAuth / loadAuth', () => {
-  it('returns null when nothing is stored', () => {
-    expect(loadAuth()).toBeNull();
-  });
-
-  it('round-trips auth state through localStorage', () => {
-    saveAuth(VALID_AUTH);
-    expect(loadAuth()).toEqual(VALID_AUTH);
-  });
-
-  it('returns null if token is missing', () => {
-    saveAuth(VALID_AUTH);
-    localStorage.removeItem('stakswipe_token');
-    expect(loadAuth()).toBeNull();
-  });
-
-  it('returns null if instance is missing', () => {
-    saveAuth(VALID_AUTH);
-    localStorage.removeItem('stakswipe_instance');
-    expect(loadAuth()).toBeNull();
-  });
-});
-
-describe('clearAuth', () => {
-  it('removes stored auth so loadAuth returns null', () => {
-    saveAuth(VALID_AUTH);
-    clearAuth();
-    expect(loadAuth()).toBeNull();
-  });
 });
 
 describe('loadSeen', () => {
@@ -109,7 +72,6 @@ describe('loadSettings', () => {
       swapGestures: false,
       blurNsfw: true,
       defaultFeedId: 'TopTwelveHour',
-      activeStakId: 'All',
       defaultCommentSortId: 'Top',
       showCommentSortBar: true,
       shareLinkFormat: 'stakswipe',
@@ -123,7 +85,6 @@ describe('loadSettings', () => {
       swapGestures: true,
       blurNsfw: false,
       defaultFeedId: 'Hot',
-      activeStakId: 'Local',
       defaultCommentSortId: 'New',
       showCommentSortBar: false,
       shareLinkFormat: 'stakswipe',
@@ -140,7 +101,6 @@ describe('loadSettings', () => {
     expect(s.nonUpvoteSwipeAction).toBe('downvote');
     expect(s.swapGestures).toBe(false);
     expect(s.defaultFeedId).toBe('TopTwelveHour');
-    expect(s.activeStakId).toBe('All');
   });
 
   it('returns defaults when stored value is invalid JSON', () => {
@@ -150,27 +110,11 @@ describe('loadSettings', () => {
       swapGestures: false,
       blurNsfw: true,
       defaultFeedId: 'TopTwelveHour',
-      activeStakId: 'All',
       defaultCommentSortId: 'Top',
       showCommentSortBar: true,
       shareLinkFormat: 'stakswipe',
       lemmy: { anonInstance: '' },
     });
-  });
-
-  it('persists and reloads activeStakId: Subscribed', () => {
-    saveSettings({
-      nonUpvoteSwipeAction: 'downvote',
-      swapGestures: false,
-      blurNsfw: true,
-      defaultFeedId: 'TopTwelveHour',
-      activeStakId: 'Subscribed',
-      defaultCommentSortId: 'Top',
-      showCommentSortBar: true,
-      shareLinkFormat: 'stakswipe',
-      lemmy: { anonInstance: '' },
-    });
-    expect(loadSettings().activeStakId).toBe('Subscribed');
   });
 
   it('loadSettings returns lemmy.anonInstance empty string by default', () => {
@@ -218,16 +162,6 @@ describe('loadSettings', () => {
     it('migrates defaultSort → defaultFeedId', () => {
       localStorage.setItem('stakswipe_settings', JSON.stringify({ defaultSort: 'Hot' }));
       expect(loadSettings().defaultFeedId).toBe('Hot');
-    });
-
-    it('migrates activeStak → activeStakId (keeps value)', () => {
-      localStorage.setItem('stakswipe_settings', JSON.stringify({ activeStak: 'Subscribed' }));
-      expect(loadSettings().activeStakId).toBe('Subscribed');
-    });
-
-    it('migrates activeStak Anonymous → All', () => {
-      localStorage.setItem('stakswipe_settings', JSON.stringify({ activeStak: 'Anonymous' }));
-      expect(loadSettings().activeStakId).toBe('All');
     });
 
     it('migrates commentSort → defaultCommentSortId', () => {

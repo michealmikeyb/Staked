@@ -27,7 +27,6 @@ const POST = { id: 1, name: 'A shared post', ap_id: 'https://lemmy.world/post/1'
 const COMMUNITY = { name: 'linux', actor_id: 'https://lemmy.world/c/linux' };
 const CREATOR = { name: 'alice', display_name: null };
 const COUNTS = { score: 10, comments: 2 };
-const AUTH = { token: 'tok', instance: 'lemmy.world', username: 'alice' };
 
 const mockPost = { id: 1, name: 'Test Post Title', ap_id: 'https://lemmy.world/post/1', url: null, body: 'Post body text', thumbnail_url: null };
 const mockCommunity = { name: 'technology', actor_id: 'https://lemmy.world/c/technology' };
@@ -42,7 +41,6 @@ function renderCard(props: Record<string, unknown> = {}, anonymous = false) {
         community={mockCommunity}
         creator={mockCreator}
         counts={mockCounts}
-        auth={AUTH}
         {...props}
       />
     </SettingsProvider>,
@@ -71,7 +69,7 @@ describe('PostDetailCard', () => {
   it('renders with auth (authenticated mode)', () => {
     renderWithBackend(
       <SettingsProvider>
-        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />
       </SettingsProvider>,
     );
     expect(screen.getByText('A shared post')).toBeInTheDocument();
@@ -124,7 +122,7 @@ describe('PostDetailCard', () => {
     Object.defineProperty(navigator, 'share', { value: shareMock, writable: true, configurable: true });
     renderWithBackend(
       <SettingsProvider>
-        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />
       </SettingsProvider>,
     );
     fireEvent.click(screen.getByTestId('share-button'));
@@ -140,7 +138,7 @@ describe('PostDetailCard', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: writeTextMock }, writable: true, configurable: true });
     renderWithBackend(
       <SettingsProvider>
-        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} auth={AUTH} />
+        <PostDetailCard post={POST} community={COMMUNITY} creator={CREATOR} counts={COUNTS} />
       </SettingsProvider>,
     );
     fireEvent.click(screen.getByTestId('share-button'));
@@ -174,7 +172,7 @@ describe('PostDetailCard', () => {
     ];
     renderWithBackend(
       <SettingsProvider>
-        <PostDetailCard post={mockPost} community={mockCommunity} creator={mockCreator} counts={mockCounts} auth={AUTH} />
+        <PostDetailCard post={mockPost} community={mockCommunity} creator={mockCreator} counts={mockCounts} />
       </SettingsProvider>,
       { fixtures: { comments: { [POST_KEY]: comments } } },
     );

@@ -1,33 +1,3 @@
-const KEYS = {
-  TOKEN: 'stakswipe_token',
-  INSTANCE: 'stakswipe_instance',
-  USERNAME: 'stakswipe_username',
-} as const;
-
-export interface AuthState {
-  token: string;
-  instance: string;
-  username: string;
-}
-
-export function saveAuth(auth: AuthState): void {
-  localStorage.setItem(KEYS.TOKEN, auth.token);
-  localStorage.setItem(KEYS.INSTANCE, auth.instance);
-  localStorage.setItem(KEYS.USERNAME, auth.username);
-}
-
-export function loadAuth(): AuthState | null {
-  const token = localStorage.getItem(KEYS.TOKEN);
-  const instance = localStorage.getItem(KEYS.INSTANCE);
-  const username = localStorage.getItem(KEYS.USERNAME);
-  if (!token || !instance || !username) return null;
-  return { token, instance, username };
-}
-
-export function clearAuth(): void {
-  Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
-}
-
 const SEEN_KEY = 'stakswipe_seen';
 const MAX_SEEN = 200;
 
@@ -57,7 +27,6 @@ export interface AppSettings {
   swapGestures: boolean;
   blurNsfw: boolean;
   defaultFeedId: string;
-  activeStakId: string;
   defaultCommentSortId: string;
   showCommentSortBar: boolean;
   shareLinkFormat: 'stakswipe' | 'source' | 'home';
@@ -71,7 +40,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   swapGestures: false,
   blurNsfw: true,
   defaultFeedId: 'TopTwelveHour',
-  activeStakId: 'All',
   defaultCommentSortId: 'Top',
   showCommentSortBar: true,
   shareLinkFormat: 'stakswipe',
@@ -89,10 +57,6 @@ export function loadSettings(): AppSettings {
     }
     if ('defaultSort' in parsed && !('defaultFeedId' in parsed)) {
       parsed.defaultFeedId = parsed.defaultSort;
-    }
-    if ('activeStak' in parsed && !('activeStakId' in parsed)) {
-      const v = parsed.activeStak as string;
-      parsed.activeStakId = v === 'Anonymous' ? 'All' : v;
     }
     if ('commentSort' in parsed && !('defaultCommentSortId' in parsed)) {
       parsed.defaultCommentSortId = parsed.commentSort;

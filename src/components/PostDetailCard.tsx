@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useBackend } from '../lib/api/context';
 import { instanceFromActorId } from '../lib/urlUtils';
-import type { AuthState } from '../lib/store';
 import { useSettings } from '../lib/SettingsContext';
 import type { Post as NeutralPost, Comment } from '../lib/api/types';
 import PostCardShell from './PostCardShell';
@@ -38,12 +37,11 @@ interface Props {
   community: Community;
   creator: Creator;
   counts: Counts;
-  auth?: AuthState;
   notifCommentApId?: string;
 }
 
 export default function PostDetailCard({
-  post, community, creator, counts, auth, notifCommentApId,
+  post, community, creator, counts, notifCommentApId,
 }: Props) {
   const backend = useBackend();
   const { settings } = useSettings();
@@ -128,9 +126,6 @@ export default function PostDetailCard({
     if (!commentsLoaded || !notifCommentApId) return undefined;
     return allComments.find((c) => c.permalink === notifCommentApId)?.id;
   }, [allComments, commentsLoaded, notifCommentApId]);
-
-  // Suppress unused auth warning — kept in props for caller backward compat
-  void auth;
 
   return (
     <div style={{
