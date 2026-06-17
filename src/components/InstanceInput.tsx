@@ -7,6 +7,7 @@ interface Props {
   id?: string;
   className?: string;
   style?: React.CSSProperties;
+  'aria-label'?: string;
 }
 
 export default function InstanceInput({
@@ -16,10 +17,12 @@ export default function InstanceInput({
   id,
   className,
   style,
+  'aria-label': ariaLabel,
 }: Props) {
   return (
     <input
       id={id}
+      aria-label={ariaLabel}
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
