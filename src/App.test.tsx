@@ -5,13 +5,9 @@ import App from './App';
 vi.mock('./lib/store', () => {
   const DEFAULT_SETTINGS = {
     nonUpvoteSwipeAction: 'downvote', swapGestures: false, blurNsfw: true,
-    defaultSort: 'TopTwelveHour', activeStak: 'All',
-    lemmy: { anonInstance: '' },
-    defaultFeedId: 'Active', activeStakId: 'all',
+    defaultFeedId: 'Active', activeStakId: 'all', lemmy: { anonInstance: '' },
   };
   return {
-    loadAuth: vi.fn().mockReturnValue(null),
-    clearAuth: vi.fn(),
     loadSettings: vi.fn().mockReturnValue(DEFAULT_SETTINGS),
     saveSettings: vi.fn(),
     DEFAULT_SETTINGS,
@@ -27,9 +23,9 @@ vi.mock('./lib/lemmy', () => ({
   }),
 }));
 
-vi.mock('./components/LoginPage', () => ({
-  default: (_props: { onLogin: unknown }) => <div>LoginPage</div>,
-}));
+vi.mock('./components/DynamicLoginPage', () => ({ default: () => <div>DynamicLoginPage</div> }));
+vi.mock('./components/BackendSelectPage', () => ({ default: () => <div>BackendSelectPage</div> }));
+vi.mock('./components/AccountsPage', () => ({ default: () => <div>AccountsPage</div> }));
 
 vi.mock('./components/FeedStack', () => ({
   default: () => <div>FeedStack</div>,
@@ -78,30 +74,31 @@ vi.mock('./hooks/useNotificationPolling', () => ({
 import { useNotificationPolling } from './hooks/useNotificationPolling';
 
 describe('App routing', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
+    localStorage.clear();
     window.location.hash = '';
-    const { loadAuth } = await import('./lib/store');
-    vi.mocked(loadAuth).mockReturnValue(null);
   });
+
+  function seedLoggedIn() {
+    localStorage.setItem('stakswipe_accounts', JSON.stringify([
+      { session: { id: 'lemmy:alice@lemmy.world', backendId: 'lemmy', viewer: { id: 'alice', handle: 'alice@lemmy.world', profileUrl: 'https://lemmy.world/u/alice' }, data: { instance: 'lemmy.world', token: 'tok' } }, addedAt: 1 },
+    ]));
+    localStorage.setItem('stakswipe_active', JSON.stringify({ sessionId: 'lemmy:alice@lemmy.world', stakId: 'all' }));
+  }
 
   it('shows FeedStack at / when not authenticated', () => {
     render(<App />);
     expect(screen.getByText('FeedStack')).toBeInTheDocument();
   });
 
-  it('shows LoginPage at /login route', () => {
+  it('redirects /login to the add-account flow', () => {
     window.location.hash = '#/login';
     render(<App />);
-    expect(screen.getByText('LoginPage')).toBeInTheDocument();
+    expect(screen.getByText('BackendSelectPage')).toBeInTheDocument();
   });
 
-  it('shows FeedStack when authenticated', async () => {
-    const { loadAuth } = await import('./lib/store');
-    vi.mocked(loadAuth).mockReturnValue({
-      token: 'tok',
-      instance: 'lemmy.world',
-      username: 'alice',
-    });
+  it('shows FeedStack when authenticated', () => {
+    seedLoggedIn();
     render(<App />);
     expect(screen.getByText('FeedStack')).toBeInTheDocument();
   });
@@ -122,20 +119,14 @@ describe('App routing', () => {
   });
 
   it('renders ProfilePage at /user/:instance/:username when authenticated', async () => {
-    const { loadAuth } = await import('./lib/store');
-    vi.mocked(loadAuth).mockReturnValue({
-      token: 'tok',
-      instance: 'lemmy.world',
-      username: 'alice',
-    });
+    seedLoggedIn();
     window.location.hash = '#/user/beehaw.org/bob';
     render(<App />);
     await waitFor(() => expect(screen.getByText('ProfilePage')).toBeInTheDocument());
   });
 
   it('renders CreatePostPage at /create-post when authenticated', async () => {
-    const { loadAuth } = await import('./lib/store');
-    vi.mocked(loadAuth).mockReturnValue({ token: 'tok', instance: 'lemmy.world', username: 'alice' });
+    seedLoggedIn();
     window.location.hash = '#/create-post';
     render(<App />);
     await waitFor(() => expect(screen.getByText('CreatePostPage')).toBeInTheDocument());
@@ -147,27 +138,13 @@ describe('App routing', () => {
     expect(screen.getByText('SettingsPage')).toBeInTheDocument();
   });
 
-  it('calls useNotificationPolling with auth and setUnreadCount', async () => {
-    // Render the app with a mocked logged-in state by pre-populating localStorage
-    localStorage.setItem('stakswipe_token', 'tok');
-    localStorage.setItem('stakswipe_instance', 'lemmy.world');
-    localStorage.setItem('stakswipe_username', 'alice');
-
-    const { loadAuth } = await import('./lib/store');
-    vi.mocked(loadAuth).mockReturnValue({
-      token: 'tok',
-      instance: 'lemmy.world',
-      username: 'alice',
-    });
-
+  it('calls useNotificationPolling with the active backend', () => {
+    seedLoggedIn();
     render(<App />);
-
     expect(useNotificationPolling).toHaveBeenCalledWith(
       expect.objectContaining({ backendId: 'lemmy' }),
       expect.any(Function),
       expect.any(String),
     );
-
-    localStorage.clear();
   });
 });
