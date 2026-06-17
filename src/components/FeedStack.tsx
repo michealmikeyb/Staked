@@ -119,12 +119,15 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadMore]);
 
+  // stak intentionally excluded: the [backend, stak] home effect owns reset+load
+  // on stak change. Including stak here would fire loadMore an extra time with a
+  // stale stak value immediately after switching, appending wrong-stak posts.
   useEffect(() => {
     if (posts.length <= 3 && !loading && canLoadMore) {
       loadMore(sortType, stak, cursor);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posts.length, loading, canLoadMore, sortType, cursor, stak]);
+  }, [posts.length, loading, canLoadMore, sortType, cursor]);
 
   function resetAndLoad(sort: string, newStak: string) {
     setPosts([]);

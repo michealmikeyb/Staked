@@ -598,6 +598,54 @@ describe('FeedStack stak selection', () => {
       expect(localStorage.getItem('stakswipe_active')).toContain('"stakId":"subscribed"'),
     );
   });
+
+  it('does not fire an extra getTimeline call when switching stak', async () => {
+    // Regression guard: if stak is added back to the low-buffer pagination effect's
+    // dep array, that effect fires an EXTRA loadMore call immediately on stak change
+    // (in addition to the [backend, stak] home-reset effect that already owns reload).
+    // This is detectable when the switch call returns enough posts to satisfy the
+    // low-buffer threshold (>3): only the home-reset effect should call getTimeline;
+    // the low-buffer effect must NOT fire an extra call because stak changed.
+    //
+    // We return 4 distinct subscribed posts from the mock so posts.length > 3 after
+    // the switch, ensuring the low-buffer effect does NOT fire legitimately. Any extra
+    // call therefore comes solely from stak being in the dep array.
+    const SUB_POSTS = [
+      makePost({ id: '21', title: 'Sub Post A', source: SOURCE }),
+      makePost({ id: '22', title: 'Sub Post B', source: SOURCE }),
+      makePost({ id: '23', title: 'Sub Post C', source: SOURCE }),
+      makePost({ id: '24', title: 'Sub Post D', source: SOURCE }),
+    ];
+
+    seedLoggedIn('all');
+    const { backend } = renderFeed({}, { fixtures: { posts: [POST_1] } });
+
+    // Wait for the initial 'all' feed to settle.
+    await screen.findByText('Test Post Title');
+
+    // Intercept getTimeline and count calls from this point forward.
+    let callCount = 0;
+    vi.spyOn(backend.feed, 'getTimeline').mockImplementation(async () => {
+      callCount++;
+      return { items: SUB_POSTS, nextCursor: null };
+    });
+
+    // Open the stak dropdown and select "Subscribed".
+    // The button aria-label is "Subscribed" or "Subscribed · handle" depending on the account.
+    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^subscribed/i }));
+
+    // Wait for the home-reset fetch to complete (posts appear).
+    await waitFor(() => expect(screen.queryByText('Sub Post A')).toBeInTheDocument());
+
+    // Give React a tick to flush any further pending effects.
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Exactly ONE getTimeline call must fire (the home-reset effect).
+    // With stak in the low-buffer deps, a second call fires immediately on stak
+    // change (before the home effect can set loading=true), making callCount === 2.
+    expect(callCount).toBe(1);
+  });
 });
 
 describe('FeedStack subscribed empty state', () => {
