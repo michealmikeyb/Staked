@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useBackend } from '../lib/api/context';
 import Logo from './Logo';
+import type { StakOption } from '../lib/AccountsContext';
 
 // Keep exported for backward compat — FeedStack, CommunityHeader, SettingsPage, PostCardShell
 // migrate these in Tasks 24–31.
@@ -21,12 +22,6 @@ export const COMMENT_SORT_OPTIONS: { sort: string; label: string }[] = [
   { sort: 'Controversial', label: 'Controversial' },
 ];
 
-export const STAKS: { stak: string; label: string; icon: string }[] = [
-  { stak: 'All', label: 'All', icon: '🌐' },
-  { stak: 'Local', label: 'Local', icon: '🏠' },
-  { stak: 'Subscribed', label: 'Subscribed', icon: '⭐' },
-  { stak: 'Anonymous', label: 'Anonymous', icon: '🕵️' },
-];
 
 interface Props {
   sortType?: string;
@@ -35,8 +30,11 @@ interface Props {
   centerContent?: React.ReactNode;
   onLogoClick?: () => void;
   leftContent?: React.ReactNode;
-  activeStak?: string;
-  onStakChange?: (stak: string) => void;
+  staks?: StakOption[];
+  activeStakKey?: string;          // `${sessionId ?? 'anon'}:${stakId}`
+  onStakSelect?: (stak: StakOption) => void;
+  onAddAccount?: () => void;
+  onManageAccounts?: () => void;
 }
 
 export default function HeaderBar({
@@ -46,8 +44,11 @@ export default function HeaderBar({
   centerContent,
   onLogoClick,
   leftContent,
-  activeStak,
-  onStakChange,
+  staks,
+  activeStakKey,
+  onStakSelect,
+  onAddAccount,
+  onManageAccounts,
 }: Props) {
   const backend = useBackend();
   const feedOptions = backend.capabilities.feedOptions;
@@ -60,9 +61,12 @@ export default function HeaderBar({
     onSortChange?.(sort);
   }
 
-  function handleStakSelect(stak: string) {
+  const stakKeyOf = (s: StakOption) => `${s.sessionId ?? 'anon'}:${s.stakId}`;
+  const activeStakLabel = staks?.find((s) => stakKeyOf(s) === activeStakKey)?.label ?? 'Anonymous';
+
+  function handleStakSelect(stak: StakOption) {
     setShowStakDropdown(false);
-    onStakChange?.(stak);
+    onStakSelect?.(stak);
   }
 
   const centerEl = centerContent ?? (sortType && onSortChange ? (
@@ -88,10 +92,10 @@ export default function HeaderBar({
         background: '#1a1d24', borderBottom: '1px solid #2a2d35',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {onStakChange ? (
+          {staks ? (
             <button
               onClick={() => setShowStakDropdown((v) => !v)}
-              aria-label={`Switch stak, currently ${activeStak ?? STAKS[0].stak}`}
+              aria-label={`Switch stak, currently ${activeStakLabel}`}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -99,7 +103,7 @@ export default function HeaderBar({
             >
               <Logo variant="mark" size={32} />
               <span style={{ color: '#f5f5f5', fontWeight: 700, fontSize: 14 }}>
-                {activeStak ?? STAKS[0].stak}
+                {activeStakLabel}
               </span>
               <span style={{ color: '#888', fontSize: 11 }}>▾</span>
             </button>
@@ -160,7 +164,7 @@ export default function HeaderBar({
         </>
       )}
 
-      {showStakDropdown && onStakChange && (
+      {showStakDropdown && staks && (
         <>
           <div
             onClick={() => setShowStakDropdown(false)}
@@ -170,27 +174,53 @@ export default function HeaderBar({
             position: 'fixed', top: 48, left: 0, right: 0,
             background: '#1a1d24', borderBottom: '2px solid #ff6b35', zIndex: 30,
           }}>
-            {STAKS.map(({ stak, label, icon }) => (
-              <button
-                key={stak}
-                onClick={() => handleStakSelect(stak)}
-                aria-label={label}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '12px 16px',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  borderBottom: '1px solid #1e2128', textAlign: 'left',
-                  color: stak === activeStak ? '#ff6b35' : '#f5f5f5',
-                  fontWeight: stak === activeStak ? 600 : 400, fontSize: 14,
-                }}
-              >
-                <span style={{ width: 16, fontSize: 13 }}>
-                  {stak === activeStak ? '✓' : ''}
-                </span>
-                <span>{icon}</span>
-                {label}
-              </button>
-            ))}
+            {staks.map((s) => {
+              const key = stakKeyOf(s);
+              const active = key === activeStakKey;
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleStakSelect(s)}
+                  aria-label={s.handle ? `${s.label} · ${s.handle}` : s.label}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', padding: '12px 16px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    borderBottom: '1px solid #1e2128', textAlign: 'left',
+                    color: active ? '#ff6b35' : '#f5f5f5',
+                    fontWeight: active ? 600 : 400, fontSize: 14,
+                  }}
+                >
+                  <span style={{ width: 16, fontSize: 13 }}>{active ? '✓' : ''}</span>
+                  <span>{s.icon}</span>
+                  <span>{s.label}</span>
+                  {s.handle && <span style={{ color: '#888', fontSize: 12 }}>· {s.handle}</span>}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => { setShowStakDropdown(false); onAddAccount?.(); }}
+              aria-label="Add account"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderTop: '1px solid #2a2d35', borderBottom: '1px solid #1e2128',
+                textAlign: 'left', color: '#f5f5f5', fontSize: 14,
+              }}
+            >
+              <span style={{ width: 16 }} /><span>➕</span><span>Add account</span>
+            </button>
+            <button
+              onClick={() => { setShowStakDropdown(false); onManageAccounts?.(); }}
+              aria-label="Manage accounts"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px',
+                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                color: '#f5f5f5', fontSize: 14,
+              }}
+            >
+              <span style={{ width: 16 }} /><span>⚙️</span><span>Manage accounts</span>
+            </button>
           </div>
         </>
       )}

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
 import { renderWithBackend } from '../test-utils';
 import HeaderBar from './HeaderBar';
+import type { StakOption } from '../lib/AccountsContext';
 
 const FEED_OPTIONS = [
   { id: 'Active', label: 'Active' },
@@ -117,54 +118,56 @@ describe('onLogoClick prop', () => {
   });
 });
 
-describe('stak picker', () => {
-  it('does not render stak picker when onStakChange is not provided', () => {
-    renderWithBackend(<HeaderBar onMenuOpen={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: /switch stak/i })).not.toBeInTheDocument();
-  });
+const STAKS_FIXTURE: StakOption[] = [
+  { sessionId: 'lemmy:alice@lemmy.world', stakId: 'all', label: 'All', icon: '🌐', handle: 'alice@lemmy.world' },
+  { sessionId: 'lemmy:alice@lemmy.world', stakId: 'subscribed', label: 'Subscribed', icon: '⭐', handle: 'alice@lemmy.world' },
+  { sessionId: null, stakId: 'anonymous', label: 'Anonymous', icon: '🕵️' },
+];
 
-  it('renders stak picker button showing active stak when onStakChange is provided', () => {
+describe('HeaderBar stak selector', () => {
+  it('opens the stak list and shows staks with their handle', () => {
     renderWithBackend(
-      <HeaderBar onMenuOpen={vi.fn()} activeStak="All" onStakChange={vi.fn()} />,
-    );
-    expect(screen.getByRole('button', { name: /switch stak.*all/i })).toBeInTheDocument();
-  });
-
-  it('opens stak dropdown when stak button is clicked', () => {
-    renderWithBackend(
-      <HeaderBar onMenuOpen={vi.fn()} activeStak="All" onStakChange={vi.fn()} />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
-    expect(screen.getByRole('button', { name: /^local$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^subscribed$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^anonymous$/i })).toBeInTheDocument();
-  });
-
-  it('calls onStakChange with selected stak', () => {
-    const onStakChange = vi.fn();
-    renderWithBackend(
-      <HeaderBar onMenuOpen={vi.fn()} activeStak="All" onStakChange={onStakChange} />,
+      <HeaderBar
+        onMenuOpen={vi.fn()}
+        staks={STAKS_FIXTURE}
+        activeStakKey="lemmy:alice@lemmy.world:all"
+        onStakSelect={vi.fn()}
+        onAddAccount={vi.fn()}
+        onManageAccounts={vi.fn()}
+      />,
+      { capabilities: fullCapabilities },
     );
     fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^local$/i }));
-    expect(onStakChange).toHaveBeenCalledWith('Local');
+    expect(screen.getByRole('button', { name: /All · alice@lemmy.world/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Subscribed · alice@lemmy.world/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Anonymous$/i })).toBeInTheDocument();
   });
 
-  it('closes dropdown after selecting a stak', () => {
+  it('calls onStakSelect with the chosen stak option', () => {
+    const onStakSelect = vi.fn();
     renderWithBackend(
-      <HeaderBar onMenuOpen={vi.fn()} activeStak="All" onStakChange={vi.fn()} />,
+      <HeaderBar onMenuOpen={vi.fn()} staks={STAKS_FIXTURE} activeStakKey="anon:anonymous"
+        onStakSelect={onStakSelect} onAddAccount={vi.fn()} onManageAccounts={vi.fn()} />,
+      { capabilities: fullCapabilities },
     );
     fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^local$/i }));
-    expect(screen.queryByRole('button', { name: /^subscribed$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Subscribed · alice@lemmy.world/i }));
+    expect(onStakSelect).toHaveBeenCalledWith(STAKS_FIXTURE[1]);
   });
 
-  it('marks the active stak with a checkmark', () => {
+  it('shows Add account and Manage accounts entries', () => {
+    const onAddAccount = vi.fn();
+    const onManageAccounts = vi.fn();
     renderWithBackend(
-      <HeaderBar onMenuOpen={vi.fn()} activeStak="Local" onStakChange={vi.fn()} />,
+      <HeaderBar onMenuOpen={vi.fn()} staks={STAKS_FIXTURE} activeStakKey="anon:anonymous"
+        onStakSelect={vi.fn()} onAddAccount={onAddAccount} onManageAccounts={onManageAccounts} />,
+      { capabilities: fullCapabilities },
     );
     fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
-    const localButton = screen.getByRole('button', { name: /^local$/i });
-    expect(localButton).toHaveTextContent('✓');
+    fireEvent.click(screen.getByRole('button', { name: /add account/i }));
+    expect(onAddAccount).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /switch stak/i }));
+    fireEvent.click(screen.getByRole('button', { name: /manage accounts/i }));
+    expect(onManageAccounts).toHaveBeenCalled();
   });
 });
