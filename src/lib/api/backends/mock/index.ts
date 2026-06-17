@@ -22,6 +22,13 @@ const DEFAULT_CAPABILITIES: Capabilities = {
     { id: 'new', label: 'New' },
   ],
   sourceNoun: 'Source',
+  displayName: 'Mock',
+  icon: '🧪',
+  loginFields: [
+    { key: 'instance', label: 'Instance', type: 'instance', required: true },
+    { key: 'usernameOrEmail', label: 'Username', type: 'text', required: true },
+    { key: 'password', label: 'Password', type: 'password', required: true },
+  ],
 };
 
 export interface MockBackend extends Backend {

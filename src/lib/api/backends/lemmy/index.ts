@@ -41,6 +41,27 @@ const LEMMY_CAPABILITIES: Capabilities = {
     { id: 'Old', label: 'Old' },
   ],
   sourceNoun: 'Community',
+  displayName: 'Lemmy',
+  icon: '🐭',
+  loginFields: [
+    {
+      key: 'instance',
+      label: 'Instance',
+      type: 'instance',
+      required: true,
+      placeholder: 'your.instance.com',
+      suggestions: [
+        'lemmy.world',
+        'lemmy.dbzer0.com',
+        'beehaw.org',
+        'programming.dev',
+        'lemmy.ml',
+        'sh.itjust.works',
+      ],
+    },
+    { key: 'usernameOrEmail', label: 'Username or email', type: 'text', required: true, placeholder: 'Username', autoCapitalize: false },
+    { key: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Password' },
+  ],
 };
 
 function createAuthService(session: Session): AuthService {
