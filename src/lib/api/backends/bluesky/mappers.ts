@@ -38,6 +38,8 @@ export function placeholderSource(author: User): Source {
 function imageThumbFromEmbed(embed: any): string | undefined {
   const type = embed?.$type as string | undefined;
   if (type === 'app.bsky.embed.images#view') return embed.images?.[0]?.thumb || undefined;
+  if (type === 'app.bsky.embed.video#view') return embed.thumbnail || undefined;
+  if (type === 'app.bsky.embed.external#view') return embed.external?.thumb || undefined;
   if (type === 'app.bsky.embed.recordWithMedia#view') return imageThumbFromEmbed(embed.media);
   return undefined;
 }

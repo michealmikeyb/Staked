@@ -76,6 +76,24 @@ describe('mapPost', () => {
     expect(post.mediaUrl).toBeUndefined();
   });
 
+  it('uses the video poster thumbnail as mediaUrl', () => {
+    const post = mapPost({
+      ...postView,
+      embed: { $type: 'app.bsky.embed.video#view', cid: 'v', playlist: 'https://video/playlist.m3u8', thumbnail: 'https://video/thumb.jpg' },
+    });
+    expect(post.mediaUrl).toBe('https://video/thumb.jpg');
+    expect(post.externalUrl).toBeUndefined();
+  });
+
+  it('uses the external link preview thumb as mediaUrl', () => {
+    const post = mapPost({
+      ...postView,
+      embed: { $type: 'app.bsky.embed.external#view', external: { uri: 'https://example.com/article', title: 't', description: 'd', thumb: 'https://cdn/ext-thumb.jpg' } },
+    });
+    expect(post.externalUrl).toBe('https://example.com/article');
+    expect(post.mediaUrl).toBe('https://cdn/ext-thumb.jpg');
+  });
+
   it('marks vote 0 when not liked', () => {
     const post = mapPost({ ...postView, viewer: {} });
     expect(post.viewer?.vote).toBe(0);
