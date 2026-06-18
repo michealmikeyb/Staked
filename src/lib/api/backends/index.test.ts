@@ -1,4 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('./bluesky', () => ({
+  createBlueskyBackend: vi.fn().mockReturnValue({ backendId: 'bluesky' }),
+}));
+
+vi.mock('../../accounts', () => ({
+  updateSessionData: vi.fn(),
+}));
+
 import { registerBackends } from './index';
 import { clearRegistry, hasBackend, listBackendIds, createBackend } from '../registry';
 
@@ -16,6 +25,13 @@ describe('registerBackends', () => {
     const before = createBackend({ id: 'lemmy:a', backendId: 'lemmy', viewer: null, data: { instance: 'x', token: null } });
     registerBackends();
     expect(before.backendId).toBe('lemmy');
-    expect(listBackendIds()).toEqual(['lemmy']);
+    expect(listBackendIds()).toContain('lemmy');
+    expect(listBackendIds().filter((id) => id === 'lemmy')).toHaveLength(1);
+  });
+
+  it('registers the bluesky backend', () => {
+    registerBackends();
+    expect(hasBackend('bluesky')).toBe(true);
+    expect(listBackendIds()).toContain('bluesky');
   });
 });

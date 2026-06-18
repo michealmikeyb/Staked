@@ -9,5 +9,8 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     exclude: ['**/node_modules/**', '.worktrees/**'],
+    alias: {
+      '@atproto/api': new URL('./src/__mocks__/@atproto/api.ts', import.meta.url).pathname,
+    },
   },
 });

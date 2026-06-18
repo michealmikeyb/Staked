@@ -2,6 +2,8 @@
 import { registerBackend, hasBackend } from '../registry';
 import { createLemmyBackend } from './lemmy';
 import { loadSettings } from '../../store';
+import { createBlueskyBackend } from './bluesky';
+import { updateSessionData } from '../../accounts';
 
 /**
  * Register every backend into the registry. Idempotent: only registers a
@@ -12,6 +14,14 @@ export function registerBackends(): void {
     registerBackend('lemmy', (session) =>
       createLemmyBackend(session, {
         anonInstanceSetting: () => loadSettings().lemmy?.anonInstance || undefined,
+      }),
+    );
+  }
+
+  if (!hasBackend('bluesky')) {
+    registerBackend('bluesky', (session) =>
+      createBlueskyBackend(session, {
+        persistSession: (data) => updateSessionData(session.id, data as Record<string, unknown>),
       }),
     );
   }
