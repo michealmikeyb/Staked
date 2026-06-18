@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   loadAccounts, saveAccounts, addAccount, removeAccount, reorderAccounts,
-  loadActive, saveActive, type StoredAccount,
+  loadActive, saveActive, updateSessionData, type StoredAccount,
 } from './accounts';
 import type { Session } from './api/types';
 
@@ -70,5 +70,19 @@ describe('accounts persistence', () => {
     expect((accts[0].session.data as { token: string }).token).toBe('tok');
     expect(loadActive()).toEqual({ sessionId: 'lemmy:alice@lemmy.world', stakId: 'all' });
     expect(localStorage.getItem('stakswipe_token')).toBeNull();
+  });
+
+  it('updateSessionData merges fields into the stored account session data', () => {
+    saveAccounts([{ session: session('bluesky:a', 'a'), addedAt: 1 }]);
+    updateSessionData('bluesky:a', { accessJwt: 'NEW', refreshJwt: 'NEWR' } as any);
+    const stored = loadAccounts()[0].session.data as Record<string, unknown>;
+    expect(stored.accessJwt).toBe('NEW');
+    expect(stored.refreshJwt).toBe('NEWR');
+  });
+
+  it('updateSessionData is a no-op for an unknown session id', () => {
+    saveAccounts([{ session: session('bluesky:a', 'a'), addedAt: 1 }]);
+    updateSessionData('bluesky:missing', { accessJwt: 'X' } as any);
+    expect((loadAccounts()[0].session.data as Record<string, unknown>).accessJwt).toBeUndefined();
   });
 });

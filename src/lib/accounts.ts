@@ -51,6 +51,20 @@ export function saveAccounts(accounts: StoredAccount[]): void {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
+export function updateSessionData(sessionId: string, data: Partial<Session['data']>): void {
+  const accounts = loadAccounts();
+  const idx = accounts.findIndex((a) => a.session.id === sessionId);
+  if (idx < 0) return;
+  accounts[idx] = {
+    ...accounts[idx],
+    session: {
+      ...accounts[idx].session,
+      data: { ...accounts[idx].session.data, ...data },
+    },
+  };
+  saveAccounts(accounts);
+}
+
 export function addAccount(accounts: StoredAccount[], session: Session): StoredAccount[] {
   const without = accounts.filter((a) => a.session.id !== session.id);
   return [...without, { session, addedAt: Date.now() }];
