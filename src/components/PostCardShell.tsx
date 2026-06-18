@@ -64,6 +64,7 @@ export default function PostCardShell({
 }: Props) {
   const navigate = useNavigate();
   const backend = useBackend();
+  const hasSources = backend.capabilities.hasSources;
   const { settings } = useSettings();
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollRefProp ?? internalRef;
@@ -195,31 +196,43 @@ export default function PostCardShell({
         onTouchEnd={onTouchEnd}
       >
         <div className={styles.meta}>
-          <CommunityAvatar name={srcName} icon={post.source.icon} size={32} />
-          <div>
-            <div
-              className={styles.communityName}
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/community/${srcInstance}/${srcName}`)}
-            >
-              c/{srcName}
-            </div>
-            <div className={styles.instanceName}>{srcInstance}</div>
-            {authorInstance ? (
-              <button
-                className={styles.creatorLink}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/user/${authorInstance}/${authorName}`);
-                }}
-              >
-                <CreatorAvatar name={authorName} avatar={post.author.avatar} size={16} />
-                {post.author.displayName ?? authorName}
-              </button>
-            ) : (
-              <div className={styles.instanceName}>{post.author.displayName ?? post.author.handle}</div>
-            )}
-          </div>
+          {hasSources ? (
+            <>
+              <CommunityAvatar name={srcName} icon={post.source.icon} size={32} />
+              <div>
+                <div
+                  className={styles.communityName}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/community/${srcInstance}/${srcName}`)}
+                >
+                  c/{srcName}
+                </div>
+                <div className={styles.instanceName}>{srcInstance}</div>
+                {authorInstance ? (
+                  <button
+                    className={styles.creatorLink}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/user/${authorInstance}/${authorName}`);
+                    }}
+                  >
+                    <CreatorAvatar name={authorName} avatar={post.author.avatar} size={16} />
+                    {post.author.displayName ?? authorName}
+                  </button>
+                ) : (
+                  <div className={styles.instanceName}>{post.author.displayName ?? post.author.handle}</div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <CreatorAvatar name={authorName} avatar={post.author.avatar} size={32} />
+              <div>
+                <div className={styles.communityName}>{post.author.displayName ?? authorName}</div>
+                <div className={styles.instanceName}>@{post.author.handle}</div>
+              </div>
+            </>
+          )}
           <div className={styles.metaStats}>
             <span data-testid="meta-score">▲ {post.counts.score}</span>
             <span data-testid="meta-comments">💬 {post.counts.comments}</span>

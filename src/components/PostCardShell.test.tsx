@@ -339,3 +339,25 @@ describe('PostCardShell', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('PostCardShell community chip', () => {
+  it('hides the community row when hasSources is false', () => {
+    const post = makePost({
+      author: makeUser({ handle: 'alice.bsky.social', displayName: 'Alice' }),
+      source: makeSource({ handle: 'alice.bsky.social', name: 'alice.bsky.social' }),
+      title: 'hello',
+    });
+    renderShell({ post }, { capabilities: { hasSources: false } });
+    expect(screen.queryByText(/^c\//)).not.toBeInTheDocument();
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+
+  it('shows the community row when hasSources is true', () => {
+    const post = makePost({
+      source: makeSource({ handle: 'news@lemmy.world', name: 'news' }),
+      title: 'hello',
+    });
+    renderShell({ post }, { capabilities: { hasSources: true } });
+    expect(screen.getByText('c/news')).toBeInTheDocument();
+  });
+});
