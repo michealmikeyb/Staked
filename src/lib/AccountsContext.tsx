@@ -70,7 +70,11 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       saveAccounts(next);
       return next;
     });
-    const ref = { sessionId: session.id, stakId: 'all' };
+    // Use the account's own first stak — backends differ (Lemmy: 'all',
+    // Bluesky: 'home'). Hardcoding 'all' left non-Lemmy accounts pointing at a
+    // nonexistent stak, so the selector mislabeled them as "Anonymous".
+    const firstStakId = createBackend(session).listStaks()[0]?.id ?? 'all';
+    const ref = { sessionId: session.id, stakId: firstStakId };
     setActiveState(ref);
     saveActive(ref);
   }

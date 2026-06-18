@@ -37,7 +37,9 @@ export async function loginWithAppPassword(
 ): Promise<{ agent: Agent; data: Omit<BlueskySessionData, 'feeds'> }> {
   const credSession = new CredentialSession(new URL(service));
   await credSession.login({ identifier, password: appPassword });
-  const s = credSession as any;
+  // CredentialSession stores the authenticated session as `.session`
+  // (AtpSessionData); only `did` is also exposed as a top-level getter.
+  const s = (credSession as any).session ?? {};
   return {
     agent: new Agent(credSession),
     data: {

@@ -37,9 +37,10 @@ describe('buildAgent', () => {
 
 describe('loginWithAppPassword', () => {
   it('logs in and returns session data', async () => {
+    // The real @atproto/api CredentialSession stores session data on
+    // `this.session` (AtpSessionData), not as top-level properties.
     login.mockImplementation(function (this: any) {
-      this.did = 'did:plc:a'; this.handle = 'a.bsky.social';
-      this.accessJwt = 'acc'; this.refreshJwt = 'ref';
+      this.session = { did: 'did:plc:a', handle: 'a.bsky.social', accessJwt: 'acc', refreshJwt: 'ref', active: true };
       return Promise.resolve();
     });
     const { data } = await loginWithAppPassword('https://bsky.social', 'a.bsky.social', 'pw');

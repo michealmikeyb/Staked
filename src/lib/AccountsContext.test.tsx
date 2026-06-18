@@ -62,6 +62,20 @@ describe('AccountsContext', () => {
     expect(staks).toContain('anon:anonymous');
   });
 
+  it('activates the new account at its backend first stak, not a hardcoded "all"', () => {
+    // A backend whose only stak is 'home' (like Bluesky). Hardcoding 'all'
+    // would leave the active pointer dangling and mislabel it as "Anonymous".
+    clearRegistry();
+    registerBackend('mock', (s) => {
+      const b = createMockBackend();
+      return { ...b, session: s, listStaks: () => [{ sessionId: s.id, id: 'home', label: 'Home' }] };
+    });
+    renderProbe();
+    fireEvent.click(screen.getByText('add'));
+    expect(screen.getByTestId('active').textContent).toBe('mock:a@x:home');
+    expect(screen.getByTestId('staks').textContent).toContain('mock:a@x:home');
+  });
+
   it('falls back to anonymous when the active account is removed', () => {
     renderProbe();
     fireEvent.click(screen.getByText('add'));

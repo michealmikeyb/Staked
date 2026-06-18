@@ -28,9 +28,9 @@ const anon: Session = { id: 'anon:bluesky', backendId: 'bluesky', viewer: null, 
 
 beforeEach(() => {
   login.mockReset(); resumeSession.mockReset();
+  // Real CredentialSession stores auth data on `this.session` (AtpSessionData).
   login.mockImplementation(function (this: any) {
-    this.did = 'did:plc:a'; this.handle = 'alice.bsky.social';
-    this.accessJwt = 'acc'; this.refreshJwt = 'ref';
+    this.session = { did: 'did:plc:a', handle: 'alice.bsky.social', accessJwt: 'acc', refreshJwt: 'ref', active: true };
     return Promise.resolve();
   });
 });
