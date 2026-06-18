@@ -9,7 +9,27 @@ import { SettingsProvider } from '../lib/SettingsContext';
 import { AccountsProvider } from '../lib/AccountsContext';
 import { clearRegistry, registerBackend } from '../lib/api/registry';
 import type { Session } from '../lib/api/types';
-import FeedStack from './FeedStack';
+import FeedStack, { pickFeedId } from './FeedStack';
+
+describe('pickFeedId', () => {
+  const opts = [{ id: 'following' }, { id: 'at://x/app.bsky.feed.generator/sci' }];
+
+  it('keeps the desired feed when it is a valid option', () => {
+    expect(pickFeedId(opts, 'following', false)).toBe('following');
+  });
+
+  it('falls back to the first option when the desired feed is invalid', () => {
+    expect(pickFeedId(opts, 'Active', false)).toBe('following');
+  });
+
+  it('returns Active for community feeds regardless of options', () => {
+    expect(pickFeedId(opts, 'following', true)).toBe('Active');
+  });
+
+  it('returns the desired value when there are no options', () => {
+    expect(pickFeedId([], 'Active', false)).toBe('Active');
+  });
+});
 
 vi.mock('./PostCard', () => ({
   default: ({ post, onSwipeRight, onSwipeLeft, onUndo, isReturning }: any) => (

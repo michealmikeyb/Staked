@@ -9,9 +9,14 @@ import SwipeHint from './SwipeHint';
 import MenuDrawer from './MenuDrawer';
 import CommunityHeader from './CommunityHeader';
 import Toast from './Toast';
-import { SORT_OPTIONS } from './HeaderBar';
 import { useAccounts, type StakOption } from '../lib/AccountsContext';
 import type { ActiveStakRef } from '../lib/api/types';
+
+export function pickFeedId(feedOptions: { id: string }[], desired: string, isCommunity: boolean): string {
+  if (isCommunity) return 'Active';
+  const ids = feedOptions.map((o) => o.id);
+  return ids.includes(desired) ? desired : (ids[0] ?? desired);
+}
 
 interface Props {
   auth?: unknown; // kept for App.tsx backward compat — not used internally
@@ -43,7 +48,9 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [sortType, setSortType] = useState<string>(community ? 'Active' : settings.defaultFeedId);
+  const [sortType, setSortType] = useState<string>(
+    pickFeedId(backend.capabilities.feedOptions, community ? 'Active' : settings.defaultFeedId, !!community),
+  );
 
   const isAnonymousMode = active === null;
 
@@ -106,10 +113,12 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
 
   useEffect(() => {
     if (community) return; // community feed loads via its own effect below
+    const effective = pickFeedId(backend.capabilities.feedOptions, sortType, false);
+    if (effective !== sortType) setSortType(effective);
     setPosts([]);
     setCursor(null);
     setCanLoadMore(true);
-    loadMore(sortType, stak, null);
+    loadMore(effective, stak, null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backend, stak]);
 
@@ -268,8 +277,8 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
 
             <div style={sectionLabel}>Switch sort</div>
             <div style={pillRow}>
-              {SORT_OPTIONS.map(({ sort, label }) => (
-                <button key={sort} onClick={() => handleSortChange(sort)} style={sort === sortType ? pillActive : pillInactive}>
+              {backend.capabilities.feedOptions.map(({ id, label }) => (
+                <button key={id} onClick={() => handleSortChange(id)} style={id === sortType ? pillActive : pillInactive}>
                   {label}
                 </button>
               ))}
