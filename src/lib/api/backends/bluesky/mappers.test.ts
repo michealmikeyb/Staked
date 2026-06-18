@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encodeBlueskyId, parseBlueskyId, mapUser, mapPost, rkeyOf } from './mappers';
+import { encodeBlueskyId, parseBlueskyId, mapUser, mapPost, rkeyOf, mapThreadPost } from './mappers';
 
 const author = {
   did: 'did:plc:alice',
@@ -79,5 +79,39 @@ describe('mapPost', () => {
   it('marks vote 0 when not liked', () => {
     const post = mapPost({ ...postView, viewer: {} });
     expect(post.viewer?.vote).toBe(0);
+  });
+});
+
+describe('mapThreadPost', () => {
+  const threadPostView = {
+    uri: 'at://did:plc:alice/app.bsky.feed.post/abc123',
+    cid: 'bafycid',
+    author,
+    record: { text: 'a thread reply', createdAt: '2026-02-01T00:00:00Z' },
+    likeCount: 5,
+    indexedAt: '2026-02-01T00:01:00Z',
+    viewer: { like: 'at://did:plc:alice/app.bsky.feed.like/likerkey' },
+  };
+
+  it('maps a root node with parentId null and depth 0', () => {
+    const comment = mapThreadPost(threadPostView, null, 0, 'at://root|c');
+    expect(comment.parentId).toBeNull();
+    expect(comment.depth).toBe(0);
+    expect(comment.postId).toBe('at://root|c');
+    expect(comment.id).toBe('at://did:plc:alice/app.bsky.feed.post/abc123|bafycid');
+    expect(comment.body).toBe('a thread reply');
+    expect(comment.counts.score).toBe(5);
+    expect(comment.viewer?.vote).toBe(1);
+  });
+
+  it('maps vote 0 when viewer.like is absent', () => {
+    const comment = mapThreadPost({ ...threadPostView, viewer: {} }, null, 0, 'at://root|c');
+    expect(comment.viewer?.vote).toBe(0);
+  });
+
+  it('maps a child node with parentId and depth set', () => {
+    const comment = mapThreadPost(threadPostView, 'at://parent|c', 1, 'at://root|c');
+    expect(comment.parentId).toBe('at://parent|c');
+    expect(comment.depth).toBe(1);
   });
 });
