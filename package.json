@@ -11,6 +11,7 @@
     "rank": "tsx scripts/rank-instances.ts"
   },
   "dependencies": {
+    "@atproto/api": "^0.20.16",
     "@use-gesture/react": "^10.3.1",
     "framer-motion": "^11.0.0",
     "lemmy-js-client": "^0.19.4",
