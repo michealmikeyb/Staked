@@ -5,7 +5,6 @@ import type { Post, Comment } from '../lib/api/types';
 import { useSettings } from '../lib/SettingsContext';
 import { instanceFromActorId, isImageUrl, buildShareUrl } from '../lib/urlUtils';
 import { useShare } from '../hooks/useShare';
-import { COMMENT_SORT_OPTIONS } from './HeaderBar';
 import CommentList from './CommentList';
 import ReplySheet from './ReplySheet';
 import ReportSheet, { type ReportTarget } from './ReportSheet';
@@ -130,6 +129,10 @@ export default function PostCardShell({
   }, [sheetState, scrollRef]);
 
   const handleShare = () => {
+    if (!backend.capabilities.hasSources) {
+      share(post.title ?? '', post.permalink);
+      return;
+    }
     const pipeIdx = post.id.indexOf('|');
     const localId = pipeIdx >= 0 ? parseInt(post.id.slice(0, pipeIdx), 10) : 0;
     const communityActorId = srcInstance ? `https://${srcInstance}/c/${srcName}` : '';
@@ -294,7 +297,7 @@ export default function PostCardShell({
         {post.body && <MarkdownRenderer content={post.body} className={styles.excerpt} />}
 
         <div className={styles.footer}>
-          {isLoggedIn && (
+          {isLoggedIn && backend.capabilities.hasSavedPosts && (
             <button
               data-testid="save-button"
               className={styles.footerAction}
@@ -331,17 +334,17 @@ export default function PostCardShell({
           )}
         </div>
 
-        {settings.showCommentSortBar && (
+        {settings.showCommentSortBar && backend.capabilities.commentSortOptions.length > 0 && (
           <div style={{ display: 'flex', gap: 6, padding: '8px 16px', borderBottom: '1px solid #2a2d35', flexWrap: 'wrap' }}>
-            {COMMENT_SORT_OPTIONS.map(({ sort, label }) => (
+            {backend.capabilities.commentSortOptions.map(({ id, label }) => (
               <button
-                key={sort}
-                onClick={() => onSortChange(sort)}
+                key={id}
+                onClick={() => onSortChange(id)}
                 style={{
                   border: 'none', borderRadius: 8, padding: '4px 10px',
                   cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                  background: activeSort === sort ? '#ff6b35' : '#2a2d35',
-                  color: activeSort === sort ? '#fff' : '#888',
+                  background: activeSort === id ? '#ff6b35' : '#2a2d35',
+                  color: activeSort === id ? '#fff' : '#888',
                 }}
               >
                 {label}

@@ -10,9 +10,14 @@ describe('loadSeen', () => {
     expect(loadSeen()).toEqual(new Set());
   });
 
-  it('returns stored IDs as a Set', () => {
-    localStorage.setItem('stakswipe_seen', JSON.stringify([1, 2, 3]));
-    expect(loadSeen()).toEqual(new Set([1, 2, 3]));
+  it('returns stored string IDs as a Set', () => {
+    localStorage.setItem('stakswipe_seen', JSON.stringify(['1', '2', '3']));
+    expect(loadSeen()).toEqual(new Set(['1', '2', '3']));
+  });
+
+  it('filters out non-string entries defensively', () => {
+    localStorage.setItem('stakswipe_seen', JSON.stringify([1, 'foo', null, 'bar']));
+    expect(loadSeen()).toEqual(new Set(['foo', 'bar']));
   });
 
   it('returns an empty Set when stored value is invalid JSON', () => {
@@ -22,44 +27,53 @@ describe('loadSeen', () => {
 });
 
 describe('addSeen', () => {
-  it('stores a single ID', () => {
-    addSeen(42);
-    expect(loadSeen()).toEqual(new Set([42]));
+  it('stores a single string ID', () => {
+    addSeen('42');
+    expect(loadSeen()).toEqual(new Set(['42']));
   });
 
-  it('accumulates multiple IDs', () => {
-    addSeen(1);
-    addSeen(2);
-    addSeen(3);
-    expect(loadSeen()).toEqual(new Set([1, 2, 3]));
+  it('stores at-uri-shaped IDs correctly', () => {
+    addSeen('at://did:plc:abc/app.bsky.feed.post/p1|cid1');
+    addSeen('at://did:plc:abc/app.bsky.feed.post/p2|cid2');
+    expect(loadSeen()).toEqual(new Set([
+      'at://did:plc:abc/app.bsky.feed.post/p1|cid1',
+      'at://did:plc:abc/app.bsky.feed.post/p2|cid2',
+    ]));
+  });
+
+  it('accumulates multiple string IDs', () => {
+    addSeen('1');
+    addSeen('2');
+    addSeen('3');
+    expect(loadSeen()).toEqual(new Set(['1', '2', '3']));
   });
 
   it('does not duplicate an already-stored ID', () => {
-    addSeen(5);
-    addSeen(5);
+    addSeen('5');
+    addSeen('5');
     const arr = JSON.parse(localStorage.getItem('stakswipe_seen')!);
-    expect(arr).toEqual([5]);
+    expect(arr).toEqual(['5']);
   });
 
   it('caps the stored list at 200 entries, dropping oldest', () => {
-    for (let i = 0; i < 201; i++) addSeen(i);
-    const arr = JSON.parse(localStorage.getItem('stakswipe_seen')!) as number[];
+    for (let i = 0; i < 201; i++) addSeen(String(i));
+    const arr = JSON.parse(localStorage.getItem('stakswipe_seen')!) as string[];
     expect(arr.length).toBe(200);
-    expect(arr[0]).toBe(1);   // ID 0 was dropped
-    expect(arr[199]).toBe(200);
+    expect(arr[0]).toBe('1');   // ID '0' was dropped
+    expect(arr[199]).toBe('200');
   });
 
   it('recovers gracefully when stored value is corrupted', () => {
     localStorage.setItem('stakswipe_seen', 'bad-json');
-    addSeen(7);
-    expect(loadSeen()).toEqual(new Set([7]));
+    addSeen('7');
+    expect(loadSeen()).toEqual(new Set(['7']));
   });
 });
 
 describe('clearSeen', () => {
   it('removes all stored seen IDs', () => {
-    addSeen(10);
-    addSeen(20);
+    addSeen('10');
+    addSeen('20');
     clearSeen();
     expect(loadSeen()).toEqual(new Set());
   });

@@ -149,7 +149,7 @@ describe('FeedStack', () => {
   });
 
   it('does not render a post whose id is in the seen list', async () => {
-    addSeen(1);
+    addSeen('1');
     renderFeed({}, { fixtures: { posts: [POST_1] } });
     await waitFor(() => {
       expect(screen.queryByText('Test Post Title')).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe('FeedStack empty state', () => {
   it('calls clearSeen and reloads when reset button is clicked', async () => {
     const reloadMock = vi.fn();
     vi.stubGlobal('location', { reload: reloadMock });
-    addSeen(99);
+    addSeen('99');
 
     renderFeed({}, { fixtures: { posts: [] } });
     const btn = await screen.findByRole('button', { name: /reset seen history/i });
@@ -478,7 +478,7 @@ describe('FeedStack community mode', () => {
   });
 
   it('shows a post that is in the seen list (community uses independent seen tracking)', async () => {
-    addSeen(2);
+    addSeen('2');
     renderFeed(
       { community: { name: 'rust', instance: 'lemmy.world' } },
       { fixtures: { posts: [COMMUNITY_POST], sources: [RUST_SOURCE] } },
@@ -665,6 +665,37 @@ describe('FeedStack stak selection', () => {
     // With stak in the low-buffer deps, a second call fires immediately on stak
     // change (before the home effect can set loading=true), making callCount === 2.
     expect(callCount).toBe(1);
+  });
+});
+
+describe('FeedStack at-uri seen tracking regression', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    clearRegistry();
+  });
+
+  it('second at-uri post remains visible after swiping the first', async () => {
+    const AT_POST_1 = makePost({
+      id: 'at://did:plc:a/app.bsky.feed.post/p1|bafycid1',
+      title: 'Bluesky Post 1',
+      source: SOURCE,
+    });
+    const AT_POST_2 = makePost({
+      id: 'at://did:plc:a/app.bsky.feed.post/p2|bafycid2',
+      title: 'Bluesky Post 2',
+      source: SOURCE,
+    });
+
+    renderFeed({}, { fixtures: { posts: [AT_POST_1, AT_POST_2] } });
+    await screen.findByText('Bluesky Post 1');
+
+    // Swipe the first card right
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.queryByText('Bluesky Post 1')).not.toBeInTheDocument());
+
+    // Second card must still be visible, not filtered as seen
+    expect(screen.getByText('Bluesky Post 2')).toBeInTheDocument();
   });
 });
 

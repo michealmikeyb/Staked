@@ -43,7 +43,7 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
   const [posts, setPosts] = useState<Post[]>([]);
   const [undoStack, setUndoStack] = useState<Post[]>([]);
   const [returningPostId, setReturningPostId] = useState<string | null>(null);
-  const seenRef = useRef<Set<number>>(community ? new Set() : loadSeen());
+  const seenRef = useRef<Set<string>>(community ? new Set() : loadSeen());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
@@ -86,10 +86,7 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
         ? await backend.feed.getSourceFeed(`${community.name}@${community.instance}`, { feedId: sort, cursor: nextCursor })
         : await backend.feed.getTimeline({ feedId: sort, stakId: currentStak, cursor: nextCursor });
 
-      const unseen = page.items.filter((p) => {
-        const localId = parseInt(p.id.split('|')[0], 10) || parseInt(p.id, 10);
-        return !seenRef.current.has(localId);
-      });
+      const unseen = page.items.filter((p) => !seenRef.current.has(p.id));
 
       if (unseen.length === 0 && page.nextCursor === null) {
         setCanLoadMore(false);
@@ -176,17 +173,13 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
     setActive(ref); // active change → reset+load effect fires with the new backend/stak
   }
 
-  function getLocalId(postId: string): number {
-    return parseInt(postId.split('|')[0], 10) || parseInt(postId, 10);
-  }
-
   function dismissTop(postId: string) {
     const topPost = posts[0];
     if (topPost) setUndoStack((stack) => [...stack, topPost]);
     setPosts((prev) => prev.slice(1));
     if (returningPostId !== null) setReturningPostId(null);
-    if (!community) addSeen(getLocalId(postId));
-    seenRef.current.add(getLocalId(postId));
+    if (!community) addSeen(postId);
+    seenRef.current.add(postId);
     window.dispatchEvent(new CustomEvent('stakswipe:swiped'));
   }
 

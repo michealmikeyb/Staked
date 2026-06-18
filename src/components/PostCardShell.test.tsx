@@ -92,6 +92,16 @@ describe('PostCardShell', () => {
     expect(screen.getByTestId('comment-button')).toBeInTheDocument();
   });
 
+  it('hides Save button when hasSavedPosts is false even when logged in', () => {
+    renderShell({}, { capabilities: { hasSavedPosts: false } });
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+  });
+
+  it('shows Save button when hasSavedPosts is true and logged in', () => {
+    renderShell({}, { capabilities: { hasSavedPosts: true } });
+    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+  });
+
   it('clicking Save calls backend.posts.save with save=true', async () => {
     const { backend } = renderShell();
     fireEvent.click(screen.getByTestId('save-button'));
@@ -269,18 +279,34 @@ describe('PostCardShell', () => {
         expect.any(String),
       );
     });
+
+    it('shares post.permalink directly when hasSources is false (Bluesky path)', () => {
+      const mockShare = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'share', { value: mockShare, writable: true, configurable: true });
+      const bskyPost = makePost({
+        id: 'at://did:plc:abc/app.bsky.feed.post/p1|bafycid1',
+        title: 'Bluesky Post',
+        permalink: 'https://bsky.app/profile/did:plc:abc/post/p1',
+        source: makeSource({ handle: 'alice.bsky.social', name: 'alice.bsky.social' }),
+        author: makeUser({ handle: 'alice.bsky.social' }),
+      });
+      renderShell({ post: bskyPost }, { capabilities: { hasSources: false } });
+      fireEvent.click(screen.getByTestId('share-button'));
+      expect(vi.mocked(buildShareUrl)).not.toHaveBeenCalled();
+      expect(mockShare).toHaveBeenCalledWith(
+        expect.objectContaining({ url: 'https://bsky.app/profile/did:plc:abc/post/p1' }),
+      );
+    });
   });
 
   describe('sort bar', () => {
     beforeEach(() => { localStorage.clear(); });
 
-    it('renders sort pills when showCommentSortBar is true (default)', () => {
+    it('renders sort pills from backend.capabilities.commentSortOptions when showCommentSortBar is true (default)', () => {
+      // mock default commentSortOptions: [{id:'top',label:'Top'},{id:'new',label:'New'}]
       renderShell();
       expect(screen.getByRole('button', { name: /^top$/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^new$/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^hot$/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^old$/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^controversial$/i })).toBeInTheDocument();
     });
 
     it('hides sort pills when showCommentSortBar is false', () => {
@@ -289,16 +315,23 @@ describe('PostCardShell', () => {
       expect(screen.queryByRole('button', { name: /^top$/i })).not.toBeInTheDocument();
     });
 
+    it('hides sort bar when commentSortOptions is empty', () => {
+      renderShell({}, { capabilities: { commentSortOptions: [] } });
+      expect(screen.queryByRole('button', { name: /^top$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^new$/i })).not.toBeInTheDocument();
+    });
+
     it('active sort pill has orange background', () => {
-      renderShell({ activeSort: 'New' });
+      // mock commentSortOptions ids are lowercase ('top', 'new')
+      renderShell({ activeSort: 'new' });
       expect(screen.getByRole('button', { name: /^new$/i })).toHaveStyle({ background: '#ff6b35' });
     });
 
-    it('clicking a pill calls onSortChange with that sort', () => {
+    it('clicking a pill calls onSortChange with that option id', () => {
       const onSortChange = vi.fn();
       renderShell({ onSortChange });
-      fireEvent.click(screen.getByRole('button', { name: /^hot$/i }));
-      expect(onSortChange).toHaveBeenCalledWith('Hot');
+      fireEvent.click(screen.getByRole('button', { name: /^new$/i }));
+      expect(onSortChange).toHaveBeenCalledWith('new');
     });
   });
 

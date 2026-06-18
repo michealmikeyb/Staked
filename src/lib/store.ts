@@ -1,18 +1,20 @@
 const SEEN_KEY = 'stakswipe_seen';
 const MAX_SEEN = 200;
 
-export function loadSeen(): Set<number> {
+export function loadSeen(): Set<string> {
   try {
     const raw = localStorage.getItem(SEEN_KEY);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
-    return new Set(Array.isArray(parsed) ? parsed : []);
+    return new Set(
+      Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [],
+    );
   } catch {
     return new Set();
   }
 }
 
-export function addSeen(id: number): void {
+export function addSeen(id: string): void {
   const seen = loadSeen();
   if (seen.has(id)) return;
   localStorage.setItem(SEEN_KEY, JSON.stringify([...seen, id].slice(-MAX_SEEN)));
