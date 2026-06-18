@@ -11,6 +11,11 @@ describe('lemmy capabilities', () => {
     expect(caps.icon).toBeTruthy();
   });
 
+  it('declares that lemmy has sources (communities)', () => {
+    const caps = createLemmyBackend(ANON).capabilities;
+    expect(caps.hasSources).toBe(true);
+  });
+
   it('declares the login fields the add-account form needs', () => {
     const caps = createLemmyBackend(ANON).capabilities;
     const keys = caps.loginFields.map((f) => f.key);

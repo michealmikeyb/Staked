@@ -41,6 +41,7 @@ const LEMMY_CAPABILITIES: Capabilities = {
     { id: 'Old', label: 'Old' },
   ],
   sourceNoun: 'Community',
+  hasSources: true,
   displayName: 'Lemmy',
   icon: '🐭',
   loginFields: [

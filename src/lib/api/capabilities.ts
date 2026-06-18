@@ -16,6 +16,7 @@ export interface Capabilities {
   canBrowseAnonymously: boolean;
   hasNsfwFlag: boolean;
   hasSavedPosts: boolean;
+  hasSources: boolean;
   feedOptions: SelectOption[];
   commentSortOptions: SelectOption[];
   sourceNoun: string;

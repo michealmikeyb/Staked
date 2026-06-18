@@ -22,6 +22,7 @@ const DEFAULT_CAPABILITIES: Capabilities = {
     { id: 'new', label: 'New' },
   ],
   sourceNoun: 'Source',
+  hasSources: true,
   displayName: 'Mock',
   icon: '🧪',
   loginFields: [
