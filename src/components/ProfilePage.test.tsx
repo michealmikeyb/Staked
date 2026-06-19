@@ -97,14 +97,14 @@ describe('ProfilePage', () => {
     renderPage();
     await waitFor(() => screen.getByText('My Terminal Setup'));
     fireEvent.click(screen.getByText('My Terminal Setup'));
-    expect(mockNavigate).toHaveBeenCalledWith('/profile/1', { state: { post: mockPost } });
+    expect(mockNavigate).toHaveBeenCalledWith('/profile/view', { state: { post: mockPost } });
   });
 
   it('navigates to post detail with commentApId on comment row click', async () => {
     renderPage();
     await waitFor(() => screen.getByText('Great post!'));
     fireEvent.click(screen.getByText('Great post!'));
-    expect(mockNavigate).toHaveBeenCalledWith('/profile/2', {
+    expect(mockNavigate).toHaveBeenCalledWith('/profile/view', {
       state: {
         postId: mockComment.postId,
         commentApId: mockComment.permalink,

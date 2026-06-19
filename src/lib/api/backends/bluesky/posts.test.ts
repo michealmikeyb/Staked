@@ -37,11 +37,36 @@ describe('bluesky PostService', () => {
     expect(deleteLike).not.toHaveBeenCalled();
   });
 
-  it('create/save/report/delete throw', async () => {
+  it('save throws (Bluesky has no saved posts)', async () => {
     const svc = createPostService(() => ({}));
-    await expect(svc.create({ sourceHandle: 'x' })).rejects.toThrow();
     await expect(svc.save('id', true)).rejects.toThrow();
-    await expect(svc.report('id', 'r')).rejects.toThrow();
-    await expect(svc.delete('id')).rejects.toThrow();
+  });
+
+  it('create posts a composed text body and returns the created post', async () => {
+    const post = vi.fn().mockResolvedValue({ uri: 'at://x/app.bsky.feed.post/new', cid: 'c' });
+    const getPosts = vi.fn().mockResolvedValue({ data: { posts: [fakePost('at://x/app.bsky.feed.post/new')] } });
+    const svc = createPostService(() => ({ post, getPosts }));
+    const created = await svc.create({ sourceHandle: 'x', title: 'Hi', body: 'there', url: 'https://e.com' });
+    expect(post).toHaveBeenCalledWith({ text: 'Hi\n\nthere\n\nhttps://e.com' });
+    expect(getPosts).toHaveBeenCalledWith({ uris: ['at://x/app.bsky.feed.post/new'] });
+    expect(created.id).toBe('at://x/app.bsky.feed.post/new|c');
+  });
+
+  it('delete calls deletePost with the record uri', async () => {
+    const deletePost = vi.fn().mockResolvedValue(undefined);
+    const svc = createPostService(() => ({ deletePost }));
+    await svc.delete('at://x/app.bsky.feed.post/1|c');
+    expect(deletePost).toHaveBeenCalledWith('at://x/app.bsky.feed.post/1');
+  });
+
+  it('report files a moderation report with a strongRef subject', async () => {
+    const createReport = vi.fn().mockResolvedValue({});
+    const svc = createPostService(() => ({ com: { atproto: { moderation: { createReport } } } }));
+    await svc.report('at://x/app.bsky.feed.post/1|cid7', 'Spam — bot');
+    expect(createReport).toHaveBeenCalledWith({
+      reasonType: 'com.atproto.moderation.defs#reasonSpam',
+      reason: 'Spam — bot',
+      subject: { $type: 'com.atproto.repo.strongRef', uri: 'at://x/app.bsky.feed.post/1', cid: 'cid7' },
+    });
   });
 });

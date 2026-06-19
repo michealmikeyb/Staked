@@ -22,6 +22,13 @@ export function createUserService(getAgent: () => any): UserService {
       return { items: [], nextCursor: null };
     },
 
-    async block() { /* no-op */ },
+    // Bluesky has no downvote-style block from the timeline; the closest
+    // reversible action is a mute, which hides the actor's content from the
+    // viewer. `userId` is the actor's DID, accepted by mute/unmute directly.
+    async block(userId, block): Promise<void> {
+      const agent = getAgent();
+      if (block) await agent.mute(userId);
+      else await agent.unmute(userId);
+    },
   };
 }

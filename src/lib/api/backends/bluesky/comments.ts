@@ -1,7 +1,9 @@
 // src/lib/api/backends/bluesky/comments.ts
 import type { CommentService } from '../../backend';
-import type { Comment, Page } from '../../types';
+import type { Comment, ID, Page, Vote } from '../../types';
 import { mapThreadPost, parseBlueskyId } from './mappers';
+import { setLike } from './likes';
+import { createReport } from './moderation';
 import { notSupported } from './stubs';
 
 const THREAD_DEPTH = 6;
@@ -17,6 +19,11 @@ function flatten(replies: any[], parentId: string | null, depth: number, rootPos
   }
 }
 
+async function fetchPostView(agent: any, uri: string): Promise<any | null> {
+  const res = await agent.getPosts({ uris: [uri] });
+  return res.data.posts?.[0] ?? null;
+}
+
 export function createCommentService(getAgent: () => any): CommentService {
   return {
     async list(postId, _opts): Promise<Page<Comment>> {
@@ -28,10 +35,38 @@ export function createCommentService(getAgent: () => any): CommentService {
       return { items: out, nextCursor: null };
     },
 
-    async vote() { return notSupported('vote on comments'); },
-    async create() { return notSupported('reply to posts'); },
+    async vote(commentId: ID, vote: Vote): Promise<void> {
+      await setLike(getAgent(), commentId, vote);
+    },
+
+    async create(input): Promise<Comment> {
+      const agent = getAgent();
+      const root = parseBlueskyId(input.postId);
+      const parent = parseBlueskyId(input.parentId ?? input.postId);
+      const { uri } = await agent.post({
+        text: input.body,
+        reply: {
+          root: { uri: root.uri, cid: root.cid },
+          parent: { uri: parent.uri, cid: parent.cid },
+        },
+      });
+      const view = await fetchPostView(agent, uri);
+      if (!view) throw new Error('Bluesky: created reply could not be loaded');
+      // depth 0 is fine — PostCardShell rebuilds nesting from parentId, which we
+      // set to the encoded parent id so local and server ids align.
+      return mapThreadPost(view, input.parentId ?? null, 0, input.postId);
+    },
+
+    async delete(commentId: ID): Promise<void> {
+      const { uri } = parseBlueskyId(commentId);
+      await getAgent().deletePost(uri);
+    },
+
+    async report(commentId: ID, reason: string): Promise<void> {
+      const { uri, cid } = parseBlueskyId(commentId);
+      await createReport(getAgent(), uri, cid, reason);
+    },
+
     async edit() { return notSupported('edit comments'); },
-    async delete() { return notSupported('delete comments'); },
-    async report() { return notSupported('report comments'); },
   };
 }

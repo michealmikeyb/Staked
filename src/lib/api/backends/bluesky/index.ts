@@ -9,10 +9,10 @@ import { createFeedService } from './feed';
 import { createPostService } from './posts';
 import { createCommentService } from './comments';
 import { createUserService } from './users';
-import {
-  createStubSourceService, createStubNotificationService,
-  createStubSearchService, createStubMediaService,
-} from './stubs';
+import { createNotificationService } from './notifs';
+import { createSearchService } from './search';
+import { createMediaService } from './media';
+import { createStubSourceService } from './stubs';
 
 const SERVICE = 'https://bsky.social';
 
@@ -55,8 +55,8 @@ export function createBlueskyBackend(session: Session, opts: BlueskyBackendOptio
     comments: createCommentService(getAgent),
     sources: createStubSourceService(),
     users: createUserService(getAgent),
-    notifications: createStubNotificationService(),
-    search: createStubSearchService(),
-    media: createStubMediaService(),
+    notifications: createNotificationService(getAgent),
+    search: createSearchService(getAgent),
+    media: createMediaService(getAgent, session),
   };
 }

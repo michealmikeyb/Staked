@@ -20,9 +20,18 @@ describe('bluesky UserService', () => {
     expect(page.nextCursor).toBe('nc');
   });
 
-  it('getComments returns an empty page and block is a no-op', async () => {
+  it('getComments returns an empty page', async () => {
     const svc = createUserService(() => ({}));
     expect((await svc.getComments('a.bsky.social', { cursor: null })).items).toEqual([]);
-    await expect(svc.block('id', true)).resolves.toBeUndefined();
+  });
+
+  it('block mutes the actor and unblock unmutes', async () => {
+    const mute = vi.fn().mockResolvedValue({});
+    const unmute = vi.fn().mockResolvedValue({});
+    const svc = createUserService(() => ({ mute, unmute }));
+    await svc.block('did:plc:a', true);
+    expect(mute).toHaveBeenCalledWith('did:plc:a');
+    await svc.block('did:plc:a', false);
+    expect(unmute).toHaveBeenCalledWith('did:plc:a');
   });
 });

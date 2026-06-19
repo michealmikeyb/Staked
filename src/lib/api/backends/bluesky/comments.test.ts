@@ -33,12 +33,62 @@ describe('bluesky CommentService', () => {
     expect((await svc.list('at://x|c', { sortId: 'top' })).items).toEqual([]);
   });
 
-  it('create/vote/edit/delete/report throw', async () => {
+  it('vote(1) likes the comment record', async () => {
+    const like = vi.fn().mockResolvedValue({ uri: 'at://like' });
+    const svc = createCommentService(() => ({ like }));
+    await svc.vote('at://r1/app.bsky.feed.post/x|cid3', 1);
+    expect(like).toHaveBeenCalledWith('at://r1/app.bsky.feed.post/x', 'cid3');
+  });
+
+  it('create posts a reply with root and parent strong refs', async () => {
+    const post = vi.fn().mockResolvedValue({ uri: 'at://reply/new', cid: 'rc' });
+    const getPosts = vi.fn().mockResolvedValue({
+      data: { posts: [{ uri: 'at://reply/new', cid: 'rc', author: { did: 'd', handle: 'a.bsky.social' }, record: { text: 'hi', createdAt: '2026-01-01T00:00:00Z' }, likeCount: 0, indexedAt: '2026-01-01T00:00:00Z', viewer: {} }] },
+    });
+    const svc = createCommentService(() => ({ post, getPosts }));
+    const c = await svc.create({ postId: 'at://root|rcid', parentId: 'at://parent|pcid', body: 'hi' });
+    expect(post).toHaveBeenCalledWith({
+      text: 'hi',
+      reply: {
+        root: { uri: 'at://root', cid: 'rcid' },
+        parent: { uri: 'at://parent', cid: 'pcid' },
+      },
+    });
+    expect(c.parentId).toBe('at://parent|pcid');
+    expect(c.postId).toBe('at://root|rcid');
+    expect(c.body).toBe('hi');
+  });
+
+  it('create replies to the post itself when no parent is given', async () => {
+    const post = vi.fn().mockResolvedValue({ uri: 'at://reply/new', cid: 'rc' });
+    const getPosts = vi.fn().mockResolvedValue({
+      data: { posts: [{ uri: 'at://reply/new', cid: 'rc', author: { did: 'd', handle: 'a.bsky.social' }, record: { text: 'hi', createdAt: '2026-01-01T00:00:00Z' }, likeCount: 0, indexedAt: '2026-01-01T00:00:00Z', viewer: {} }] },
+    });
+    const svc = createCommentService(() => ({ post, getPosts }));
+    const c = await svc.create({ postId: 'at://root|rcid', body: 'hi' });
+    expect(post.mock.calls[0][0].reply.parent).toEqual({ uri: 'at://root', cid: 'rcid' });
+    expect(c.parentId).toBeNull();
+  });
+
+  it('delete calls deletePost with the comment uri', async () => {
+    const deletePost = vi.fn().mockResolvedValue(undefined);
+    const svc = createCommentService(() => ({ deletePost }));
+    await svc.delete('at://r1/app.bsky.feed.post/x|c');
+    expect(deletePost).toHaveBeenCalledWith('at://r1/app.bsky.feed.post/x');
+  });
+
+  it('report files a moderation report for the comment', async () => {
+    const createReport = vi.fn().mockResolvedValue({});
+    const svc = createCommentService(() => ({ com: { atproto: { moderation: { createReport } } } }));
+    await svc.report('at://r1/app.bsky.feed.post/x|cid', 'Harassment');
+    expect(createReport).toHaveBeenCalledWith(expect.objectContaining({
+      reasonType: 'com.atproto.moderation.defs#reasonRude',
+      subject: { $type: 'com.atproto.repo.strongRef', uri: 'at://r1/app.bsky.feed.post/x', cid: 'cid' },
+    }));
+  });
+
+  it('edit throws (Bluesky has no edit)', async () => {
     const svc = createCommentService(() => ({}));
-    await expect(svc.create({ postId: 'p', body: 'b' })).rejects.toThrow();
-    await expect(svc.vote('c', 1)).rejects.toThrow();
     await expect(svc.edit('c', 'b')).rejects.toThrow();
-    await expect(svc.delete('c')).rejects.toThrow();
-    await expect(svc.report('c', 'r')).rejects.toThrow();
   });
 });
