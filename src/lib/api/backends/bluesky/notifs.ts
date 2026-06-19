@@ -1,13 +1,23 @@
 // src/lib/api/backends/bluesky/notifs.ts
 import type { NotificationService } from '../../backend';
-import type { Comment, Notification, Page } from '../../types';
+import type { Comment, Notification, NotificationKind, Page } from '../../types';
 import { encodeBlueskyId, mapUser, rkeyOf } from './mappers';
 
 const PAGE_SIZE = 40;
 
-// Reasons the app models. Bluesky has no separate "comment" entity — a reply is
-// itself a post — so reply/mention/quote all surface as reply or mention.
-const REASONS = ['reply', 'mention', 'quote'];
+// Bluesky reasons collapse onto the app's notification kinds. Reasons we don't
+// recognise fall through to 'mention' so they still appear (and stay consistent
+// with the unread badge, which counts every type).
+const KIND_BY_REASON: Record<string, NotificationKind> = {
+  reply: 'reply',
+  mention: 'mention',
+  quote: 'mention',
+  like: 'like',
+  'like-via-repost': 'like',
+  repost: 'repost',
+  'repost-via-repost': 'repost',
+  follow: 'follow',
+};
 
 function didOf(atUri: string): string {
   // at://<did>/app.bsky.feed.post/<rkey>
@@ -15,40 +25,48 @@ function didOf(atUri: string): string {
 }
 
 // Builds the neutral Notification from a Bluesky listNotifications entry. The
-// notifying record (uri/cid/record) becomes the comment; reasonSubject is the
-// post it concerns (we have its uri but not its cid, so the post id carries an
-// empty cid — posts.get only needs the uri).
+// notifying record (uri/cid/record) becomes the comment for replies/mentions;
+// reasonSubject is the post it concerns (we have its uri but not its cid, so
+// the post id carries an empty cid — posts.get only needs the uri). Likes,
+// reposts, and follows have no comment; follows have no post.
 export function mapNotification(n: any): Notification {
-  const record = n.record ?? {};
-  const author = mapUser(n.author);
+  const actor = mapUser(n.author);
+  const kind = KIND_BY_REASON[n.reason] ?? 'mention';
   const subjectUri: string = n.reasonSubject ?? '';
-  const postId = encodeBlueskyId(subjectUri, '');
-  const comment: Comment = {
+  const post = subjectUri
+    ? {
+        id: encodeBlueskyId(subjectUri, ''),
+        title: '',
+        permalink: `https://bsky.app/profile/${didOf(subjectUri)}/post/${rkeyOf(subjectUri)}`,
+      }
+    : undefined;
+
+  const base = {
     id: encodeBlueskyId(n.uri, n.cid),
-    postId,
-    parentId: record.reply?.parent?.uri ?? null,
-    depth: 0,
-    author,
-    body: record.text ?? '',
-    publishedAt: record.createdAt ?? n.indexedAt,
-    permalink: `https://bsky.app/profile/${n.author.handle}/post/${rkeyOf(n.uri)}`,
-    counts: { score: 0 },
-    viewer: { vote: 0 },
-  };
-  return {
-    id: encodeBlueskyId(n.uri, n.cid),
-    kind: n.reason === 'reply' ? 'reply' : 'mention',
+    kind,
     read: !!n.isRead,
     receivedAt: n.indexedAt,
-    comment,
-    post: {
-      id: postId,
-      title: '',
-      permalink: subjectUri
-        ? `https://bsky.app/profile/${didOf(subjectUri)}/post/${rkeyOf(subjectUri)}`
-        : '',
-    },
+    actor,
   };
+
+  if (kind === 'reply' || kind === 'mention') {
+    const record = n.record ?? {};
+    const comment: Comment = {
+      id: encodeBlueskyId(n.uri, n.cid),
+      postId: post?.id ?? encodeBlueskyId(subjectUri, ''),
+      parentId: record.reply?.parent?.uri ?? null,
+      depth: 0,
+      author: actor,
+      body: record.text ?? '',
+      publishedAt: record.createdAt ?? n.indexedAt,
+      permalink: `https://bsky.app/profile/${n.author.handle}/post/${rkeyOf(n.uri)}`,
+      counts: { score: 0 },
+      viewer: { vote: 0 },
+    };
+    return { ...base, comment, post };
+  }
+
+  return { ...base, post };
 }
 
 export function createNotificationService(getAgent: () => any): NotificationService {
@@ -62,7 +80,6 @@ export function createNotificationService(getAgent: () => any): NotificationServ
       const res = await getAgent().listNotifications({
         cursor: opts.cursor ?? undefined,
         limit: PAGE_SIZE,
-        reasons: REASONS,
       });
       const raw = (res.data.notifications as any[]) ?? [];
       const filtered = opts.unreadOnly ? raw.filter((n) => !n.isRead) : raw;

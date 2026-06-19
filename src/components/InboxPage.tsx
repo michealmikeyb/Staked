@@ -13,6 +13,23 @@ function formatTime(iso: string): string {
   return `${Math.floor(hrs / 24)}d`;
 }
 
+const KIND_LABEL: Record<Notification['kind'], string> = {
+  reply: 'REPLY', mention: 'MENTION', like: 'LIKE', repost: 'REPOST', follow: 'FOLLOW',
+};
+
+// The main text of a row: replies/mentions show the comment body; the rest
+// describe the action, since they carry no comment.
+function bodyText(n: Notification): string {
+  switch (n.kind) {
+    case 'reply':
+    case 'mention':
+      return n.comment?.body ?? '';
+    case 'like': return 'liked your post';
+    case 'repost': return 'reposted your post';
+    case 'follow': return 'started following you';
+  }
+}
+
 interface Props {
   auth?: unknown; // kept for App.tsx compat — backend provides session
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
@@ -92,7 +109,11 @@ export default function InboxPage({ setUnreadCount, unreadCount }: Props) {
         {items.map((item) => (
           <div
             key={item.id}
-            onClick={() => navigate(`/inbox/${item.id}`, { state: { notification: item } })}
+            onClick={() =>
+              item.post
+                ? navigate(`/inbox/${item.id}`, { state: { notification: item } })
+                : window.open(item.actor.profileUrl, '_blank', 'noopener')
+            }
             style={{
               margin: '6px 12px',
               background: '#1e2128',
@@ -107,7 +128,7 @@ export default function InboxPage({ setUnreadCount, unreadCount }: Props) {
                 fontSize: 10, fontWeight: 700,
                 padding: '2px 8px', borderRadius: 20,
               }}>
-                {item.kind === 'reply' ? 'REPLY' : 'MENTION'}
+                {KIND_LABEL[item.kind]}
               </span>
               <span style={{ color: '#888', fontSize: 11 }}>
                 {formatTime(item.receivedAt)}
@@ -122,22 +143,24 @@ export default function InboxPage({ setUnreadCount, unreadCount }: Props) {
                 />
               )}
             </div>
-            <div style={{
-              color: '#888', fontSize: 11, fontStyle: 'italic',
-              marginBottom: 4,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {item.post.title}
-            </div>
+            {item.post?.title && (
+              <div style={{
+                color: '#888', fontSize: 11, fontStyle: 'italic',
+                marginBottom: 4,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {item.post.title}
+              </div>
+            )}
             <div style={{ color: '#aaa', fontSize: 11, marginBottom: 6 }}>
-              {item.comment.author.displayName ?? item.comment.author.handle}
+              {item.actor.displayName ?? item.actor.handle}
             </div>
             <div style={{
               color: '#e0e0e0', fontSize: 13, lineHeight: 1.4,
               display: '-webkit-box', WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical', overflow: 'hidden',
             }}>
-              {item.comment.body}
+              {bodyText(item)}
             </div>
           </div>
         ))}

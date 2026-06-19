@@ -128,12 +128,14 @@ export function mapComments(views: CommentView[]): Comment[] {
 }
 
 export function mapReply(rv: CommentReplyView): Notification {
+  const comment = mapComment(rv as any);
   return {
     id: `reply-${rv.comment_reply.id}`,
     kind: 'reply',
     read: rv.comment_reply.read,
     receivedAt: rv.comment.published,
-    comment: mapComment(rv as any),
+    actor: comment.author,
+    comment,
     post: {
       id: encodePostId(rv.post.id, rv.post.ap_id),
       title: rv.post.name,
@@ -143,12 +145,14 @@ export function mapReply(rv: CommentReplyView): Notification {
 }
 
 export function mapMention(mv: PersonMentionView): Notification {
+  const comment = mapComment(mv as any);
   return {
     id: `mention-${mv.person_mention.id}`,
     kind: 'mention',
     read: mv.person_mention.read,
     receivedAt: mv.comment.published,
-    comment: mapComment(mv as any),
+    actor: comment.author,
+    comment,
     post: {
       id: encodePostId(mv.post.id, mv.post.ap_id),
       title: mv.post.name,

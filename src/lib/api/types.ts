@@ -53,13 +53,16 @@ export interface Comment {
   removed?: boolean;
 }
 
+export type NotificationKind = 'reply' | 'mention' | 'like' | 'repost' | 'follow';
+
 export interface Notification {
   id: ID;
-  kind: 'reply' | 'mention';
+  kind: NotificationKind;
   read: boolean;
   receivedAt: string;
-  comment: Comment;
-  post: Pick<Post, 'id' | 'title' | 'permalink'>;
+  actor: User;                                       // who triggered it
+  comment?: Comment;                                 // reply/mention only
+  post?: Pick<Post, 'id' | 'title' | 'permalink'>;   // absent for follows
 }
 
 export interface Page<T> {

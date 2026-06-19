@@ -36,14 +36,14 @@ export default function PostDetailPage({ setUnreadCount, unreadCount = 0 }: Prop
   }, []);
 
   useEffect(() => {
-    if (!notification) return;
+    if (!notification?.post) return;
     backend.posts.get(notification.post.id)
       .then((p) => setFullPost(p))
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!notification) {
+  if (!notification || !notification.post) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#13151a' }}>
         <MenuDrawer onNavigate={navigate} onLogoClick={() => navigate('/')} unreadCount={unreadCount} />
@@ -125,7 +125,7 @@ export default function PostDetailPage({ setUnreadCount, unreadCount = 0 }: Prop
           community={community}
           creator={creator}
           counts={counts}
-          notifCommentApId={notification.comment.permalink}
+          notifCommentApId={notification.comment?.permalink}
         />
       </div>
     </div>

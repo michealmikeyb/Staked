@@ -77,13 +77,15 @@ export function makeComment(overrides: Partial<Comment> = {}): Comment {
 
 export function makeNotification(overrides: Partial<Notification> = {}): Notification {
   const id = overrides.id ?? nextId();
+  const comment = 'comment' in overrides ? overrides.comment : makeComment();
   return {
     id,
     kind: overrides.kind ?? 'reply',
     read: overrides.read ?? false,
     receivedAt: overrides.receivedAt ?? new Date().toISOString(),
-    comment: overrides.comment ?? makeComment(),
-    post: overrides.post ?? { id: '1', title: 'Post 1', permalink: 'https://mock.test/p/1' },
+    actor: overrides.actor ?? comment?.author ?? makeUser(),
+    comment,
+    post: 'post' in overrides ? overrides.post : { id: '1', title: 'Post 1', permalink: 'https://mock.test/p/1' },
   };
 }
 

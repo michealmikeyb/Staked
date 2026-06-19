@@ -65,6 +65,39 @@ describe('InboxPage', () => {
   });
 });
 
+describe('InboxPage non-comment kinds', () => {
+  it('renders a follow row with the actor and opens their profile on tap', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const follow = makeNotification({
+      id: 'follow-1', kind: 'follow', read: false,
+      receivedAt: '2026-03-29T10:00:00Z',
+      actor: makeUser({ handle: 'bob@bsky', displayName: 'Bob', profileUrl: 'https://bsky.app/profile/bob' }),
+      comment: undefined, post: undefined,
+    });
+    renderInbox([follow]);
+    await waitFor(() => screen.getByText('FOLLOW'));
+    expect(screen.getByText('started following you')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('started following you'));
+    expect(openSpy).toHaveBeenCalledWith('https://bsky.app/profile/bob', '_blank', 'noopener');
+    expect(mockNavigate).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
+
+  it('renders a like row that navigates to the liked post', async () => {
+    const like = makeNotification({
+      id: 'like-1', kind: 'like', read: false,
+      receivedAt: '2026-03-29T10:00:00Z',
+      actor: makeUser({ handle: 'carol@bsky', displayName: 'Carol' }),
+      comment: undefined,
+      post: { id: 'p9', title: 'My post', permalink: 'https://bsky.app/p/9' },
+    });
+    renderInbox([like]);
+    await waitFor(() => screen.getByText('LIKE'));
+    fireEvent.click(screen.getByText('liked your post'));
+    expect(mockNavigate).toHaveBeenCalledWith('/inbox/like-1', expect.any(Object));
+  });
+});
+
 describe('InboxPage unread dot', () => {
   it('shows unread dot for unread notification', async () => {
     renderInbox();
