@@ -26,6 +26,8 @@ interface Props {
 }
 
 const STACK_VISIBLE = 3;
+const RETRY_LIMIT = 3;
+const RETRY_BASE_DELAY_MS = 300;
 const screenStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 16 };
 
 export default function FeedStack({ unreadCount, setUnreadCount, community }: Props) {
@@ -44,6 +46,13 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
   const [undoStack, setUndoStack] = useState<Post[]>([]);
   const [returningPostId, setReturningPostId] = useState<string | null>(null);
   const seenRef = useRef<Set<string>>(community ? new Set() : loadSeen());
+  // Synchronous in-flight guard: `loading` (React state) can't gate concurrent
+  // loads because state updates are async — a rapid burst of swipes could fire
+  // loadMore again before setLoading(true) commits, causing overlapping fetches.
+  const inFlightRef = useRef(false);
+  // Generation counter: bumped on every feed reset (sort/stak/backend change) so
+  // an in-flight load that resolves after a reset discards its stale results.
+  const genRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canLoadMore, setCanLoadMore] = useState(true);
@@ -80,30 +89,57 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
   }, []); // mount-only
 
   const loadMore = useCallback(async (sort: string, currentStak: string, nextCursor: string | null) => {
+    if (inFlightRef.current) return; // never run two loads at once
+    const gen = genRef.current;
+    inFlightRef.current = true;
     setLoading(true);
     try {
-      const page = community
-        ? await backend.feed.getSourceFeed(`${community.name}@${community.instance}`, { feedId: sort, cursor: nextCursor })
-        : await backend.feed.getTimeline({ feedId: sort, stakId: currentStak, cursor: nextCursor });
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const page = community
+            ? await backend.feed.getSourceFeed(`${community.name}@${community.instance}`, { feedId: sort, cursor: nextCursor })
+            : await backend.feed.getTimeline({ feedId: sort, stakId: currentStak, cursor: nextCursor });
+          if (gen !== genRef.current) return; // reset happened mid-flight → discard
 
-      const unseen = page.items.filter((p) => !seenRef.current.has(p.id));
+          const unseen = page.items.filter((p) => !seenRef.current.has(p.id));
 
-      if (unseen.length === 0 && page.nextCursor === null) {
-        setCanLoadMore(false);
-      } else {
-        setPosts((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          return [...prev, ...unseen.filter((p) => !existingIds.has(p.id))];
-        });
-        setCursor(page.nextCursor);
-      }
-    } catch (err) {
-      setCanLoadMore(false);
-      if (!nextCursor) {
-        setError(err instanceof Error ? err.message : 'Failed to load posts');
+          if (unseen.length === 0 && page.nextCursor === null) {
+            setCanLoadMore(false);
+          } else {
+            setPosts((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              return [...prev, ...unseen.filter((p) => !existingIds.has(p.id))];
+            });
+            setCursor(page.nextCursor);
+          }
+          return;
+        } catch (err) {
+          if (gen !== genRef.current) return; // stale → discard
+          // Initial load failure: surface an actionable error screen.
+          if (!nextCursor) {
+            setCanLoadMore(false);
+            setError(err instanceof Error ? err.message : 'Failed to load posts');
+            return;
+          }
+          // Pagination failure is usually transient (network blip, rate limit,
+          // overlapping requests). Retry a bounded number of times before giving
+          // up, so a single hiccup doesn't strand the feed on a blank end screen.
+          if (attempt < RETRY_LIMIT) {
+            await new Promise((r) => setTimeout(r, RETRY_BASE_DELAY_MS * (attempt + 1)));
+            if (gen !== genRef.current) return;
+            continue;
+          }
+          setCanLoadMore(false);
+          return;
+        }
       }
     } finally {
-      setLoading(false);
+      // Only release the guard if we still own the current generation; a newer
+      // reset+load owns it otherwise, and must not have its flags cleared.
+      if (gen === genRef.current) {
+        inFlightRef.current = false;
+        setLoading(false);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backend, community?.name, community?.instance]);
@@ -112,9 +148,12 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
     if (community) return; // community feed loads via its own effect below
     const effective = pickFeedId(backend.capabilities.feedOptions, sortType, false);
     if (effective !== sortType) setSortType(effective);
+    genRef.current += 1;
+    inFlightRef.current = false;
     setPosts([]);
     setCursor(null);
     setCanLoadMore(true);
+    setError('');
     loadMore(effective, stak, null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backend, stak]);
@@ -136,9 +175,12 @@ export default function FeedStack({ unreadCount, setUnreadCount, community }: Pr
   }, [posts.length, loading, canLoadMore, sortType, cursor]);
 
   function resetAndLoad(sort: string, newStak: string) {
+    genRef.current += 1;
+    inFlightRef.current = false;
     setPosts([]);
     setCursor(null);
     setCanLoadMore(true);
+    setError('');
     loadMore(sort, newStak, null);
   }
 

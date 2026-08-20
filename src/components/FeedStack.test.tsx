@@ -723,6 +723,63 @@ describe('FeedStack subscribed empty state', () => {
   });
 });
 
+describe('FeedStack pagination resilience', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    clearRegistry();
+    seedLoggedIn('all');
+  });
+
+  it('recovers from a transient pagination error instead of permanently ending the feed', async () => {
+    const P = (n: number) => makePost({ id: `p${n}`, title: `Resilience Post ${n}`, source: SOURCE });
+    const firstPage = [P(1), P(2), P(3), P(4)];
+    const secondPage = [P(5), P(6), P(7), P(8)];
+
+    // Pre-create the active backend so we control getTimeline (cursors + a
+    // one-shot transient failure) from the very first call.
+    const backend = createMockBackend({ posts: [] }, { feedOptions: FEED_OPTIONS });
+    let call = 0;
+    vi.spyOn(backend.feed, 'getTimeline').mockImplementation(async () => {
+      call += 1;
+      if (call === 1) return { items: firstPage, nextCursor: '2' }; // initial: more available
+      if (call === 2) throw new Error('rate limited');              // first pagination: transient fail
+      return { items: secondPage, nextCursor: null };               // retry succeeds
+    });
+    registerBackend('lemmy', (session) =>
+      session.id === ALICE_SESSION.id ? backend : createMockBackend(undefined, { feedOptions: FEED_OPTIONS }, true),
+    );
+
+    render(
+      <SettingsProvider>
+        <AccountsProvider>
+          <FeedStack unreadCount={0} setUnreadCount={vi.fn()} />
+        </AccountsProvider>
+      </SettingsProvider>,
+    );
+
+    await screen.findByText('Resilience Post 1');
+
+    // Swipe the first card → buffer drops to 3 → low-buffer effect paginates
+    // (call 2), which throws. The feed must retry rather than give up.
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.queryByText('Resilience Post 1')).not.toBeInTheDocument());
+
+    // Drain the remaining initial posts.
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    // The feed should have recovered and loaded the second page — NOT shown the
+    // "you've seen everything" end screen.
+    await waitFor(
+      () => expect(screen.getByText('Resilience Post 5')).toBeInTheDocument(),
+      { timeout: 4000 },
+    );
+    expect(screen.queryByText(/you've seen everything/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('FeedStack toast from navigation state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
